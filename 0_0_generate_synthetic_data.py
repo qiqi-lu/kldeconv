@@ -122,7 +122,6 @@ with open(path_snr, "w") as f:
         )  # add noise
 
         # SNR
-        print(f"sample [{i}],", "SNR:", utils_eva.SNR(img_blur, img_blur_n))
         io.imsave(
             os.path.join(path_dataset_blur, fn),
             arr=img_blur_n,
@@ -130,5 +129,5 @@ with open(path_snr, "w") as f:
         )
         pbar.update(1)
         # write snr
-        f.write(f"{i} {utils_eva.SNR(img_blur, img_blur_n)}\n")
+        f.write(f"{fn} {utils_eva.SNR(img_blur, img_blur_n)}\n")
     pbar.close()
