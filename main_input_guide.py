@@ -11,7 +11,7 @@ import models.srrln as srrln
 import models.rcan as rcan
 import models.rlsr as rlsr
 import train
-from utils import data, device_utils
+from utils import data, device
 from utils import evaluation as eva
 import tqdm
 
@@ -61,7 +61,7 @@ print("=" * 98)
 # set random seed
 torch.manual_seed(random_seed)
 # get device
-device = device_utils.get_device(gpu_id=gpu_id)
+device = device.get_device(gpu_id=gpu_id)
 
 ###################################################################################
 # Data

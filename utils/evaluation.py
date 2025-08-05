@@ -77,14 +77,28 @@ def PSNR(img_true, img_test, data_range=255):
     return psnr
 
 
-def SNR(img_true, img_test, type=0):
+def SNR(img_true, img_test, type: int = 0):
+    """
+    Calculate signal-to-noise ratio (SNR) for an image.
+    ### Parameters:
+    - `img_true` : ground truth image.
+    - `img_test` : test image.
+    - `type` : `0` for sum of squares, `1` for variance.
+    ### Returns:
+    - `snr` : signal-to-noise ratio.
+    """
+    assert len(img_true.shape) == len(
+        img_test.shape
+    ), f"The dimensions of the two images are not the same."
+    assert type in [0, 1], f"Type must be 0 or 1."
+
     if type == 0:
         img_true_ss = np.sum(np.square(img_true))
         error_ss = np.sum(np.square(img_true - img_test))
     if type == 1:
         img_true_ss = np.var(img_true)
         error_ss = np.var(img_test - img_true)
-    snr = 10 * np.log10(img_true_ss / error_ss)
+    snr = 10 * np.log10(img_true_ss / error_ss) if error_ss != 0 else np.inf
     return snr
 
 
