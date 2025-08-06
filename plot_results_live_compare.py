@@ -2,7 +2,7 @@ import matplotlib.pyplot as plt
 import skimage.io as io
 import numpy as np
 import os
-import utils.image_plot as utils_plot
+import utils.plot as utils_plot
 import matplotlib as mpl
 from skimage.measure import profile_line
 import matplotlib.patches as patches

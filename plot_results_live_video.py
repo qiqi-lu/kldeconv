@@ -1,4 +1,4 @@
-import utils.image_plot as utils_plot
+import utils.plot as utils_plot
 import skimage.io as io
 import numpy as np
 import os, cv2

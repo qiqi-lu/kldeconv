@@ -10,6 +10,8 @@ import methods.deconvolution as dcv
 import utils.evaluation as utils_eva
 import utils.data as utils_data
 
+path_root = "i:\Datasets\RLN"
+
 # ------------------------------------------------------------------------------
 # dataset_name = 'SimuBeads3D_128'
 # dataset_name = 'SimuMix3D_128'
@@ -51,7 +53,7 @@ scale_factor = 1
 
 # ------------------------------------------------------------------------------
 # path and file names
-path_dataset = os.path.join("F:", os.sep, "Datasets", "RLN", dataset_name)
+path_dataset = utils_data.win2linux(os.path.join(path_root, dataset_name))
 path_gt = os.path.join(path_dataset, "gt")
 print(f"[INFO] dataset from: {path_dataset}")
 

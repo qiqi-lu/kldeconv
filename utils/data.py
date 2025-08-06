@@ -6,6 +6,48 @@ from skimage import io, transform
 from torchvision import transforms
 
 
+def win2linux(win_path):
+    """
+    Convert a Windows path to a Linux path if the current operating system is Linux,
+    otherwise return the original path.
+    ### Parameters:
+        - `win_path` (str): The Windows path to be converted.
+    ### Returns:
+        - (str): The converted Linux path if the current operating system is Linux,
+               otherwise the original path.
+    """
+    if win_path == None:
+        return None
+    elif os.name == "posix":
+        linux_path = win_path.replace("\\", "/")
+        if len(linux_path) > 1 and linux_path[1] == ":":
+            drive_letter = linux_path[0].lower()
+            linux_path = "/mnt/" + drive_letter + linux_path[2:]
+        return linux_path
+    else:
+        return win_path
+
+
+def read_txt(path_txt):
+    """
+    Read txt file consisting of info in each line.
+    ### Parameters:
+    - `path_txt` : str, path of the txt file.
+    ### Returns:
+    - `lines` : list, info in each line.
+    """
+    if os.name == "posix":
+        path_txt = win2linux(path_txt)
+
+    with open(path_txt) as f:
+        lines = f.read().splitlines()
+
+    if lines[-1] == "":
+        lines.pop()
+
+    return lines
+
+
 def interp(x, ps_xy=1, ps_z=1):
     x = np.array(x, dtype=np.float32)
     num_dim = len(x.shape)
