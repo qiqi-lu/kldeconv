@@ -8,10 +8,20 @@ import numpy as np
 import skimage.io as io
 import os
 import methods.deconvolution as dcv
-import utils.data as utils_data
+from utils.data import win2linux, center_crop, even2odd, read_txt
 
-# ------------------------------------------------------------------------------
+path_root = win2linux(
+    "I:\Datasets\ZeroShotDeconvNet\\3D time-lapsing data_LLSM_Mitosis_H2B\\642"
+    # "I:\Datasets\ZeroShotDeconvNet\\3D time-lapsing data_LLSM_Mitosis_Mito\\560"
+)
 dataset_name = "ZeroShotDeconvNet"
+# ------------------------------------------------------------------------------
+path_fig = os.path.join(
+    "outputs", "figures", dataset_name.lower(), "Mitosis", os.path.basename(path_root)
+)
+path_raw = os.path.join(path_root, "raw")
+filenames = read_txt(os.path.join(path_root, "all.txt"))
+
 # id_sample = [0, 346]
 # id_sample = [0, 346, 609, 700, 770, 901]
 # id_sample = [0, 346, 609, 700, 770, 901]
@@ -19,57 +29,52 @@ dataset_name = "ZeroShotDeconvNet"
 id_sample = range(0, 1000, 4)
 # id_sample = [1]
 
-# wave_length = '642'
-wave_length = "560"
-
 enable_traditonal, enable_gaussian, enable_bw, enable_wb = 0, 0, 0, 1
 num_iter_trad, num_iter_gaus, num_iter_bw, num_iter_wb = 30, 30, 30, 2
 
-if wave_length == "642":
-    dataset_path = os.path.join(
-        "F:",
-        os.sep,
-        "Datasets",
-        dataset_name,
-        "3D time-lapsing data_LLSM_Mitosis_H2B",
-        "642",
-    )
-
-if wave_length == "560":
-    dataset_path = os.path.join(
-        "F:",
-        os.sep,
-        "Datasets",
-        dataset_name,
-        "3D time-lapsing data_LLSM_Mitosis_Mito",
-        "560",
-    )
-
-subfolder = os.path.join("Mitosis", wave_length)
-
 # ------------------------------------------------------------------------------
-data_raw_path = os.path.join(dataset_path, "raw")
-with open(os.path.join(dataset_path, "raw.txt")) as f:
-    test_txt = f.read().splitlines()
-
-# ------------------------------------------------------------------------------
-print("Load PSF ...")
-PSF_raw = io.imread(os.path.join(data_raw_path, "PSF.tif")).astype(np.float32)
-print("PSF shape (raw): {} (sum = {})".format(PSF_raw.shape, PSF_raw.sum()))
+# load PSF
+PSF_raw = io.imread(os.path.join(path_raw, "PSF.tif")).astype(np.float32)
+print(f"[INFO] PSF shape (raw): {PSF_raw.shape} (sum = {PSF_raw.sum()})")
 PSF_raw = PSF_raw / PSF_raw.sum()
 
 # even shape to odd shape
 if PSF_raw.shape[-1] % 2 == 0:
-    print("Convert PSF with even shape to odd shape.")
-    PSF_odd = utils_data.even2odd(PSF_raw)
-    PSF = utils_data.center_crop(PSF_odd, size=(101, 101, 101))
-    print("PSF shape: {} (sum = {:>.4f})".format(PSF.shape, PSF.sum()))
+    PSF_odd = even2odd(PSF_raw)
+    PSF = center_crop(PSF_odd, size=(101, 101, 101))
+    print("[INFO] PSF shape (used): {} (sum = {:>.4f})".format(PSF.shape, PSF.sum()))
     PSF = PSF / PSF.sum()
-    save_to = os.path.join(data_raw_path, "PSF_odd.tif")
-    io.imsave(fname=save_to, arr=PSF, check_contrast=False)
-    print("Save PSF to", save_to)
+    path_save_to_psf = os.path.join(path_raw, "PSF_odd.tif")
+    io.imsave(fname=path_save_to_psf, arr=PSF, check_contrast=False)
+    print("Save PSF to", path_save_to_psf)
 else:
     PSF = PSF_raw
+
+params = {
+    "traditional": {
+        "num_iter": 30,
+        "init": "measured",
+    },
+    "gaussian": {
+        "num_iter": 30,
+        "init": "measured",
+    },
+    "butterworth": {
+        "num_iter": 30,
+        "beta": 0.01,
+        "n": 10,
+        "res_flag": 1,
+        "init": "measured",
+    },
+    "wiener-butterworth": {
+        "num_iter": 2,
+        "alpha": 0.005,
+        "beta": 0.1,
+        "n": 10,
+        "res_flag": 1,
+        "init": "measured",
+    },
+}
 
 # ------------------------------------------------------------------------------
 # DCV_trad = dcv.Deconvolution(PSF=PSF, bp_type='traditional', init='measured')
@@ -88,15 +93,13 @@ DCV_wb = dcv.Deconvolution(
 
 # ------------------------------------------------------------------------------
 for id in id_sample:
-    load_from = os.path.join(data_raw_path, test_txt[id])
+    load_from = os.path.join(path_raw, filenames[id])
     data_raw = io.imread(load_from).astype(np.float32)
     print("Load data from: ", load_from)
     print("Input shape: {}".format(list(data_raw.shape)))
 
     # save result to path
-    fig_path = os.path.join(
-        "outputs", "figures", dataset_name.lower(), f"{subfolder}", f"sample_{id}"
-    )
+    fig_path = os.path.join(f"sample_{id}")
 
     print("Save results to :", fig_path)
 

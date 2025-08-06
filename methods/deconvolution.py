@@ -105,24 +105,43 @@ def Convolution(x, PSF, padding_mode="reflect", domain="direct"):
 
 
 class Deconvolution(object):
+    """
+    Deconvolution class.
+    ### Parameters:
+    - `PSF` : point spread function, numpy array.
+    - `bp_type` : back projection type, `traditional`, `gaussian`, `butterworth`, `wiener-butterworth`.
+    - `alpha` : alpha parameter for wiener-butterworth filter.
+    - `beta` : beta parameter for butterworth filter.
+    - `n` : n parameter for butterworth filter.
+    - `res_flag` : residual flag for butterworth filter.
+    - `i_res` : i_res parameter for butterworth filter.
+    - `init` : initialization method, `measured` or `constant`.
+    - `metrics` : evaluation metrics, `None` or `lambda x: [mse, ssim, ncc]`.
+    - `padding_mode` : padding mode, `reflect` or `constant`.
+    ### Returns:
+    - `stack_estimate` : deconvolved image, numpy array.
+    - `out_gaus_metrics` : evaluation metrics, numpy array.
+
+    """
+
     def __init__(
         self,
         PSF,
-        bp_type="traditional",
-        alpha=0.05,
-        beta=1,
-        n=10,
-        res_flag=1,
+        bp_type: str = "traditional",
+        alpha: float = 0.05,
+        beta: float = 1,
+        n: int = 10,
+        res_flag: int = 1,
         i_res=[2.44, 2.44, 10],
-        init="measured",
+        init: str = "measured",
         metrics=None,
-        padding_mode="reflect",
+        padding_mode: str = "reflect",
     ):
 
         self.padding_mode = padding_mode
         self.bp_type = bp_type
         # forward PSF
-        self.PSF1 = PSF / np.sum(PSF)
+        self.PSF1 = PSF / np.sum(PSF)  # normalize PSF
         # backward PSF
         self.PSF2, _ = back_projector.BackProjector(
             PSF_fp=PSF,
