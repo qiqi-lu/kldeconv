@@ -1,29 +1,48 @@
 import numpy as np
 import methods.back_projector as back_projector
 import tqdm, torch
-
 from fft_conv_pytorch import fft_conv
 
 
 # ------------------------------------------------------------------------------
-def align_size(img, size, padValue=0):
+def align_size(img, size, pad_value=0):
+    """
+    Align image size to the given size.
+    ### Parameters:
+    - `img` : image, numpy array.
+    - `size` : target size, tuple.
+    - `pad_value` : padding value, float.
+    ### Returns:
+    - `img2` : aligned image, numpy array.
+    """
     dim = len(img.shape)
+    assert dim in [2, 3], "Only support 2D and 3D image."
+    assert len(size) == dim, "Size and image dimension mismatch."
 
     if dim == 3:
         Nz_1, Ny_1, Nx_1 = img.shape
         Nz_2, Ny_2, Nx_2 = size
-        Nz = np.maximum(Nz_1, Nz_2)
-        Ny, Nx = np.maximum(Ny_1, Ny_2), np.maximum(Nx_1, Nx_2)
+        Nz, Ny, Nx = (
+            np.maximum(Nz_1, Nz_2),
+            np.maximum(Ny_1, Ny_2),
+            np.maximum(Nx_1, Nx_2),
+        )
 
-        imgTemp = np.ones(shape=(Nz, Ny, Nx)) * padValue
+        imgTemp = np.ones(shape=(Nz, Ny, Nx)) * pad_value
         imgTemp = imgTemp.astype(img.dtype)
 
-        Nz_o = int(np.round((Nz - Nz_1) / 2))
-        Ny_o, Nx_o = int(np.round((Ny - Ny_1) / 2)), int(np.round((Nx - Nx_1) / 2))
+        Nz_o, Ny_o, Nx_o = (
+            int(np.round((Nz - Nz_1) / 2)),
+            int(np.round((Ny - Ny_1) / 2)),
+            int(np.round((Nx - Nx_1) / 2)),
+        )
         imgTemp[Nz_o : Nz_o + Nz_1, Ny_o : Ny_o + Ny_1, Nx_o : Nx_o + Nx_1] = img
 
-        Nz_o = int(np.round((Nz - Nz_2) / 2))
-        Ny_o, Nx_o = int(np.round((Ny - Ny_2) / 2)), int(np.round((Nx - Nx_2) / 2))
+        Nz_o, Ny_o, Nx_o = (
+            int(np.round((Nz - Nz_2) / 2)),
+            int(np.round((Ny - Ny_2) / 2)),
+            int(np.round((Nx - Nx_2) / 2)),
+        )
         img2 = imgTemp[Nz_o : Nz_o + Nz_2, Ny_o : Ny_o + Ny_2, Nx_o : Nx_o + Nx_2]
 
     if dim == 2:
@@ -31,7 +50,7 @@ def align_size(img, size, padValue=0):
         Ny_2, Nx_2 = size
         Ny, Nx = np.maximum(Ny_1, Ny_2), np.maximum(Nx_1, Nx_2)
 
-        imgTemp = np.ones(shape=(Ny, Nx)) * padValue
+        imgTemp = np.ones(shape=(Ny, Nx)) * pad_value
         imgTemp = imgTemp.astype(img.dtype)
 
         Ny_o, Nx_o = int(np.round((Ny - Ny_1) / 2)), int(np.round((Nx - Nx_1) / 2))
@@ -41,6 +60,42 @@ def align_size(img, size, padValue=0):
         img2 = imgTemp[Ny_o : Ny_o + Ny_2, Nx_o : Nx_o + Nx_2]
 
     return img2
+
+
+def adjust_size(img, size, pad_value=0):
+    """
+    Adjust image size to the given size, the image will be cropped or padded to the given size.
+    ### Parameters:
+    - `img` : image, numpy array.
+    - `size` : target size, tuple.
+    - `pad_value` : padding value, float.
+    ### Returns:
+    - `img2` : adjusted image, numpy array.
+    """
+    dim = img.ndim
+    assert dim in [2, 3], "Only support 2D and 3D image."
+    assert len(size) == dim, "Size and image dimension mismatch."
+
+    original_shape = img.shape
+    max_shape = tuple(np.maximum(original_shape, size))
+
+    pad_width = [
+        (int(np.round((max_dim - orig_dim) / 2)),)
+        for max_dim, orig_dim in zip(max_shape, original_shape)
+    ]
+    img_padded = np.pad(img, pad_width, mode="constant", constant_values=pad_value)
+
+    # crop to target size
+    crop_width = [
+        (int(np.round((max_dim - target_dim) / 2)),)
+        for max_dim, target_dim in zip(max_shape, size)
+    ]
+    slices = tuple(
+        slice(crop[0], crop[0] + target_dim)
+        for crop, target_dim in zip(crop_width, size)
+    )
+
+    return img_padded[slices].astype(img.dtype)
 
 
 def ConvFFT3_S(inVol, OTF):
