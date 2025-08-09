@@ -147,21 +147,20 @@ for id in id_sample:
             os.makedirs(path_meth)
 
     # --------------------------------------------------------------------------
-    if enable_traditonal:
-        out_trad = DCV_trad.deconv(data_input, num_iter=num_iter_trad, domain="fft")
-        bp_trad = DCV_trad.PSF2
-        out_gaus_metrics = DCV_trad.get_metrics()
+    out_trad = DCV_trad.deconv(data_input, num_iter=100, domain="fft")
+    bp_trad = DCV_trad.PSF2
+    out_gaus_metrics = DCV_trad.get_metrics()
 
-        io.imsave(
-            fname=os.path.join(path_fig, "traditional", "deconv.tif"),
-            arr=out_trad,
-            check_contrast=False,
-        )
-        io.imsave(
-            fname=os.path.join(path_fig, "traditional", "deconv_bp.tif"),
-            arr=bp_trad,
-            check_contrast=False,
-        )
+    io.imsave(
+        fname=os.path.join(path_fig, "traditional", "deconv.tif"),
+        arr=out_trad,
+        check_contrast=False,
+    )
+    io.imsave(
+        fname=os.path.join(path_fig, "traditional", "deconv_bp.tif"),
+        arr=bp_trad,
+        check_contrast=False,
+    )
 
     # print('-'*80)
     # print(tabulate(out_gaus_metrics.transpose()))
