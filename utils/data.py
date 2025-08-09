@@ -198,6 +198,14 @@ def add_mix_noise(x, poisson=0, sigma_gauss=0, scale_factor: int = 1):
 
 
 def fft_n(kernel, s=None):
+    """
+    Compute the Fourier transform of the kernel.
+    ### Parameters:
+    - `kernel` (numpy.ndarray): Input kernel with any shape.
+    - `s` (tuple): The size of the output Fourier transform.
+    ### Returns:
+    - `kernel_fft` (numpy.ndarray): Fourier transform of the kernel.
+    """
     kernel_fft = np.abs(np.fft.fftshift(np.fft.fftn(kernel, s=s)))
     return kernel_fft
 
@@ -278,7 +286,7 @@ def even2odd(x):
     x_inter = torch.nn.functional.interpolate(x, **dict_inter)
     x_inter = x_inter / x_inter.sum()  # normalize PSF to have a sum of 1.0.
     x_inter = x_inter.numpy()[0, 0]
-    print(f"[INFO] convert PSF shape from {x.shape} to {x_inter.shape}")
+    print(f"[INFO] convert PSF shape from {x.numpy()[0, 0].shape} to {x_inter.shape}")
     return x_inter
 
 

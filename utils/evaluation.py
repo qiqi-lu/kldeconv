@@ -5,39 +5,54 @@ from pytorch_msssim import ms_ssim
 import torch
 
 
-def SSIM(
-    img_true,
-    img_test,
-    data_range=1.0,
-    multichannel=False,
-    channle_axis=None,
-    version_wang=False,
-):
+def array_input_check(img):
     """
-    Structrual similarity for an `single-channel/multi-channle 2D` or
-    `single-channel 3D` image.
+    Check the input array is numpy.ndarray or torch.Tensor.
+    And convert it to numpy.ndarray if it is torch.Tensor.
+    ### Parameters:
+    - img (array): input array.
+    ### Returns:
+    - img (array): converted array.
+    """
+    assert img.ndim in [
+        2,
+        3,
+    ], f"[img] must be 2D or 3D array, but got {img.ndim}D array."
+    assert isinstance(img, np.ndarray) or isinstance(
+        img, torch.Tensor
+    ), f"[img] must be numpy.ndarray or torch.Tensor."
+    if isinstance(img, torch.Tensor):
+        img = img.cpu().detach().numpy()
+    return img
 
-    Args:
+
+def SSIM(img_true, img_test, data_range=1.0, version_wang: bool = False):
+    """
+    Structrual similarity for an single-channel 2D or 3D image.
+
+    ### Parameters:
     - img_true (array): ground truth.
     - img_test (array): predicted image.
     - data_range (float, int): image value range.
     - version_wang (bool): use parameter used in Wang's paper.
+    ### Returns:
+    - ssim (float): structural similarity.
     """
-    # if len(img_true.shape) == 2: np.expand_dims(img_true, axis=-1)
-    # if len(img_test.shape) == 2: np.expand_dims(img_test, axis=-1)
+    img_true = array_input_check(img_true)
+    img_test = array_input_check(img_test)
 
     if version_wang == False:
         ssim = skim.structural_similarity(
-            im1=img_true, im2=img_test, data_range=data_range, channel_axis=channle_axis
+            im1=img_true, im2=img_test, data_range=data_range, channel_axis=None
         )
 
     if version_wang == True:
         ssim = skim.structural_similarity(
             im1=img_true,
             im2=img_test,
-            multichannel=multichannel,
+            multichannel=False,
             data_range=data_range,
-            channel_axis=channle_axis,
+            channel_axis=None,
             gaussian_weights=True,
             sigma=1.5,
             use_sample_covariance=False,
@@ -61,15 +76,16 @@ def RMSE(x, y):
 
 def PSNR(img_true, img_test, data_range=255):
     """
-    Args:
+    Peak Signal-to-Noise Ratio (PSNR).
+    ### Parameters:
     - img_true (array): ground truth.
     - img_test (array): predicted image.
     - data_range (float, int): image value range.
+    ### Returns:
+    - psnr (float): peak signal-to-noise ratio.
     """
-    if len(img_true.shape) == 2:
-        np.expand_dims(img_true, axis=-1)
-    if len(img_test.shape) == 2:
-        np.expand_dims(img_test, axis=-1)
+    img_true = array_input_check(img_true)
+    img_test = array_input_check(img_test)
 
     psnr = skim.peak_signal_noise_ratio(
         image_true=img_true, image_test=img_test, data_range=data_range
@@ -83,7 +99,9 @@ def SNR(img_true, img_test, type: int = 0):
     ### Parameters:
     - `img_true` : ground truth image.
     - `img_test` : test image.
-    - `type` : `0` for sum of squares, `1` for variance.
+    - `type` : Formula used to calculate the signal-to-noise ratio.
+        - `0` for sum of squares-based.
+        - `1` for variance-based.
     ### Returns:
     - `snr` : signal-to-noise ratio.
     """
@@ -103,6 +121,17 @@ def SNR(img_true, img_test, type: int = 0):
 
 
 def NCC(img_true, img_test):
+    """
+    Normalized cross-correlation (NCC).
+    ### Parameters:
+    - img_true (array): ground truth.
+    - img_test (array): predicted image.
+    ### Returns:
+    - ncc (float): normalized cross-correlation.
+    """
+    img_true = array_input_check(img_true)
+    img_test = array_input_check(img_test)
+
     mean_true = img_true.mean()
     mean_test = img_test.mean()
     sigma_true = img_true.std()

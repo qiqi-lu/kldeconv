@@ -17,7 +17,7 @@ dataset_name = "Microtubule"
 # dataset_name = "Nuclear_Pore_complex"
 id_img = 1
 
-fig_path = os.path.join("outputs", "figures", dataset_name.lower())
+fig_path = os.path.join("outputs", "figures", dataset_name)
 os.makedirs(fig_path, exist_ok=True)
 
 # ------------------------------------------------------------------------------

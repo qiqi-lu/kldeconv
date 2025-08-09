@@ -8,10 +8,19 @@ from scipy import stats
 
 # ------------------------------------------------------------------------------
 dataset_name = "SimuMix3D_128"
-path_fig = os.path.join("outputs", "figures", dataset_name)
+
+path_prediction = os.path.join("outputs", "figures-v1", dataset_name)
+path_fig = os.path.join("outputs", "figures", dataset_name, "kernels")
+os.makedirs(path_fig, exist_ok=True)
 
 # ------------------------------------------------------------------------------
 # rubost to training sample
+params_data_train = {
+    "nl_1": {"std_gauss": 0, "poisson": 0, "ratio": 1},
+    "nl_2": {"std_gauss": 0.5, "poisson": 1, "ratio": 1},
+    "nl_3": {"std_gauss": 0.5, "poisson": 1, "ratio": 0.3},
+    "nl_4": {"std_gauss": 0.5, "poisson": 1, "ratio": 0.1},
+}
 para_data = [
     [0, 0, 1],
     [0.5, 1, 1],
@@ -22,12 +31,12 @@ num_data = [1, 2, 3]
 id_repeat = [1, 2, 3]
 
 kb = []
-for para in para_data:
+noise_level = ["nl_1", "nl_2", "nl_3", "nl_4"]
+for nl in noise_level:
+    para = params_data_train[nl]
     path_kernel = os.path.join(
-        "outputs",
-        "figures",
-        dataset_name,
-        f"scale_1_gauss_{para[0]}_poiss_{para[1]}_ratio_{para[2]}",
+        path_prediction,
+        f"scale_1_gauss_{para['std_gauss']}_poiss_{para['poisson']}_ratio_{para['ratio']}",
     )
     tmp = []
     for bc in num_data:
@@ -67,10 +76,9 @@ pearson_mean = pearson.mean(axis=-1)
 pearson_std = pearson.std(axis=-1)
 print("mean:", pearson_mean)
 # ------------------------------------------------------------------------------
-nr, nc = 1, 2
-fig, axes = plt.subplots(
-    nrows=nr, ncols=nc, dpi=300, figsize=(3 * nc, 3 * nr), constrained_layout=True
-)
+dict_fig = {"dpi": 300, "constrained_layout": True}
+nr, nc = 1, 1
+fig, axes = plt.subplots(nrows=nr, ncols=nc, figsize=(3 * nc, 3 * nr), **dict_fig)
 
 dict_line = {"linewidth": 0.5, "capsize": 2, "elinewidth": 0.5, "capthick": 0.5}
 
@@ -78,15 +86,16 @@ noise_level = ["NF", "20", "15", "10"]
 colors = ["black", "red", "green", "blue"]
 
 for i in range(N_nl):
-    axes[0].errorbar(
+    axes.errorbar(
         x=num_data, y=pearson_mean[i], yerr=pearson_std[i], color=colors[0], **dict_line
     )
-    axes[0].plot(
+    axes.plot(
         num_data, pearson_mean[i], ".", color=colors[i], label="SNR=" + noise_level[i]
     )
-axes[0].legend(edgecolor="white", fontsize="x-small")
-axes[0].set_ylabel("PCC")
-axes[0].set_ylim([0.94, 1])
+axes.legend(edgecolor="white", fontsize="x-small")
+axes.set_ylabel("PCC")
+axes.set_ylim([0.94, 1])
+axes.set_box_aspect(1)
 
 for ax in axes.ravel():
     ax.set_xticks(ticks=num_data, labels=num_data)

@@ -16,8 +16,8 @@ id_img = 0
 
 # ------------------------------------------------------------------------------
 # load example image
-fig_path = os.path.join("outputs", "figures", dataset_name.lower())
-os.makedirs(fig_path, exist_ok=True)
+path_fig = os.path.join("outputs", "figures", dataset_name)
+os.makedirs(path_fig, exist_ok=True)
 path_txt = os.path.join(path_dataset, "all.txt")
 filenames = read_txt(path_txt)
 
@@ -48,6 +48,6 @@ axes[1, 1].plot(img_raw[z_idx + 1, y_idx, x_range], "green")
 
 axes[0, 0].set_title(f"RAW (sum={img_raw.max():.2f}) (slice={z_idx})")
 
-path_save_to = os.path.join(fig_path, "examples")
+path_save_to = os.path.join(path_fig, "examples")
 os.makedirs(path_save_to, exist_ok=True)
 plt.savefig(os.path.join(path_save_to, f"{filenames[id_img].split('.')[0]}.png"))

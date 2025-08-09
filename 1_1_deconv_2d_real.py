@@ -1,5 +1,8 @@
 """
 Use conventional deconvolution method to restore 2D real image.
+As the the PSF of the dataset is not known,
+we use the learned forward kernel using KLDeconv for deconvolution.
+
 Requirements:
 - Ground truth
 - PSF
@@ -11,48 +14,75 @@ import os
 import methods.deconvolution as dcv
 import utils.evaluation as eva
 from tabulate import tabulate as tabu
+from utils.data import win2linux, read_txt
 
+path_root = win2linux("I:\Datasets\BioSR")
+device_id = "cuda:0"
 
-# ------------------------------------------------------------------------------
-def tabulate(arr, floatfmt=".8f"):
-    return tabu(arr, floatfmt=floatfmt, tablefmt="plain")
-
-
-# ------------------------------------------------------------------------------
 # dataset_name = 'F-actin_Nonlinear'
 dataset_name = "Microtubules2"
 
-id_data = [0, 1, 2, 3, 4, 5, 6]
-# id_data = [7, 8, 9, 10]
-# id_data = [6]
+# bp_type = "traditional"
+# bp_type = "gaussian"
+# bp_type = "butterworth"
+bp_type = "wiener-butterworth"
 
-scale_factor, std_gauss = 1, 9
+id_sample = [0, 1, 2, 3, 4, 5, 6]
+# id_sample = [7, 8, 9, 10]
+# id_sample = [6]
+
+scale_factor, noise_level = 1, 9
+
+path_prediction = os.path.join(
+    "outputs",
+    "predictions",
+    dataset_name,
+    f"scale_{scale_factor}_gauss_{noise_level}_poiss_1_ratio_1",
+)
 
 # ------------------------------------------------------------------------------
-enable_traditonal, enable_gaussian, enable_bw, enable_wb = 1, 0, 0, 0
-num_iter_trad, num_iter_gaus, num_iter_bw, num_iter_wb = 100, 30, 30, 2
-# num_iter_trad, num_iter_gaus, num_iter_bw, num_iter_wb = 3, 30, 30, 2
+params = {
+    "traditional": {
+        "bp_type": "traditional",
+        "num_iter": 100,
+        "init": "measured",
+    },
+    "gaussian": {
+        "bp_type": "gaussian",
+        "num_iter": 30,
+        "init": "measured",
+    },
+    "butterworth": {
+        "bp_type": "butterworth",
+        "num_iter": 30,
+        "init": "measured",
+    },
+    "wiener-butterworth": {
+        "bp_type": "wiener-butterworth",
+        "num_iter": 2,
+        "init": "measured",
+    },
+}
 
 # ------------------------------------------------------------------------------
 # load data
-path_dataset = os.path.join("F:", os.sep, "Datasets", "BioSR", dataset_name)
+path_dataset = os.path.join(path_root, dataset_name)
 path_data_gt = os.path.join(path_dataset, f"gt_sf_{scale_factor}")
-path_data_raw = os.path.join(path_dataset, f"raw_noise_{std_gauss}")
-
-with open(os.path.join(path_dataset, "test.txt")) as f:
-    test_txt = f.read().splitlines()
-
-PSF = io.imread(
-    os.path.join(
-        "outputs",
-        "figures",
-        dataset_name,
-        f"scale_{scale_factor}_gauss_{std_gauss}_poiss_1_ratio_1",
-        "kernels_bc_1_re_1",
-        "kernel_fp.tif",
-    )
+path_data_raw = os.path.join(path_dataset, f"raw_noise_{noise_level}")
+path_psf = os.path.join(
+    "outputs",
+    "figures",
+    dataset_name,
+    f"scale_{scale_factor}_gauss_{noise_level}_poiss_1_ratio_1",
+    "kernels_bc_1_re_1",
+    "kernel_fp.tif",
 )
-PSF = PSF.astype(np.float32)
+
+filenames = read_txt(os.path.join(path_dataset, "test.txt"))
+print(f"[INFO] Load data from: {path_dataset}")
+print(f"[INFO] Number of samples: {len(filenames)}")
+
+PSF = io.imread(path_psf).astype(np.float32)
 
 # ------------------------------------------------------------------------------
 # evaluation metrics
@@ -79,9 +109,9 @@ DCV_trad = dcv.Deconvolution(
 #     beta=0.1, n=10, res_flag=1, init='measured', metrics=metrics)
 
 # ------------------------------------------------------------------------------
-for id in id_data:
-    data_gt = io.imread(os.path.join(path_data_gt, test_txt[id]))
-    data_input = io.imread(os.path.join(path_data_raw, test_txt[id]))
+for id in id_sample:
+    data_gt = io.imread(os.path.join(path_data_gt, filenames[id]))
+    data_input = io.imread(os.path.join(path_data_raw, filenames[id]))
 
     data_gt = data_gt.astype(np.float32)
     data_input = data_input.astype(np.float32)
@@ -101,7 +131,7 @@ for id in id_data:
         "outputs",
         "figures",
         dataset_name.lower(),
-        f"scale_{scale_factor}_gauss_{std_gauss}_poiss_1_ratio_1",
+        f"scale_{scale_factor}_gauss_{noise_level}_poiss_1_ratio_1",
         f"sample_{id}",
     )
 

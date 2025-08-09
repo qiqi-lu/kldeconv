@@ -7,7 +7,7 @@ import numpy as np
 from utils import data
 from utils import evaluation as eva
 from models import srcnn, srresnet, edsr, rln, rcan, swinir, rlsr, rrdbnet, ddn, dfcan
-import loss_functions as loss_func
+import utils.loss_functions as loss_func
 import sys
 
 

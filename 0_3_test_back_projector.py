@@ -13,24 +13,22 @@ from methods.deconvolution import adjust_size
 path_fig = os.path.join("outputs", "figures", "test")
 os.makedirs(path_fig, exist_ok=True)
 
-# --------------------------------------------------------------------------
-# std = [1.18, 1.18, 4.41]
-# size_image = [127, 127, 217]
-# size = np.array([127, 127, 127])
+# ------------------------------------------------------------------------------
+# get PSF
+# ------------------------------------------------------------------------------
+# sythetic 3D gaussian PSF
+# size, std = (127, 127, 127), (1.18, 1.18, 4.41)
+# sythetic 2D gaussian PSF
+# std, size = (1.18, 1.18), (128, 128)
+
 # PSF = PSF_gaussian(size, std)
 
-# # io.imsave('PSF_gauss.tif', PSF)
-
-# size_image = np.array([128, 128])
-# size = np.array([128, 128])
-# PSF = PSF_gaussian(size,[1.18, 1.18])
-
-# --------------------------------------------------------------------------
-# load and normalized PSF
-# --------------------------------------------------------------------------
+# real PSF from iSIM (maybe not real, from RLD algorithm)
 std = None
-PSF = io.imread("methods/PSF_iSIM.tif")
+PSF = io.imread(os.path.join("methods", "PSF_iSIM.tif"))
 PSF = np.transpose(PSF, axes=(1, 2, 0))  # (Sx, Sy, Sz)
+
+# ------------------------------------------------------------------------------
 # padding PSF in the spatial domain is equivalent to
 # interpolation in the Fourier domain
 size = (np.array(PSF.shape).max(),) * 3
@@ -46,9 +44,9 @@ delta_x = 55  # pixel size in spatial domain (xy plane)
 delta_z = 55  # pixel size in spatial domain (z-axis)
 detla_u = 1.0 / (delta_x * size[0])  # pixel size in Fourier domain (xy plane)
 
-# --------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 # generate backward projection kernel
-# --------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 PSF_FT = np.fft.fftn(np.fft.ifftshift(PSF))
 PSF_FT_shift_abs = np.abs(np.fft.fftshift(PSF_FT))
 
@@ -81,9 +79,9 @@ BP_wb, BP_wb_OTF = BackProjector(
     **dict_params_common,
 )
 
-# --------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 # plot PSF and BP in spatial domain and Fourier domain
-# --------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 dict_fig = dict(dpi=300, constrained_layout=True)
 
 if dim == 3:
@@ -100,7 +98,7 @@ if dim == 3:
             **dict_line,
         )
 
-    # ----------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     nc, nr = 3, 1
     fig, axes = plt.subplots(nrows=nr, ncols=nc, figsize=(3 * nc, 3 * nr), **dict_fig)
     axes[0].set_title("|FT(PSF)|", loc="left")
