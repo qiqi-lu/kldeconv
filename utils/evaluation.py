@@ -2,8 +2,20 @@ import skimage.metrics as skim
 from utils import data
 import numpy as np
 from pytorch_msssim import ms_ssim
-import torch
+import torch, itertools
 
+def generation_combinations(n, k=2):
+    """
+    Gnerate combinations of k elements from n elements.
+    ### Parameters:
+    - n (int): number of elements.
+    - k (int): number of elements in each combination.
+    ### Returns:
+    - combinations (list): list of combinations.
+    """
+    assert
+    combinations = list(itertools.combinations(range(n), k))
+    return combinations
 
 def array_input_check(img):
     """
