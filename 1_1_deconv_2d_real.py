@@ -13,7 +13,6 @@ import skimage.io as io
 import os
 import methods.deconvolution as dcv
 import utils.evaluation as eva
-from tabulate import tabulate as tabu
 from utils.data import win2linux, read_txt
 
 path_root = win2linux("I:\Datasets\BioSR")
