@@ -72,13 +72,12 @@ name_net = "kernelnet"
 num_iter_train = 2
 eps = 0.000001
 # ------------------------------------------------------------------------------
+path_predictions = os.path.join("outputs", "figures", data_set_name_test)
 path_fig_data = os.path.join(
-    "outputs",
-    "figures",
-    data_set_name_test,
+    path_predictions,
     f"scale_{scale_factor}_gauss_{std_gauss}_poiss_{poisson}_ratio_{ratio}",
 )
-path_fig_ker = os.path.join(path_fig_data, f"kernels_bc_{num_data}_re_{id_repeat}")
+path_fig_ker = os.path.join(path_fig_data, "kernels", f"bc_{num_data}_re_{id_repeat}")
 path_fig_sample = os.path.join(path_fig_data, f"sample_{id_sample}")
 
 print("-" * 80)

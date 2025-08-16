@@ -1,19 +1,19 @@
 """
-Model training.
+KLDeconv trianing.
 """
 
-import torch, os, time, sys
+import torch, os, time, sys, pandas
 from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
 import numpy as np
 import skimage.io as io
 from fft_conv_pytorch import fft_conv
-from utils import data
+from utils.data import win2linux, SRDataset, text2tuple
 from utils import evaluation as eva
 from models import kernelnet
 
 # ------------------------------------------------------------------------------
-print("=" * 98)
+print("-" * 80)
 if sys.platform == "win32":
     device, num_workers = torch.device("cpu"), 0
     root_path = os.path.join("F:", os.sep, "Datasets")
@@ -23,110 +23,99 @@ if sys.platform == "linux" or sys.platform == "linux2":
     # device, num_workers = torch.device("cuda"), 6
     root_path = "data"
 
-print(">> Device:", device, "Num of workers:", num_workers)
+print(f"[INFO] Device:{device} | Num of workers:{num_workers}")
 
 # ------------------------------------------------------------------------------
 torch.manual_seed(7)
 input_normalization = 0
-path_checkpoint = "checkpoints"
+path_checkpoint = os.path.join("checkpoints", "v2")
 validation_enable = False
 data_range = None
+normalization = (False, False)
+in_channels = 1
 
 # ------------------------------------------------------------------------------
 # Dataset
 # ------------------------------------------------------------------------------
-# dataset_name, dataset_dim = 'tinymicro_synth', 2
-# dataset_name, dataset_dim = 'tinymicro_real', 2
-# dataset_name, dataset_dim = 'lung3_synth', 2
-# dataset_name, dataset_dim = 'CCPs', 2
-# dataset_name, dataset_dim = 'F-actin', 2
-# dataset_name, dataset_dim = 'msi_synth', 2
+dataset_name = (
+    "F-actin-nonlinear-9",
+    # "Microtubules2-9",
+    # "SimuBeads3D-128-31-0-0-1",
+    # "SimuBeads3D-128-31-05-1-1",
+    # "SimuBeads3D-128-31-05-1-03",
+    # "SimuBeads3D-128-31-05-1-01",
+    # "SimuMix3D-128-31-0-0-1",
+    # "SimuMix3D-128-31-05-1-1",
+    # "SimuMix3D-128-31-05-1-03",
+    # "SimuMix3D-128-31-05-1-01",
+    # "SimuMix3D-256-31-0-0-1",
+    # "SimuMix3D-256-31-05-1-1",
+    # "SimuMix3D-256-31-05-1-03",
+    # "SimuMix3D-256-31-05-1-01",
+    # "SimuMix3D-382-101-05-1-1-560",
+    # "SimuMix3D-382-101-05-1-1-642",
+    # "Microtubule-3d-128-0",
+    # "Microtubule-3d-1024",
+    # "Microtubule2-3d-512",
+    # "Microtubule2-3d-1024",
+    # "Nuclear-pore-complex-128-0",
+    # "Nuclear-pore-complex-1024",
+    # "Nuclear-pore-complex2-512",
+    # "Nuclear-pore-complex2-1024",
+    # "ZeroShotDeconvNet-642",
+    # "ZeroShotDeconvNet-560",
+)
+
+assert len(dataset_name) == 1, "[ERROR] Only one dataset can be selected."
+
 # ------------------------------------------------------------------------------
-# dataset_name, dataset_dim = 'F-actin_Nonlinear', 2
-# dataset_name, dataset_dim = 'Microtubules2', 2
-# dataset_name, dataset_dim = 'SimuBeads3D_128', 3
-# dataset_name, dataset_dim = 'SimuMix3D_128', 3
-# dataset_name, dataset_dim = 'SimuMix3D_256', 3
-dataset_name, dataset_dim = "SimuMix3D_382", 3
-# dataset_name, dataset_dim = 'Microtubule', 3
-# dataset_name, dataset_dim = 'Microtubule2', 3
-# dataset_name, dataset_dim = 'Nuclear_Pore_complex', 3
-# dataset_name, dataset_dim = 'Nuclear_Pore_complex2', 3
-# dataset_name, dataset_dim = 'ZeroShotDeconvNet', 3
+# load dataset info
+dataset_id = dataset_name[0]
+# load excel file to get dataset info
+df = pandas.read_excel(os.path.join("datasets_train.xlsx"))
+info = df.loc[df["id"] == dataset_id].loc[0]
+dataset_dim = info["ndim"]
+print(f"[INFO] Dataset: {dataset_id} | Dim: {dataset_dim}")
+
+hr_root_path = win2linux(info["path_hr"])
+lr_root_path = win2linux(info["path_lr"])
+hr_txt_file_path = win2linux(info["path_txt"])
+lr_txt_file_path = hr_txt_file_path
+
+print(f"[INFO] HR: {hr_root_path}")
+print(f"[INFO] LR: {lr_root_path}")
+print(f"[INFO] TXT: {hr_txt_file_path}")
+
+kernel_size_fp = text2tuple(info["kf_size"])
+kernel_size_bp = text2tuple(info["kb_size"])
+scale_factor = info["scale_factor"]
+id_range = info["id_sample"]
+training_data_size = id_range[1] - id_range[0]
+std_init = info["ker_std_init"]
+epoch_fp = info["epoch_fp"]
+epoch_bp = info["epoch_bp"]
+
+print(f"[INFO] Kernel size FP: {kernel_size_fp}")
+print(f"[INFO] Kernel size BP: {kernel_size_bp}")
+print(f"[INFO] Scale factor: {scale_factor}")
+print(f"[INFO] Training data size: {training_data_size} | ID range: {id_range}")
+print(f"[INFO] Std init: {std_init}")
+print(f"[INFO] Epoch FP: {epoch_fp} | Epoch BP: {epoch_bp}")
+
 
 # ------------------------------------------------------------------------------
 # Model
 # ------------------------------------------------------------------------------
-if dataset_name in ["tinymicro_synth", "tinymicro_real"]:
-    epochs = 3
-if dataset_name in ["lung3_synth"]:
-    epochs = 100  # 36, 40, 55
-
-if dataset_name in ["F-actin_Nonlinear", "Microtubules2"]:
-    # ker_size_fp, ker_size_bp = 101, 101
-    ker_size_fp, ker_size_bp = 31, 31
-    kernel_size_fp = (ker_size_fp,) * 2
-    kernel_size_bp = (ker_size_bp,) * 2
-
-    id_range = [0, 1]
-    training_data_size = id_range[1] - id_range[0]
+if dataset_id in ["SimuMix3D_382", "ZeroShotDeconvNet"]:  # 20 (train)/0 (test)
     batch_size = training_data_size
-    epochs = 5000
-    std_gauss, poisson, ratio, scale_factor = 9, 1, 1, 1
 
-if dataset_name in ["SimuBeads3D_128", "SimuMix3D_128", "SimuMix3D_256"]:
-    ker_size_fp, ker_size_bp = 31, 31
-    kernel_size_fp = [ker_size_fp, 31, 31]
-    kernel_size_bp = [ker_size_bp, 25, 25]
-
-    id_range = [0, 1]
-    training_data_size = id_range[1] - id_range[0]
-    batch_size = training_data_size
-    epochs = 10000
-
-    std_gauss, poisson, ratio = 0, 0, 1
-    # std_gauss, poisson, ratio =  0.5, 1, 1
-    # std_gauss, poisson, ratio =  0.5, 1, 0.3
-    # std_gauss, poisson, ratio =  0.5, 1, 0.1
-
-    scale_factor = 1
-
-if dataset_name in ["SimuMix3D_382", "ZeroShotDeconvNet"]:  # 20 (train)/0 (test)
-    ker_size_fp, ker_size_bp = 101, 101
-    kernel_size_fp = [ker_size_fp, 101, 101]
-    kernel_size_bp = [ker_size_bp, 101, 101]
-
-    id_range = [0, 1]
-    # id_range   = [0, 1000]
-    training_data_size = id_range[1] - id_range[0]
-    batch_size = training_data_size
-    # epochs = 250
-    # epochs = 5
-    # epochs = 5000
-
-    lamb = 642
-    # lamb = 560
-    std_gauss, poisson, scale_factor, ratio = 0.5, 1, 1, 1
-
-if dataset_name in [
+if dataset_id in [
     "Microtubule",
     "Microtubule2",
     "Nuclear_Pore_complex",
     "Nuclear_Pore_complex2",
 ]:
-    ker_size_fp, ker_size_bp = 3, 3
-    kernel_size_fp = [ker_size_fp, 31, 31]
-    kernel_size_bp = [ker_size_bp, 31, 31]
-
-    # training_data_size = 225 # 128x128
-    # batch_size, epochs = 16, 360 # 225 (train)
-
-    id_range = [0, 4]
-    training_data_size = id_range[1] - id_range[0]
     batch_size = training_data_size
-    epochs = 5000  # 1 (train)
-
-    std_gauss, poisson, ratio, scale_factor = 0, 0, 1, 1
 
 # ------------------------------------------------------------------------------
 conv_mode, padding_mode, kernel_init = "fft", "reflect", "gauss"
@@ -135,26 +124,15 @@ kernel_norm_fp = False
 kernel_norm_bp = True
 over_sampling = 2
 
-if dataset_dim == 2:
-    std_init = [2.0, 2.0]
-if dataset_dim == 3:
-    std_init = [4.0, 2.0, 2.0]
+ker_size_fp = kernel_size_fp[-1]
+ker_size_bp = kernel_size_bp[-1]
+
 # ------------------------------------------------------------------------------
 # model_name = 'kernet_fp'
 model_name = "kernet"
 # ------------------------------------------------------------------------------
 if model_name == "kernet_fp":
-    model_suffix = "_ker_{}_gauss_{}_poiss_{}_sf_{}_mse_over{}_inter_normx_{}_ratio_{}_ts_{}_{}_s100".format(
-        ker_size_fp,
-        std_gauss,
-        poisson,
-        scale_factor,
-        over_sampling,
-        conv_mode,
-        ratio,
-        id_range[0],
-        id_range[1],
-    )
+    suffix = f"_ker_{ker_size_fp}_mse_over{over_sampling}_inter_normx_{conv_mode}_ts_{id_range[0]}_{id_range[1]}_s100"
     multi_out = False
     self_supervised = False
     loss_main = torch.nn.MSELoss()
@@ -164,12 +142,8 @@ if model_name == "kernet_fp":
     start_learning_rate = 0.001
     # optimizer_type = 'lbfgs'
     # start_learning_rate = 1
+    epochs = epoch_fp
 
-    if std_gauss == 0:
-        epochs = 500
-    else:
-        epochs = 10
-    epochs = 500
 
 if model_name == "kernet":
     num_iter = 2
@@ -184,20 +158,7 @@ if model_name == "kernet":
     else:
         ss_marker = ""
 
-    model_suffix = "_iter_{}_ker_{}_gauss_{}_poiss_{}_sf_{}_lam_{}_mse_over{}_inter_norm_{}_ratio_{}_ts_{}_{}{}_642".format(
-        num_iter,
-        ker_size_bp,
-        std_gauss,
-        poisson,
-        scale_factor,
-        lam,
-        over_sampling,
-        conv_mode,
-        ratio,
-        id_range[0],
-        id_range[1],
-        ss_marker,
-    )
+    suffix = f"_iter_{num_iter}_ker_{ker_size_bp}_mse_over{over_sampling}_inter_norm_{conv_mode}_ts_{id_range[0]}_{id_range[1]}{ss_marker}"
 
     loss_main = torch.nn.MSELoss()
 
@@ -207,9 +168,8 @@ if model_name == "kernet":
     else:
         # start_learning_rate = 0.00001
         start_learning_rate = 0.000001
-    epochs = 10000
     # start_learning_rate = 0.000001
-    # epochs = 7500
+    epochs = epoch_bp
 
 # ------------------------------------------------------------------------------
 warm_up = 0
@@ -241,137 +201,13 @@ if dataset_dim == 3:
 # Data
 # ------------------------------------------------------------------------------
 # Training data
-if dataset_name == "tinymicro_synth":  # TinyMicro (synth)
-    hr_root_path = os.path.join("data", "TinyMicro", "data")
-    # lr_root_path = os.path.join('data', 'TinyMicro', 'data_synth', 'train', 'sf_4_k_2.0_gaussian_mix_ave')
-    lr_root_path = os.path.join(
-        "data",
-        "TinyMicro",
-        "data_synth",
-        "train",
-        "sf_4_k_2.0_n_gaussian_std_0.03_bin_ave",
-    )
-
-    hr_txt_file_path = os.path.join("data", "TinyMicro", "train_txt", "hr.txt")
-    lr_txt_file_path = os.path.join("data", "TinyMicro", "train_txt", "lr.txt")
-    normalization, in_channels = (False, False), 3
-    training_data_size = 153024
-
-if dataset_name == "tinymicro_real":  # TinyMicro (real)
-    hr_root_path = os.path.join("data", "TinyMicro", "data")
-    lr_root_path = os.path.join("data", "TinyMicro", "data")
-
-    hr_txt_file_path = os.path.join("data", "TinyMicro", "train_txt", "hr.txt")
-    lr_txt_file_path = os.path.join("data", "TinyMicro", "train_txt", "lr.txt")
-    normalization, in_channels, scale_factor = (False, False), 3, 4
-    training_data_size = 153024
-
-if dataset_name == "lung3_synth":  # Lung3 (synth)
-    hr_root_path = os.path.join(root_path, "Lung3", "data_transform")
-    # lr_root_path = os.path.join(root_path, 'Lung3', 'data_synth', 'train', 'sf_1_k_2.0_n_none_std_0_bin_ave')
-    # lr_root_path = os.path.join(root_path, 'Lung3', 'data_synth', 'train', 'sf_1_k_2.0_n_gaussian_std_0.03_bin_ave')
-    lr_root_path = os.path.join(
-        root_path, "Lung3", "data_synth", "train", "sf_4_k_2.0_n_none_std_0_bin_ave"
-    )
-    # lr_root_path = os.path.join(root_path, 'Lung3', 'data_synth', 'train', 'sf_4_k_2.0_n_gaussian_std_0.03_bin_ave')
-
-    hr_txt_file_path = os.path.join(root_path, "Lung3", "train.txt")
-    lr_txt_file_path = os.path.join(root_path, "Lung3", "train.txt")
-    normalization, in_channels, scale_factor = (False, False), 1, 4
-    training_data_size = 6503
-
-if dataset_name in ["F-actin_Nonlinear", "Microtubules2"]:
-    path = os.path.join(root_path, "BioSR", dataset_name)
-
-    hr_root_path = os.path.join(path, f"gt_sf_{scale_factor}")
-    lr_root_path = os.path.join(path, f"raw_noise_{std_gauss}")
-
-    hr_txt_file_path = os.path.join(path, "train.txt")
-    lr_txt_file_path = hr_txt_file_path
-
-    normalization, in_channels = (False, False), 1
-
-if dataset_name in ["SimuBeads3D_128", "SimuMix3D_128", "SimuMix3D_256"]:
-    path = os.path.join(root_path, "RLN", dataset_name)
-    hr_root_path = os.path.join(path, "gt")
-    lr_root_path = os.path.join(
-        path,
-        "raw_psf_{}_gauss_{}_poiss_{}_sf_{}_ratio_{}".format(
-            ker_size_fp, std_gauss, poisson, scale_factor, ratio
-        ),
-    )
-
-    hr_txt_file_path = os.path.join(path, "train.txt")
-    lr_txt_file_path = hr_txt_file_path
-
-    normalization, in_channels = (False, False), 1
-
-if dataset_name in ["SimuMix3D_382"]:
-    path = os.path.join(root_path, "RLN", dataset_name)
-
-    hr_root_path = os.path.join(path, "gt")
-    lr_root_path = os.path.join(
-        path,
-        "raw_psf_101_gauss_{}_poiss_{}_sf_{}_ratio_{}_lambda_{}".format(
-            std_gauss, poisson, scale_factor, ratio, lamb
-        ),
-    )
-
-    hr_txt_file_path = os.path.join(path, "train.txt")
-    lr_txt_file_path = hr_txt_file_path
-    normalization, in_channels = (False, False), 1
-
-if dataset_name in [
-    "Microtubule",
-    "Microtubule2",
-    "Nuclear_Pore_complex",
-    "Nuclear_Pore_complex2",
-]:
-    path = os.path.join(root_path, "RCAN3D", "Confocal_2_STED", dataset_name)
-
-    # hr_root_path = os.path.join(path, 'gt_128x128_0')
-    # lr_root_path = os.path.join(path, 'raw_128x128_0')
-    # hr_txt_file_path = os.path.join(path, 'train_128x128_0.txt')
-
-    # hr_root_path = os.path.join(path, 'gt_1024x1024')
-    # lr_root_path = os.path.join(path, 'raw_1024x1024')
-    # hr_txt_file_path = os.path.join(path, 'train_1024x1024.txt')
-
-    hr_root_path = os.path.join(path, "gt_512x512")
-    lr_root_path = os.path.join(path, "raw_512x512")
-    hr_txt_file_path = os.path.join(path, "train_512x512.txt")
-
-    lr_txt_file_path = hr_txt_file_path
-    normalization, in_channels = (False, False), 1
-
-if dataset_name in ["ZeroShotDeconvNet"]:
-    if lamb == 642:
-        path = os.path.join(
-            root_path, dataset_name, "3D time-lapsing data_LLSM_Mitosis_H2B", str(lamb)
-        )
-    if lamb == 560:
-        path = os.path.join(
-            root_path, dataset_name, "3D time-lapsing data_LLSM_Mitosis_Mito", str(lamb)
-        )
-
-    hr_root_path = os.path.join(path, "raw")
-    lr_root_path = hr_root_path
-
-    hr_txt_file_path = os.path.join(path, "raw.txt")
-    lr_txt_file_path = hr_txt_file_path
-    normalization, in_channels = (False, False), 1
-
-print(">> Load datasets from:", lr_root_path)
-
-# ------------------------------------------------------------------------------
-# Training data
-training_data = data.SRDataset(
+training_data = SRDataset(
     hr_root_path=hr_root_path,
     lr_root_path=lr_root_path,
     hr_txt_file_path=hr_txt_file_path,
     lr_txt_file_path=lr_txt_file_path,
     normalization=normalization,
-    id_range=id_range,
+    id_range=[0, training_data_size],
 )
 
 train_dataloader = DataLoader(
@@ -381,13 +217,13 @@ train_dataloader = DataLoader(
 # ------------------------------------------------------------------------------
 # Validation data
 if validation_enable == True:
-    validation_data = data.SRDataset(
+    validation_data = SRDataset(
         hr_root_path=hr_root_path,
         lr_root_path=lr_root_path,
         hr_txt_file_path=hr_txt_file_path,
         lr_txt_file_path=lr_txt_file_path,
         normalization=normalization,
-        id_range=[id_range[1], -1],
+        id_range=[training_data_size, -1],
     )
 
     valid_dataloader = DataLoader(
@@ -405,7 +241,7 @@ if model_name == "kernet":
     # FP_type, BP_type = 'pre-trained', None
     FP_type, BP_type = "known", None
 
-    if dataset_name in [
+    if dataset_id in [
         "Microtubule",
         "Microtubule2",
         "Nuclear_Pore_complex",
@@ -414,11 +250,11 @@ if model_name == "kernet":
         "Microtubules2",
     ]:
         FP_type, BP_type = "pre-trained", None
-        print("pre-trained forward kernel, and to learn backward kernel.")
+        print("[INFO] Pre-trained forward kernel, and to learn backward kernel.")
 
     # --------------------------------------------------------------------------
     if FP_type == "pre-trained":
-        print(">> Pred-trained PSF")
+        print("[INFO] Pred-trained PSF")
 
         # load FP parameters
         FP = kernelnet.ForwardProject(
@@ -436,50 +272,50 @@ if model_name == "kernet":
             conv_mode=conv_mode,
         )
 
-        if dataset_name == "SimuMix3D_128":
+        if dataset_id == "SimuMix3D_128":
             FP_path = os.path.join(
                 "checkpoints",
-                dataset_name,
+                dataset_id,
                 "kernet_fp_bs_{}_lr_0.01_ker_{}_noise_{}_sf_{}_mse_over2_inter_norm".format(
                     batch_size, ker_size_fp, std_gauss, scale_factor
                 ),
                 "epoch_10000.pt",
             )  # 10000 (NF), 5000 (N)
 
-        if dataset_name == "SimuMix3D_256":
+        if dataset_id == "SimuMix3D_256":
             FP_path = os.path.join(
                 "checkpoints",
-                dataset_name,
+                dataset_id,
                 "kernet_fp_bs_{}_lr_0.0005_ker_{}_gauss_{}_poiss_{}_sf_{}_mse_over4_inter_norm_fft_ratio_{}_ts_0_1".format(
                     batch_size, ker_size_fp, std_gauss, poisson, scale_factor, ratio
                 ),
                 "epoch_1000.pt",
             )
 
-        if dataset_name == "Microtubule":
+        if dataset_id == "Microtubule":
             FP_path = os.path.join(
                 "checkpoints",
-                dataset_name,
+                dataset_id,
                 "kernet_fp_bs_16_lr_0.0001_ker_{}_noise_{}_sf_{}_mse_over2_inter_norm".format(
                     ker_size_fp, std_gauss, scale_factor
                 ),
                 "epoch_5000.pt",
             )
 
-        if dataset_name == "Nuclear_Pore_complex":
+        if dataset_id == "Nuclear_Pore_complex":
             FP_path = os.path.join(
                 "checkpoints",
-                dataset_name,
+                dataset_id,
                 "kernet_fp_bs_16_lr_0.0001_ker_{}_noise_{}_sf_{}_mse_over2_inter_norm".format(
                     ker_size_fp, std_gauss, scale_factor
                 ),
                 "epoch_5000.pt",
             )
 
-        if dataset_name == "Nuclear_Pore_complex2":
+        if dataset_id == "Nuclear_Pore_complex2":
             FP_path = os.path.join(
                 "checkpoints",
-                dataset_name,
+                dataset_id,
                 "forward",
                 "kernet_fp_bs_4_lr_0.01_ker_{}_gauss_{}_poiss_{}_sf_{}_mse_over2_inter_normx_fft_ratio_1_ts_0_4_s100".format(
                     ker_size_fp, std_gauss, poisson, scale_factor
@@ -487,10 +323,10 @@ if model_name == "kernet":
                 "epoch_500.pt",
             )
 
-        if dataset_name == "Microtubule2":
+        if dataset_id == "Microtubule2":
             FP_path = os.path.join(
                 "checkpoints",
-                dataset_name,
+                dataset_id,
                 "forward",
                 "kernet_fp_bs_4_lr_0.01_ker_{}_gauss_{}_poiss_{}_sf_{}_mse_over2_inter_normx_fft_ratio_1_ts_0_4_s100".format(
                     ker_size_fp, std_gauss, poisson, scale_factor
@@ -498,10 +334,10 @@ if model_name == "kernet":
                 "epoch_500.pt",
             )
 
-        if dataset_name == "F-actin_Nonlinear":
+        if dataset_id == "F-actin_Nonlinear":
             FP_path = os.path.join(
                 "checkpoints",
-                dataset_name,
+                dataset_id,
                 "forward",  # 'kernet_fp_bs_1_lr_0.001_ker_{}_noise_{}_sf_{}_mse_over2_inter_norm_fft_ratio_{}'\
                 "kernet_fp_bs_1_lr_0.001_ker_{}_gauss_{}_poiss_{}_sf_{}_mse_over2_inter_normx_fft_ratio_{}_ts_0_1_s100".format(
                     ker_size_fp, std_gauss, poisson, scale_factor, ratio
@@ -509,10 +345,10 @@ if model_name == "kernet":
                 "epoch_500.pt",
             )
 
-        if dataset_name == "Microtubules2":
+        if dataset_id == "Microtubules2":
             FP_path = os.path.join(
                 "checkpoints",
-                dataset_name,
+                dataset_id,
                 "forward",  # 'kernet_fp_bs_1_lr_0.001_ker_{}_noise_{}_sf_{}_mse_over2_inter_norm_fft_ratio_{}_0'\
                 "kernet_fp_bs_1_lr_0.001_ker_{}_gauss_{}_poiss_{}_sf_{}_mse_over2_inter_normx_fft_ratio_{}_ts_0_1_s100".format(
                     ker_size_fp, std_gauss, poisson, scale_factor, ratio
@@ -543,7 +379,7 @@ if model_name == "kernet":
             )
 
         if dataset_dim == 3:
-            if dataset_name == "ZeroShotDeconvNet":
+            if dataset_id == "ZeroShotDeconvNet":
                 psf_path = os.path.join(lr_root_path, "PSF_odd.tif")
             else:
                 psf_path = os.path.join(lr_root_path, "PSF.tif")
@@ -626,21 +462,17 @@ print(model)
 if model_name == "kernet_fp":
     path_model = os.path.join(
         path_checkpoint,
-        dataset_name,
+        dataset_id,
         "forward",
-        "{}_bs_{}_lr_{}{}".format(
-            model_name, batch_size, start_learning_rate, model_suffix
-        ),
+        "{}_bs_{}_lr_{}{}".format(model_name, batch_size, start_learning_rate, suffix),
     )
 
 if model_name == "kernet":
     path_model = os.path.join(
         path_checkpoint,
-        dataset_name,
+        dataset_id,
         "backward",
-        "{}_bs_{}_lr_{}{}".format(
-            model_name, batch_size, start_learning_rate, model_suffix
-        ),
+        "{}_bs_{}_lr_{}{}".format(model_name, batch_size, start_learning_rate, suffix),
     )
 
 writer = SummaryWriter(os.path.join(path_model, "log"))

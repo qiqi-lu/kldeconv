@@ -6,6 +6,20 @@ from skimage import io, transform
 from torchvision import transforms
 
 
+def text2tuple(text: str):
+    """
+    Convert a string of numbers separated by commas into a tuple of integers.
+    ### Parameters:
+    - `text` (str): A string of numbers separated by commas, such as '(25,25)'.
+    ### Returns:
+    - `tuple`: A tuple of integers. (25,25)
+    """
+    text = text.replace("(", "").replace(")", "")
+    text = text.split(",")
+    text_tuple = tuple([int(i) for i in text])
+    return text_tuple
+
+
 def win2linux(win_path):
     """
     Convert a Windows path to a Linux path if the current operating system is Linux,
