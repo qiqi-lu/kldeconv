@@ -4,7 +4,8 @@ import numpy as np
 from pytorch_msssim import ms_ssim
 import torch, itertools
 
-def generation_combinations(n, k=2):
+
+def generation_combinations(n: int, k: int = 2):
     """
     Gnerate combinations of k elements from n elements.
     ### Parameters:
@@ -13,9 +14,10 @@ def generation_combinations(n, k=2):
     ### Returns:
     - combinations (list): list of combinations.
     """
-    assert
+    assert n >= k, f"[n] must be greater than or equal to [k]."
     combinations = list(itertools.combinations(range(n), k))
     return combinations
+
 
 def array_input_check(img):
     """

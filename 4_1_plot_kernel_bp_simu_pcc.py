@@ -3,7 +3,7 @@ import skimage.io as io
 import numpy as np
 import os
 import utils.data as utils_data
-import utils.evaluation as eva
+from utils.evaluation import generation_combinations
 from scipy import stats
 
 # ------------------------------------------------------------------------------
@@ -16,10 +16,10 @@ os.makedirs(path_fig, exist_ok=True)
 # ------------------------------------------------------------------------------
 # rubost to training sample
 params_data_train = {
-    "nl_1": {"std_gauss": 0, "poisson": 0, "ratio": 1},
-    "nl_2": {"std_gauss": 0.5, "poisson": 1, "ratio": 1},
-    "nl_3": {"std_gauss": 0.5, "poisson": 1, "ratio": 0.3},
-    "nl_4": {"std_gauss": 0.5, "poisson": 1, "ratio": 0.1},
+    "NF": {"std_gauss": 0, "poisson": 0, "ratio": 1},
+    "20": {"std_gauss": 0.5, "poisson": 1, "ratio": 1},
+    "15": {"std_gauss": 0.5, "poisson": 1, "ratio": 0.3},
+    "10": {"std_gauss": 0.5, "poisson": 1, "ratio": 0.1},
 }
 para_data = [
     [0, 0, 1],
@@ -30,8 +30,9 @@ para_data = [
 num_data = [1, 2, 3]
 id_repeat = [1, 2, 3]
 
-kb = []
-noise_level = ["nl_1", "nl_2", "nl_3", "nl_4"]
+kb = []  # backward kernels
+noise_level = ["NF", "20", "15", "10"]
+
 for nl in noise_level:
     para = params_data_train[nl]
     path_kernel = os.path.join(
@@ -59,31 +60,27 @@ print(kb.shape)  # dataset, num of train data, num of repeat
 
 pearson = np.zeros(shape=(N_nl, N_data, N_rep))
 ratio = [1, 1, 0.3, 0.1]
+combines = generation_combinations(N_rep, k=2)
+
 for i in range(N_nl):
     for j in range(N_data):
-        pearson[i, j, 0] = stats.pearsonr(
-            x=kb[i, j, 0].flatten(), y=kb[i, j, 1].flatten()
-        )[0]
-        pearson[i, j, 1] = stats.pearsonr(
-            x=kb[i, j, 0].flatten(), y=kb[i, j, 2].flatten()
-        )[0]
-        pearson[i, j, 2] = stats.pearsonr(
-            x=kb[i, j, 1].flatten(), y=kb[i, j, 2].flatten()
-        )[0]
+        for ic, cb in enumerate(combines):
+            pearson[i, j, ic] = stats.pearsonr(
+                x=kb[i, j, cb[0]].flatten(), y=kb[i, j, cb[1]].flatten()
+            )[0]
 print(pearson)
 
 pearson_mean = pearson.mean(axis=-1)
 pearson_std = pearson.std(axis=-1)
-print("mean:", pearson_mean)
+print("[INFO] mean:", pearson_mean)
 # ------------------------------------------------------------------------------
 dict_fig = {"dpi": 300, "constrained_layout": True}
+dict_line = {"linewidth": 0.5, "capsize": 2, "elinewidth": 0.5, "capthick": 0.5}
+
 nr, nc = 1, 1
 fig, axes = plt.subplots(nrows=nr, ncols=nc, figsize=(3 * nc, 3 * nr), **dict_fig)
 
-dict_line = {"linewidth": 0.5, "capsize": 2, "elinewidth": 0.5, "capthick": 0.5}
-
-noise_level = ["NF", "20", "15", "10"]
-colors = ["black", "red", "green", "blue"]
+colors = ["black", "red", "green", "blue"]  # color for each noise level
 
 for i in range(N_nl):
     axes.errorbar(
@@ -96,10 +93,8 @@ axes.legend(edgecolor="white", fontsize="x-small")
 axes.set_ylabel("PCC")
 axes.set_ylim([0.94, 1])
 axes.set_box_aspect(1)
-
-for ax in axes.ravel():
-    ax.set_xticks(ticks=num_data, labels=num_data)
-    ax.set_xlabel("Number of samples")
+axes.set_xticks(ticks=num_data, labels=num_data)
+axes.set_xlabel("Number of samples")
 
 plt.savefig(os.path.join(path_fig, "kb.png"))
 plt.rcParams["svg.fonttype"] = "none"
