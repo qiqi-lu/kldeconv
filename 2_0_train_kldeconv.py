@@ -69,47 +69,63 @@ dataset_name = (
 assert len(dataset_name) == 1, "[ERROR] Only one dataset can be selected."
 
 # ------------------------------------------------------------------------------
+# model_name = 'kernet_fp'
+model_name = "kernet"
+
+# ------------------------------------------------------------------------------
 # load dataset info
 dataset_id = dataset_name[0]
 # load excel file to get dataset info
 df = pandas.read_excel(os.path.join("datasets_train.xlsx"))
 info = df.loc[df["id"] == dataset_id].loc[0]
-dataset_dim = info["ndim"]
-print(f"[INFO] Dataset: {dataset_id} | Dim: {dataset_dim}")
 
-hr_root_path = win2linux(info["path_hr"])
-lr_root_path = win2linux(info["path_lr"])
-hr_txt_file_path = win2linux(info["path_txt"])
-lr_txt_file_path = hr_txt_file_path
+params_dict = dict(
+    dataset_dim=info["ndim"],
+    hr_root_path=win2linux(info["path_hr"]),
+    lr_root_path=win2linux(info["path_lr"]),
+    hr_txt_file_path=win2linux(info["path_txt"]),
+    lr_txt_file_path=win2linux(info["path_txt"]),
+    kernel_size_fp=text2tuple(info["kf_size"]),
+    kernel_size_bp=text2tuple(info["kb_size"]),
+    scale_factor=info["scale_factor"],
+    id_range=text2tuple(info["id_sample"]),
+    std_init=info["ker_std_init"],
+    epoch_fp=info["epoch_fp"],
+    epoch_bp=info["epoch_bp"],
+    FP_path=win2linux(info["path_fp"]),
+    conv_mode="fft",
+    padding_mode="reflect",
+    kernel_init="gauss",
+    interpolation=True,
+    kernel_norm_fp=False,
+    kernel_norm_bp=True,
+    over_sampling=2,
+)
 
-print(f"[INFO] HR: {hr_root_path}")
-print(f"[INFO] LR: {lr_root_path}")
-print(f"[INFO] TXT: {hr_txt_file_path}")
+training_data_size = params_dict["id_range"][1] - params_dict["id_range"][0]
+ker_size_fp = params_dict["kernel_size_fp"][-1]
+ker_size_bp = params_dict["kernel_size_bp"][-1]
 
-kernel_size_fp = text2tuple(info["kf_size"])
-kernel_size_bp = text2tuple(info["kb_size"])
-scale_factor = info["scale_factor"]
-id_range = info["id_sample"]
-training_data_size = id_range[1] - id_range[0]
-std_init = info["ker_std_init"]
-epoch_fp = info["epoch_fp"]
-epoch_bp = info["epoch_bp"]
-
-print(f"[INFO] Kernel size FP: {kernel_size_fp}")
-print(f"[INFO] Kernel size BP: {kernel_size_bp}")
-print(f"[INFO] Scale factor: {scale_factor}")
-print(f"[INFO] Training data size: {training_data_size} | ID range: {id_range}")
-print(f"[INFO] Std init: {std_init}")
-print(f"[INFO] Epoch FP: {epoch_fp} | Epoch BP: {epoch_bp}")
-
+print(f"[INFO] Dataset: {dataset_id} | Dim: {params_dict['dataset_dim']}")
+print(f"[INFO] HR: {params_dict['hr_root_path']}")
+print(f"[INFO] LR: {params_dict['lr_root_path']}")
+print(f"[INFO] TXT: {params_dict['hr_txt_file_path']}")
+print(f"[INFO] Kernel size FP: {params_dict['kernel_size_fp']}")
+print(f"[INFO] Kernel size BP: {params_dict['kernel_size_bp']}")
+print(f"[INFO] Scale factor: {params_dict['scale_factor']}")
+print(
+    f"[INFO] Train data size: {training_data_size} | ID range: {params_dict['id_range']}"
+)
+print(f"[INFO] Std init: {params_dict['std_init']}")
+print(f"[INFO] Epoch FP: {params_dict['epoch_fp']} | BP: {params_dict['epoch_bp']}")
+print(f"[INFO] FP path: {params_dict['FP_path']}")
 
 # ------------------------------------------------------------------------------
 # Model
 # ------------------------------------------------------------------------------
-if dataset_id in ["SimuMix3D_382", "ZeroShotDeconvNet"]:  # 20 (train)/0 (test)
-    batch_size = training_data_size
-
 if dataset_id in [
+    "SimuMix3D_382",
+    "ZeroShotDeconvNet",
     "Microtubule",
     "Microtubule2",
     "Nuclear_Pore_complex",
@@ -118,32 +134,17 @@ if dataset_id in [
     batch_size = training_data_size
 
 # ------------------------------------------------------------------------------
-conv_mode, padding_mode, kernel_init = "fft", "reflect", "gauss"
-interpolation = True
-kernel_norm_fp = False
-kernel_norm_bp = True
-over_sampling = 2
-
-ker_size_fp = kernel_size_fp[-1]
-ker_size_bp = kernel_size_bp[-1]
-
-# ------------------------------------------------------------------------------
-# model_name = 'kernet_fp'
-model_name = "kernet"
-# ------------------------------------------------------------------------------
 if model_name == "kernet_fp":
-    suffix = f"_ker_{ker_size_fp}_mse_over{over_sampling}_inter_normx_{conv_mode}_ts_{id_range[0]}_{id_range[1]}_s100"
+    suffix = f"_ker_{ker_size_fp}_mse_over{params_dict['over_sampling']}_inter_normx_{params_dict['conv_mode']}_ts_{params_dict['id_range'][0]}_{params_dict['id_range'][1]}_s100"
     multi_out = False
     self_supervised = False
     loss_main = torch.nn.MSELoss()
-
     optimizer_type = "adam"
     # start_learning_rate = 0.0001
     start_learning_rate = 0.001
     # optimizer_type = 'lbfgs'
     # start_learning_rate = 1
-    epochs = epoch_fp
-
+    epochs = params_dict["epoch_fp"]
 
 if model_name == "kernet":
     num_iter = 2
@@ -158,7 +159,7 @@ if model_name == "kernet":
     else:
         ss_marker = ""
 
-    suffix = f"_iter_{num_iter}_ker_{ker_size_bp}_mse_over{over_sampling}_inter_norm_{conv_mode}_ts_{id_range[0]}_{id_range[1]}{ss_marker}"
+    suffix = f"_iter_{num_iter}_ker_{ker_size_bp}_mse_over{params_dict['over_sampling']}_inter_norm_{params_dict['conv_mode']}_ts_{params_dict['id_range'][0]}_{params_dict['id_range'][1]}{ss_marker}"
 
     loss_main = torch.nn.MSELoss()
 
@@ -169,7 +170,7 @@ if model_name == "kernet":
         # start_learning_rate = 0.00001
         start_learning_rate = 0.000001
     # start_learning_rate = 0.000001
-    epochs = epoch_bp
+    epochs = params_dict["epoch_bp"]
 
 # ------------------------------------------------------------------------------
 warm_up = 0
@@ -271,90 +272,6 @@ if model_name == "kernet":
             over_sampling=over_sampling,
             conv_mode=conv_mode,
         )
-
-        if dataset_id == "SimuMix3D_128":
-            FP_path = os.path.join(
-                "checkpoints",
-                dataset_id,
-                "kernet_fp_bs_{}_lr_0.01_ker_{}_noise_{}_sf_{}_mse_over2_inter_norm".format(
-                    batch_size, ker_size_fp, std_gauss, scale_factor
-                ),
-                "epoch_10000.pt",
-            )  # 10000 (NF), 5000 (N)
-
-        if dataset_id == "SimuMix3D_256":
-            FP_path = os.path.join(
-                "checkpoints",
-                dataset_id,
-                "kernet_fp_bs_{}_lr_0.0005_ker_{}_gauss_{}_poiss_{}_sf_{}_mse_over4_inter_norm_fft_ratio_{}_ts_0_1".format(
-                    batch_size, ker_size_fp, std_gauss, poisson, scale_factor, ratio
-                ),
-                "epoch_1000.pt",
-            )
-
-        if dataset_id == "Microtubule":
-            FP_path = os.path.join(
-                "checkpoints",
-                dataset_id,
-                "kernet_fp_bs_16_lr_0.0001_ker_{}_noise_{}_sf_{}_mse_over2_inter_norm".format(
-                    ker_size_fp, std_gauss, scale_factor
-                ),
-                "epoch_5000.pt",
-            )
-
-        if dataset_id == "Nuclear_Pore_complex":
-            FP_path = os.path.join(
-                "checkpoints",
-                dataset_id,
-                "kernet_fp_bs_16_lr_0.0001_ker_{}_noise_{}_sf_{}_mse_over2_inter_norm".format(
-                    ker_size_fp, std_gauss, scale_factor
-                ),
-                "epoch_5000.pt",
-            )
-
-        if dataset_id == "Nuclear_Pore_complex2":
-            FP_path = os.path.join(
-                "checkpoints",
-                dataset_id,
-                "forward",
-                "kernet_fp_bs_4_lr_0.01_ker_{}_gauss_{}_poiss_{}_sf_{}_mse_over2_inter_normx_fft_ratio_1_ts_0_4_s100".format(
-                    ker_size_fp, std_gauss, poisson, scale_factor
-                ),
-                "epoch_500.pt",
-            )
-
-        if dataset_id == "Microtubule2":
-            FP_path = os.path.join(
-                "checkpoints",
-                dataset_id,
-                "forward",
-                "kernet_fp_bs_4_lr_0.01_ker_{}_gauss_{}_poiss_{}_sf_{}_mse_over2_inter_normx_fft_ratio_1_ts_0_4_s100".format(
-                    ker_size_fp, std_gauss, poisson, scale_factor
-                ),
-                "epoch_500.pt",
-            )
-
-        if dataset_id == "F-actin_Nonlinear":
-            FP_path = os.path.join(
-                "checkpoints",
-                dataset_id,
-                "forward",  # 'kernet_fp_bs_1_lr_0.001_ker_{}_noise_{}_sf_{}_mse_over2_inter_norm_fft_ratio_{}'\
-                "kernet_fp_bs_1_lr_0.001_ker_{}_gauss_{}_poiss_{}_sf_{}_mse_over2_inter_normx_fft_ratio_{}_ts_0_1_s100".format(
-                    ker_size_fp, std_gauss, poisson, scale_factor, ratio
-                ),  # 'epoch_5000.pt')
-                "epoch_500.pt",
-            )
-
-        if dataset_id == "Microtubules2":
-            FP_path = os.path.join(
-                "checkpoints",
-                dataset_id,
-                "forward",  # 'kernet_fp_bs_1_lr_0.001_ker_{}_noise_{}_sf_{}_mse_over2_inter_norm_fft_ratio_{}_0'\
-                "kernet_fp_bs_1_lr_0.001_ker_{}_gauss_{}_poiss_{}_sf_{}_mse_over2_inter_normx_fft_ratio_{}_ts_0_1_s100".format(
-                    ker_size_fp, std_gauss, poisson, scale_factor, ratio
-                ),  # 'epoch_5000.pt')
-                "epoch_500.pt",
-            )
 
         FP_para = torch.load(FP_path, map_location=device)
         FP.load_state_dict(FP_para["model_state_dict"])
