@@ -1,5 +1,5 @@
 """
-KLDeconv trianing.
+KLDeconv training.
 """
 
 import torch, os, time, sys, pandas
@@ -13,26 +13,11 @@ from utils import evaluation as eva
 from models import kernelnet
 
 # ------------------------------------------------------------------------------
-print("-" * 80)
-if sys.platform == "win32":
-    device, num_workers = torch.device("cpu"), 0
-    root_path = os.path.join("F:", os.sep, "Datasets")
-
-if sys.platform == "linux" or sys.platform == "linux2":
-    device, num_workers = torch.device("cpu"), 0
-    # device, num_workers = torch.device("cuda"), 6
-    root_path = "data"
-
-print(f"[INFO] Device:{device} | Num of workers:{num_workers}")
-
-# ------------------------------------------------------------------------------
 torch.manual_seed(7)
 input_normalization = 0
-path_checkpoint = os.path.join("checkpoints", "v2")
 validation_enable = False
 data_range = None
 normalization = (False, False)
-in_channels = 1
 
 # ------------------------------------------------------------------------------
 # Dataset
@@ -67,6 +52,23 @@ dataset_name = (
 )
 
 assert len(dataset_name) == 1, "[ERROR] Only one dataset can be selected."
+path_train_excel = os.path.join("datasets_train.xlsx")
+dataset_id = dataset_name[0]
+
+if dataset_id in [
+    "Microtubule",
+    "Microtubule2",
+    "Nuclear_Pore_complex",
+    "Nuclear_Pore_complex2",
+    "F-actin_Nonlinear",
+    "Microtubules2",
+]:
+    FP_type, BP_type = "pre-trained", None
+    print("[INFO] Use pre-trained forward kernel, and learn backward kernel.")
+else:
+    FP_type, BP_type = "known", None
+    print("[INFO] Known forward kernel, and to learn backward kernel.")
+
 
 # ------------------------------------------------------------------------------
 # model_name = 'kernet_fp'
@@ -74,13 +76,16 @@ model_name = "kernet"
 
 # ------------------------------------------------------------------------------
 # load dataset info
-dataset_id = dataset_name[0]
 # load excel file to get dataset info
-df = pandas.read_excel(os.path.join("datasets_train.xlsx"))
+df = pandas.read_excel(path_train_excel)
 info = df.loc[df["id"] == dataset_id].loc[0]
 
 params_dict = dict(
+    device=torch.device("cuda:0"),
+    num_workers=6,
+    path_checkpoint=os.path.join("checkpoints", "v2"),
     dataset_dim=info["ndim"],
+    in_channels=1,
     hr_root_path=win2linux(info["path_hr"]),
     lr_root_path=win2linux(info["path_lr"]),
     hr_txt_file_path=win2linux(info["path_txt"]),
@@ -89,10 +94,12 @@ params_dict = dict(
     kernel_size_bp=text2tuple(info["kb_size"]),
     scale_factor=info["scale_factor"],
     id_range=text2tuple(info["id_sample"]),
+    id_range_val=text2tuple(info["id_sample_val"]),
     std_init=info["ker_std_init"],
     epoch_fp=info["epoch_fp"],
     epoch_bp=info["epoch_bp"],
     FP_path=win2linux(info["path_fp"]),
+    PSF_path=win2linux(info["path_psf"]),
     conv_mode="fft",
     padding_mode="reflect",
     kernel_init="gauss",
@@ -106,6 +113,10 @@ training_data_size = params_dict["id_range"][1] - params_dict["id_range"][0]
 ker_size_fp = params_dict["kernel_size_fp"][-1]
 ker_size_bp = params_dict["kernel_size_bp"][-1]
 
+print(
+    f"[INFO] Device:{params_dict['device']} | Num of workers:{params_dict['num_workers']}"
+)
+print(f"[INFO] Path to checkpoint: {params_dict['path_checkpoint']}")
 print(f"[INFO] Dataset: {dataset_id} | Dim: {params_dict['dataset_dim']}")
 print(f"[INFO] HR: {params_dict['hr_root_path']}")
 print(f"[INFO] LR: {params_dict['lr_root_path']}")
@@ -115,6 +126,9 @@ print(f"[INFO] Kernel size BP: {params_dict['kernel_size_bp']}")
 print(f"[INFO] Scale factor: {params_dict['scale_factor']}")
 print(
     f"[INFO] Train data size: {training_data_size} | ID range: {params_dict['id_range']}"
+)
+print(
+    f"[INFO] Validation data size: {params_dict['id_range_val']} | ID range: {params_dict['id_range_val']}"
 )
 print(f"[INFO] Std init: {params_dict['std_init']}")
 print(f"[INFO] Epoch FP: {params_dict['epoch_fp']} | BP: {params_dict['epoch_bp']}")
@@ -180,128 +194,112 @@ scheduler_cus["lr"] = start_learning_rate
 scheduler_cus["every"] = 2000  # 300
 scheduler_cus["rate"] = 0.5
 scheduler_cus["min"] = 0.00000001
+print_every_iter = 1000
+
+if model_name == "kernet":
+    save_every_iter, plot_every_iter, val_every_iter = 1000, 50, 1000
+if model_name == "kernet_fp":
+    save_every_iter, plot_every_iter, val_every_iter = 5, 2, 1000
 
 # ------------------------------------------------------------------------------
-if dataset_dim == 2:
-    if model_name == "kernet":
-        save_every_iter, plot_every_iter, val_every_iter = 1000, 50, 1000
-        print_every_iter = 1000
-    if model_name == "kernet_fp":
-        save_every_iter, plot_every_iter, val_every_iter = 5, 2, 1000
-        print_every_iter = 1000
-
-if dataset_dim == 3:
-    if model_name == "kernet":
-        save_every_iter, plot_every_iter, val_every_iter = 1000, 50, 1000
-        print_every_iter = 1000
-    if model_name == "kernet_fp":
-        save_every_iter, plot_every_iter, val_every_iter = 5, 2, 1000
-        print_every_iter = 1000
-
-# ------------------------------------------------------------------------------
-# Data
+#                                   Data
 # ------------------------------------------------------------------------------
 # Training data
 training_data = SRDataset(
-    hr_root_path=hr_root_path,
-    lr_root_path=lr_root_path,
-    hr_txt_file_path=hr_txt_file_path,
-    lr_txt_file_path=lr_txt_file_path,
+    hr_root_path=params_dict["hr_root_path"],
+    lr_root_path=params_dict["lr_root_path"],
+    hr_txt_file_path=params_dict["hr_txt_file_path"],
+    lr_txt_file_path=params_dict["lr_txt_file_path"],
     normalization=normalization,
-    id_range=[0, training_data_size],
+    id_range=params_dict["id_range"],
 )
 
 train_dataloader = DataLoader(
-    dataset=training_data, batch_size=batch_size, shuffle=True, num_workers=num_workers
+    dataset=training_data,
+    batch_size=batch_size,
+    shuffle=True,
+    num_workers=params_dict["num_workers"],
 )
 
-# ------------------------------------------------------------------------------
 # Validation data
 if validation_enable == True:
     validation_data = SRDataset(
-        hr_root_path=hr_root_path,
-        lr_root_path=lr_root_path,
-        hr_txt_file_path=hr_txt_file_path,
-        lr_txt_file_path=lr_txt_file_path,
+        hr_root_path=params_dict["hr_root_path"],
+        lr_root_path=params_dict["lr_root_path"],
+        hr_txt_file_path=params_dict["hr_txt_file_path"],
+        lr_txt_file_path=params_dict["lr_txt_file_path"],
         normalization=normalization,
-        id_range=[training_data_size, -1],
+        id_range=params_dict["id_range_val"],
     )
 
     valid_dataloader = DataLoader(
         dataset=validation_data,
         batch_size=batch_size,
         shuffle=True,
-        num_workers=num_workers,
+        num_workers=params_dict["num_workers"],
     )
 
 # ------------------------------------------------------------------------------
-# Model
+#                                   Model
 # ------------------------------------------------------------------------------
 if model_name == "kernet":
     FP, BP = None, None
-    # FP_type, BP_type = 'pre-trained', None
-    FP_type, BP_type = "known", None
-
-    if dataset_id in [
-        "Microtubule",
-        "Microtubule2",
-        "Nuclear_Pore_complex",
-        "Nuclear_Pore_complex2",
-        "F-actin_Nonlinear",
-        "Microtubules2",
-    ]:
-        FP_type, BP_type = "pre-trained", None
-        print("[INFO] Pre-trained forward kernel, and to learn backward kernel.")
-
-    # --------------------------------------------------------------------------
     if FP_type == "pre-trained":
-        print("[INFO] Pred-trained PSF")
+        print("[INFO] Load pre-trained PSF")
+        print(f"[INFO] Load from: {params_dict['FP_path']}")
 
         # load FP parameters
         FP = kernelnet.ForwardProject(
-            dim=dataset_dim,
-            in_channels=in_channels,
-            scale_factor=scale_factor,
-            kernel_size=kernel_size_fp,
-            std_init=std_init,
-            padding_mode=padding_mode,
-            init=kernel_init,
+            dim=params_dict["dataset_dim"],
+            in_channels=params_dict["in_channels"],
+            scale_factor=params_dict["scale_factor"],
+            kernel_size=params_dict["kernel_size_fp"],
+            std_init=params_dict["std_init"],
+            padding_mode=params_dict["padding_mode"],
+            init=params_dict["kernel_init"],
             trainable=False,
-            interpolation=interpolation,
-            kernel_norm=kernel_norm_fp,
-            over_sampling=over_sampling,
-            conv_mode=conv_mode,
+            interpolation=params_dict["interpolation"],
+            kernel_norm=params_dict["kernel_norm_fp"],
+            over_sampling=params_dict["over_sampling"],
+            conv_mode=params_dict["conv_mode"],
         )
 
-        FP_para = torch.load(FP_path, map_location=device)
+        FP_para = torch.load(params_dict["FP_path"], map_location=params_dict["device"])
         FP.load_state_dict(FP_para["model_state_dict"])
         FP.eval()
 
-        print(">> Load from: ", FP_path)
-
-    if FP_type == "known":
-        print(">> Known PSF")
-        if dataset_dim == 2:
+    if FP_type == "Gaussian":
+        print("[INFO] Use Gaussian PSF")
+        if params_dict["dataset_dim"] == 2:
             ks, std = 25, 2.0
-            ker = kernelnet.gauss_kernel_2d(shape=[ks, ks], std=std).to(device=device)
-            ker = ker.repeat(repeats=(in_channels, 1, 1, 1))
+            ker = kernelnet.gauss_kernel_2d(shape=[ks, ks], std=std).to(
+                device=params_dict["device"]
+            )
+            ker = ker.repeat(repeats=(params_dict["in_channels"], 1, 1, 1))
             padd_fp = lambda x: torch.nn.functional.pad(
-                input=x, pad=(ks // 2, ks // 2, ks // 2, ks // 2), mode=padding_mode
+                input=x,
+                pad=(ks // 2, ks // 2, ks // 2, ks // 2),
+                mode=params_dict["padding_mode"],
             )
             conv_fp = lambda x: torch.nn.functional.conv2d(
-                input=padd_fp(x), weight=ker, groups=in_channels
+                input=padd_fp(x), weight=ker, groups=params_dict["in_channels"]
             )
             FP = lambda x: torch.nn.functional.avg_pool2d(
-                conv_fp(x), kernel_size=25, stride=scale_factor
+                conv_fp(x), kernel_size=25, stride=params_dict["scale_factor"]
             )
+    if FP_type == "known":
+        print("[INFO] Use known PSF")
+        if params_dict["dataset_dim"] == 3:
+            psf_path = params_dict["PSF_path"]
 
-        if dataset_dim == 3:
-            if dataset_id == "ZeroShotDeconvNet":
-                psf_path = os.path.join(lr_root_path, "PSF_odd.tif")
-            else:
-                psf_path = os.path.join(lr_root_path, "PSF.tif")
+            assert psf_path is not None, "[ERROR] PSF path is not provided."
+            assert os.path.exists(psf_path), "[ERROR] PSF path does not exist."
+            assert psf_path.endswith(".tif"), "[ERROR] PSF path should be a tif file."
+
             PSF_true = io.imread(psf_path).astype(np.float32)
-            PSF_true = torch.tensor(PSF_true[None, None]).to(device=device)
+            PSF_true = torch.tensor(PSF_true[None, None]).to(
+                device=params_dict["device"]
+            )  # [1, 1, Nz, Ny, Nx]
             PSF_true = torch.round(PSF_true, decimals=16)
             ks = PSF_true.shape
             padd_fp = lambda x: torch.nn.functional.pad(
@@ -314,15 +312,17 @@ if model_name == "kernet":
                     ks[-3] // 2,
                     ks[-3] // 2,
                 ),
-                mode=padding_mode,
+                mode=params_dict["padding_mode"],
             )
-            if conv_mode == "direct":
+            if params_dict["conv_mode"] == "direct":
                 conv_fp = lambda x: torch.nn.functional.conv3d(
-                    input=padd_fp(x), weight=PSF_true, groups=in_channels
+                    input=padd_fp(x), weight=PSF_true, groups=params_dict["in_channels"]
                 )
-            if conv_mode == "fft":
+            if params_dict["conv_mode"] == "fft":
                 conv_fp = lambda x: fft_conv(
-                    signal=padd_fp(x), kernel=PSF_true, groups=in_channels
+                    signal=padd_fp(x),
+                    kernel=PSF_true,
+                    groups=params_dict["in_channels"],
                 )
             FP = lambda x: torch.nn.functional.avg_pool3d(
                 conv_fp(x), kernel_size=scale_factor, stride=scale_factor

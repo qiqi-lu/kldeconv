@@ -324,13 +324,15 @@ def linear_transform(x, y):
     return x_linear
 
 
-def read_image(img_path, normalization=False, data_range=None):
+def read_image(img_path: str, normalization: bool = False, data_range: tuple = None):
     """
     Read image.
-    Args:
-    - img_path (str): Image path.
-    - normalization (bool): Normalize data into (0,1).
-    - data_range (tuple): (min, max) value of data.
+    ### Parameters:
+    - `img_path` (str): Image path.
+    - `normalization` (bool): Normalize data into (0,1).
+    - `data_range` (tuple): (min, max) value of data.
+    ### Returns:
+    - `img` (numpy.ndarray): Image data.
     """
     # check file type, get extension of file
     _, ext = os.path.splitext(img_path)
@@ -345,9 +347,7 @@ def read_image(img_path, normalization=False, data_range=None):
     if ext == ".tif":
         img = io.imread(img_path)
 
-    if len(img.shape) == 2:
-        img = np.expand_dims(img, axis=0)
-    elif len(img.shape) == 3:
+    if len(img.shape) in (2, 3):
         img = np.expand_dims(img, axis=0)
 
     # Image normalization
@@ -356,6 +356,13 @@ def read_image(img_path, normalization=False, data_range=None):
             img_max, img_min = img.max(), img.min()
             img = (img - img_min) / (img_max - img_min)
         if type(data_range) == tuple:
+            assert (
+                len(data_range) == 2
+            ), f"[ERROR] data_range should be a tuple of length 2, but got {len(data_range)}"
+            assert (
+                data_range[0] < data_range[1]
+            ), f"[ERROR] data_range should be (min, max), but got {data_range}"
+
             img = (img - data_range[0]) / (data_range[1] - data_range[0])
 
     return img.astype(np.float32)
@@ -364,31 +371,37 @@ def read_image(img_path, normalization=False, data_range=None):
 class SRDataset(Dataset):
     """
     Super-resolution dataset used to get low-resolution and hig-resolution data.
-    Args:
-    - hr_root_path (str): root path for high-resolution data.
-    - lr_root_path (str): root path for  low-resolution data.
-    - hr_txt_file_path (str): path of file saving path of high-resolution data.
-    - lr_txt_file_path (str): path of file saving path of low-resolution data.
-    - id_range (tuple): extract part of the data.
+
+    ### Parameters:
+    - `hr_root_path` (str): root path for high-resolution data.
+    - `lr_root_path` (str): root path for low-resolution data.
+    - `hr_txt_file_path` (str): path of file saving path of high-resolution data.
+    - `lr_txt_file_path` (str): path of file saving path of low-resolution data.
+    - `id_range` (tuple): extract part of the data.
                         Default: None, all the data in dataset.
-    - transform (bool): data transformation. Default: None.
-    - normalization (tuple[bool]): whether to normalize the data
+    - `transform` (bool): data transformation. Default: None.
+    - `normalization` (tuple[bool]): whether to normalize the data
                     when read image (lr, hr). Default: (False, False).
+    ### Returns:
+    - sample (dict): {
+        'lr': low-resolution image,
+        'hr': high-resolution image
+    }
     """
 
     def __init__(
         self,
-        hr_root_path,
-        lr_root_path,
-        hr_txt_file_path,
-        lr_txt_file_path,
+        hr_root_path: str,
+        lr_root_path: str,
+        hr_txt_file_path: str,
+        lr_txt_file_path: str,
         id_range=None,
         transform=None,
         normalization=(False, False),
     ):
         super().__init__()
-        self.hr_root_path = hr_root_path
         self.lr_root_path = lr_root_path
+        self.hr_root_path = hr_root_path
         self.transform = transform
         self.normalization = normalization
 
@@ -397,16 +410,25 @@ class SRDataset(Dataset):
         with open(hr_txt_file_path) as f:
             self.file_names_hr = f.read().splitlines()
 
+        data_size_all = len(self.file_names_lr)
         if id_range != None:
-            data_size = len(self.file_names_lr)
             self.file_names_lr = self.file_names_lr[id_range[0] : id_range[1]]
             self.file_names_hr = self.file_names_hr[id_range[0] : id_range[1]]
 
-            print(
-                "DATASET: Use only part of datasets. ({}|{})".format(
-                    len(self.file_names_lr), data_size
-                )
-            )
+        # ----------------------------------------------------------------------
+        print(f"[INFO] Use datasets. ({len(self.file_names_lr)}|{data_size_all})")
+        if self.transform is not None:
+            print(f"[INFO] Enable Data Transform.")
+        else:
+            print(f"[INFO] Disable Data Transform.")
+        if self.normalization[0] == True:
+            print(f"[INFO] Normalize LR data.")
+        else:
+            print(f"[INFO] Do not normalize LR data.")
+        if self.normalization[1] == True:
+            print(f"[INFO] Normalize HR data.")
+        else:
+            print(f"[INFO] Do not normalize HR data.")
 
     def __len__(self):
         return len(self.file_names_lr)

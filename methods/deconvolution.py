@@ -103,6 +103,48 @@ def adjust_size(img, size, pad_value=0):
 #     return outVol.real
 
 
+def fftn_conv_real(signal, kernel, *args, **kwargs):
+    """
+    Custom FFT convolution for real-valued signals.
+    ### Parameters:
+    - `signal` : input signal, torch tensor.
+    - `kernel` : kernel, torch tensor.
+    ### Returns:
+    - `output` : output signal, torch tensor.
+    """
+    signal_shape = signal.shape[2:]
+    kernel_shape = kernel.shape[2:]
+
+    dim_fft = tuple(range(2, signal.ndim))
+
+    signal_fr = torch.fft.fftn(signal.float(), s=signal_shape, dim=dim_fft)
+    kernel_fr = torch.fft.fftn(kernel.float(), s=signal_shape, dim=dim_fft)
+
+    kernel_fr.imag *= -1
+    output_fr = signal_fr * kernel_fr
+    output = torch.fft.ifftn(output_fr, dim=dim_fft)
+    output = output.real
+
+    if signal.ndim == 5:
+        output = output[
+            :,
+            :,
+            0 : signal_shape[0] - kernel_shape[0] + 1,
+            0 : signal_shape[1] - kernel_shape[1] + 1,
+            0 : signal_shape[2] - kernel_shape[2] + 1,
+        ]
+
+    if signal.ndim == 4:
+        output = output[
+            :,
+            :,
+            0 : signal_shape[0] - kernel_shape[0] + 1,
+            0 : signal_shape[1] - kernel_shape[1] + 1,
+        ]
+
+    return output
+
+
 def convolution(x, PSF, padding_mode="reflect", domain="direct", device="cpu"):
     """
     Convolution between image and PSF.
