@@ -93,39 +93,53 @@ def gauss_kernel_1d(shape=3, std=1.0):
     return g
 
 
-def gauss_kernel_2d(shape=[3, 3], std=[1.0, 1.0], pixel_size=[1.0, 1.0]):
-    x_data, y_data = np.mgrid[0 : shape[0], 0 : shape[1]]
-    x_center, y_center = (shape[0] - 1) / 2, (shape[1] - 1) / 2
-
-    x = torch.tensor(x_data, dtype=torch.float32)
-    y = torch.tensor(y_data, dtype=torch.float32)
+def gauss_kernel_2d(shape=(3, 3), std=(1.0, 1.0), pixel_size=(1.0, 1.0)):
+    """
+    Generate a 2D Gaussian kernel.
+    ### Parameters:
+    - `shape` (tuple): The shape of the kernel. Default: (3, 3).
+    - `std` (tuple): The standard deviation of the kernel. Default: (1.0, 1.0).
+    - `pixel_size` (tuple): The pixel size of the image. Default: (1.0, 1.0).
+    ### Returns:
+    - `g` (torch.Tensor): The 2D Gaussian kernel.
+    """
+    y = torch.linspace(start=0, end=shape[0] - 1, steps=shape[0])
+    x = torch.linspace(start=0, end=shape[1] - 1, steps=shape[1])
+    y_grid, x_grid = torch.meshgrid(y, x, indexing="ij")
+    y_center, x_center = (shape[0] - 1) / 2, (shape[1] - 1) / 2
 
     g = torch.exp(
         -(
-            ((x - x_center) * pixel_size[0]) ** 2 / (2.0 * std[0] ** 2)
-            + ((y - y_center) * pixel_size[1]) ** 2 / (2.0 * std[1] ** 2)
+            ((y_grid - y_center) * pixel_size[0]) ** 2 / (2.0 * std[0] ** 2)
+            + ((x_grid - x_center) * pixel_size[1]) ** 2 / (2.0 * std[1] ** 2)
         )
     )
-    g = g / torch.sum(g)  # shape = [3, 3]
+    g = g / torch.sum(g)
     return g
 
 
-def gauss_kernel_3d(shape=[3, 3, 3], std=[1.0, 1.0, 1.0], pixel_size=[1.0, 1.0, 1.0]):
-    x_data, y_data, z_data = np.mgrid[0 : shape[0], 0 : shape[1], 0 : shape[2]]
-    x_center, y_center, z_center = (
-        (shape[0] - 1) / 2,
-        (shape[1] - 1) / 2,
-        (shape[2] - 1) / 2,
-    )
-    x = torch.tensor(x_data, dtype=torch.float32)
-    y = torch.tensor(y_data, dtype=torch.float32)
-    z = torch.tensor(z_data, dtype=torch.float32)
+def gauss_kernel_3d(shape=(3, 3, 3), std=(1.0, 1.0, 1.0), pixel_size=(1.0, 1.0, 1.0)):
+    """
+    Generate a 3D Gaussian kernel.
+    ### Parameters:
+    - `shape` (tuple): The shape of the kernel. Default: (3, 3, 3).
+    - `std` (tuple): The standard deviation of the kernel. Default: (1.0, 1.0, 1.0).
+    - `pixel_size` (tuple): The pixel size of the image. Default: (1.0, 1.0, 1.0).
+    ### Returns:
+    - `g` (torch.Tensor): The 3D Gaussian kernel.
+    """
+    z = torch.linspace(start=0, end=shape[0] - 1, steps=shape[0])
+    y = torch.linspace(start=0, end=shape[1] - 1, steps=shape[1])
+    x = torch.linspace(start=0, end=shape[2] - 1, steps=shape[2])
+    z_grid, y_grid, x_grid = torch.meshgrid(z, y, x, indexing="ij")
+
+    z_center, y_center, x_center = ((dim - 1) / 2 for dim in shape)
 
     g = torch.exp(
         -(
-            ((x - x_center) * pixel_size[0]) ** 2 / (2.0 * std[0] ** 2)
-            + ((y - y_center) * pixel_size[1]) ** 2 / (2.0 * std[1] ** 2)
-            + ((z - z_center) * pixel_size[2]) ** 2 / (2.0 * std[2] ** 2)
+            ((z_grid - z_center) * pixel_size[0]) ** 2 / (2.0 * std[0] ** 2)
+            + ((y_grid - y_center) * pixel_size[1]) ** 2 / (2.0 * std[1] ** 2)
+            + ((x_grid - x_center) * pixel_size[2]) ** 2 / (2.0 * std[2] ** 2)
         )
     )
     g = g / torch.sum(g)  # shape = [3, 3, 3]
@@ -584,7 +598,8 @@ class Rescale(object):
 
 class ToNumpy(object):
     """
-    Convert pytorch tensor into numpy array, and shift the channel axis to the last axis.
+    Convert pytorch tensor into numpy array,
+    and shift the channel axis to the last axis.
     Args:
     - tensor (torch tensor): input tensor.
     """

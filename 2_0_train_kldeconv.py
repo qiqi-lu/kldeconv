@@ -2,21 +2,22 @@
 KLDeconv training.
 """
 
-import torch, os, time, sys, pandas
+import torch, os, time, sys, pandas, tqdm
 from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
 import numpy as np
 import skimage.io as io
 from fft_conv_pytorch import fft_conv
 from utils.data import win2linux, SRDataset, text2tuple
+from utils.optimize import step_lr_schedule
 from utils import evaluation as eva
 from models import kernelnet
+from torchinfo import summary
 
 # ------------------------------------------------------------------------------
 torch.manual_seed(7)
 input_normalization = 0
 validation_enable = False
-data_range = None
 normalization = (False, False)
 
 # ------------------------------------------------------------------------------
@@ -81,7 +82,7 @@ df = pandas.read_excel(path_train_excel)
 info = df.loc[df["id"] == dataset_id].loc[0]
 
 params_dict = dict(
-    device=torch.device("cuda:0"),
+    device="cuda:0",
     num_workers=6,
     path_checkpoint=os.path.join("checkpoints", "v2"),
     dataset_dim=info["ndim"],
@@ -93,6 +94,7 @@ params_dict = dict(
     kernel_size_fp=text2tuple(info["kf_size"]),
     kernel_size_bp=text2tuple(info["kb_size"]),
     scale_factor=info["scale_factor"],
+    ratio=info["ratio"],
     id_range=text2tuple(info["id_sample"]),
     id_range_val=text2tuple(info["id_sample_val"]),
     std_init=info["ker_std_init"],
@@ -107,8 +109,17 @@ params_dict = dict(
     kernel_norm_fp=False,
     kernel_norm_bp=True,
     over_sampling=2,
+    warm_up=0,
+    use_lr_schedule=True,
+    scheduler_cus={
+        "lr": 0.00001,
+        "every": 2000,  # 300
+        "rate": 0.5,
+        "min": 0.00000001,
+    },
 )
 
+device = torch.device(params_dict["device"])
 training_data_size = params_dict["id_range"][1] - params_dict["id_range"][0]
 ker_size_fp = params_dict["kernel_size_fp"][-1]
 ker_size_bp = params_dict["kernel_size_bp"][-1]
@@ -187,13 +198,7 @@ if model_name == "kernet":
     epochs = params_dict["epoch_bp"]
 
 # ------------------------------------------------------------------------------
-warm_up = 0
-use_lr_schedule = True
-scheduler_cus = {}
-scheduler_cus["lr"] = start_learning_rate
-scheduler_cus["every"] = 2000  # 300
-scheduler_cus["rate"] = 0.5
-scheduler_cus["min"] = 0.00000001
+params_dict["scheduler_cus"]["lr"] = start_learning_rate
 print_every_iter = 1000
 
 if model_name == "kernet":
@@ -264,33 +269,15 @@ if model_name == "kernet":
             conv_mode=params_dict["conv_mode"],
         )
 
-        FP_para = torch.load(params_dict["FP_path"], map_location=params_dict["device"])
+        FP_para = torch.load(params_dict["FP_path"], map_location=device)
         FP.load_state_dict(FP_para["model_state_dict"])
         FP.eval()
 
-    if FP_type == "Gaussian":
-        print("[INFO] Use Gaussian PSF")
-        if params_dict["dataset_dim"] == 2:
-            ks, std = 25, 2.0
-            ker = kernelnet.gauss_kernel_2d(shape=[ks, ks], std=std).to(
-                device=params_dict["device"]
-            )
-            ker = ker.repeat(repeats=(params_dict["in_channels"], 1, 1, 1))
-            padd_fp = lambda x: torch.nn.functional.pad(
-                input=x,
-                pad=(ks // 2, ks // 2, ks // 2, ks // 2),
-                mode=params_dict["padding_mode"],
-            )
-            conv_fp = lambda x: torch.nn.functional.conv2d(
-                input=padd_fp(x), weight=ker, groups=params_dict["in_channels"]
-            )
-            FP = lambda x: torch.nn.functional.avg_pool2d(
-                conv_fp(x), kernel_size=25, stride=params_dict["scale_factor"]
-            )
     if FP_type == "known":
         print("[INFO] Use known PSF")
         if params_dict["dataset_dim"] == 3:
             psf_path = params_dict["PSF_path"]
+            print("[INFO] Load from: ", psf_path)
 
             assert psf_path is not None, "[ERROR] PSF path is not provided."
             assert os.path.exists(psf_path), "[ERROR] PSF path does not exist."
@@ -298,7 +285,7 @@ if model_name == "kernet":
 
             PSF_true = io.imread(psf_path).astype(np.float32)
             PSF_true = torch.tensor(PSF_true[None, None]).to(
-                device=params_dict["device"]
+                device=device
             )  # [1, 1, Nz, Ny, Nx]
             PSF_true = torch.round(PSF_true, decimals=16)
             ks = PSF_true.shape
@@ -325,75 +312,76 @@ if model_name == "kernet":
                     groups=params_dict["in_channels"],
                 )
             FP = lambda x: torch.nn.functional.avg_pool3d(
-                conv_fp(x), kernel_size=scale_factor, stride=scale_factor
+                conv_fp(x),
+                kernel_size=params_dict["scale_factor"],
+                stride=params_dict["scale_factor"],
             )
-
-            print(">> Load from :", psf_path)
 
     # --------------------------------------------------------------------------
     model = kernelnet.KernelNet(
-        dim=dataset_dim,
-        in_channels=in_channels,
-        scale_factor=scale_factor,
+        dim=params_dict["dataset_dim"],
+        in_channels=params_dict["in_channels"],
+        scale_factor=params_dict["scale_factor"],
         num_iter=num_iter,
-        kernel_size_fp=kernel_size_fp,
-        kernel_size_bp=kernel_size_bp,
-        std_init=std_init,
-        init=kernel_init,
+        kernel_size_fp=params_dict["kernel_size_fp"],
+        kernel_size_bp=params_dict["kernel_size_bp"],
+        std_init=params_dict["std_init"],
+        init=params_dict["kernel_init"],
         FP=FP,
         BP=BP,
         lam=lam,
-        padding_mode=padding_mode,
+        padding_mode=params_dict["padding_mode"],
         multi_out=multi_out,
-        interpolation=interpolation,
-        kernel_norm=kernel_norm_bp,
-        over_sampling=over_sampling,
+        interpolation=params_dict["interpolation"],
+        kernel_norm=params_dict["kernel_norm_bp"],
+        over_sampling=params_dict["over_sampling"],
         shared_bp=shared_bp,
         self_supervised=self_supervised,
-        conv_mode=conv_mode,
+        conv_mode=params_dict["conv_mode"],
     ).to(device)
 
 # ------------------------------------------------------------------------------
 if model_name == "kernet_fp":
     model = kernelnet.ForwardProject(
-        dim=dataset_dim,
-        in_channels=in_channels,
-        scale_factor=scale_factor,
-        kernel_size=kernel_size_fp,
-        std_init=std_init,
-        init=kernel_init,
-        padding_mode=padding_mode,
+        dim=params_dict["dataset_dim"],
+        in_channels=params_dict["in_channels"],
+        scale_factor=params_dict["scale_factor"],
+        kernel_size=params_dict["kernel_size_fp"],
+        std_init=params_dict["std_init"],
+        init=params_dict["kernel_init"],
+        padding_mode=params_dict["padding_mode"],
         trainable=True,
-        kernel_norm=kernel_norm_fp,
-        interpolation=interpolation,
-        conv_mode=conv_mode,
-        over_sampling=over_sampling,
+        kernel_norm=params_dict["kernel_norm_fp"],
+        interpolation=params_dict["interpolation"],
+        conv_mode=params_dict["conv_mode"],
+        over_sampling=params_dict["over_sampling"],
     ).to(device)
 
 # ------------------------------------------------------------------------------
 eva.count_parameters(model)
 print(model)
+if params_dict["dataset_dim"] == 2:
+    summary(model, input_size=(1, 1, 128, 128))
+if params_dict["dataset_dim"] == 3:
+    summary(model, input_size=(1, 1, 128, 128, 128))
 
 # ------------------------------------------------------------------------------
 # save
 if model_name == "kernet_fp":
-    path_model = os.path.join(
-        path_checkpoint,
-        dataset_id,
-        "forward",
-        "{}_bs_{}_lr_{}{}".format(model_name, batch_size, start_learning_rate, suffix),
-    )
-
+    model_part = "forward"
 if model_name == "kernet":
-    path_model = os.path.join(
-        path_checkpoint,
-        dataset_id,
-        "backward",
-        "{}_bs_{}_lr_{}{}".format(model_name, batch_size, start_learning_rate, suffix),
-    )
+    model_part = "backward"
 
+path_model = os.path.join(
+    params_dict["path_checkpoint"],
+    dataset_id,
+    model_part,
+    f"{model_name}_bs_{batch_size}_lr_{start_learning_rate}{suffix}",
+)
+
+
+print("[INFO] Save model to", path_model)
 writer = SummaryWriter(os.path.join(path_model, "log"))
-print(">> Save model to", path_model)
 
 # ------------------------------------------------------------------------------
 # OPTIMIZATION
@@ -406,28 +394,21 @@ if optimizer_type == "lbfgs":
         model.parameters(), lr=start_learning_rate, line_search_fn="strong_wolfe"
     )
 
-print(">> Start training ... ")
-print(time.asctime(time.localtime(time.time())))
 
 num_batches = len(train_dataloader)
-num_batches_val = 0
-if validation_enable == True:
-    num_batches_val = len(valid_dataloader)
+num_batches_val = len(valid_dataloader) if validation_enable == True else 0
 
-print(
-    ">> Number of training batches: {}, validation batches: {}".format(
-        num_batches, num_batches_val
-    )
-)
+print("[INFO] Start training ... ")
+print(f"[INFO] Start time: {time.asctime(time.localtime(time.time()))}")
+print(f"[INFO] Num of batches: (train) {num_batches}, (valid) {num_batches_val}")
+print(f"[INFO] Training under self-supervised mode: {self_supervised}")
 
-if self_supervised == True:
-    print("Training under self-supervised mode.")
-
+# pre-load data to save trianing time
 if training_data_size == 1:
     sample = training_data[0]
     x, y = sample["lr"].to(device)[None], sample["hr"].to(device)[None]
-    y = y * ratio
-else:
+    y = y * params_dict["ratio"]
+elif training_data_size > 1:
     x, y = [], []
     for i in range(training_data_size):
         sample = training_data[i]
@@ -436,49 +417,46 @@ else:
     x = torch.stack(x)
     y = torch.stack(y)
     x, y = x.to(device), y.to(device)
-    y = y * ratio
+    y = y * params_dict["ratio"]
+else:
+    print("[ERROR] Training data size is 0!")
 
+print(f"[INFO] Num of baches: {num_batches}")
+print(f"[INFO] Epoch: {epochs} | Batch size: {batch_size}")
+print("-" * 80)
+
+# ------------------------------------------------------------------------------
+pbar = tqdm.tqdm(total=epochs, desc="Training", ncols=80)
 for i_epoch in range(epochs):
-    print("\n" + "-" * 98)
-    print(
-        "Epoch: {}/{} | Batch size: {} | Num of Batches: {}".format(
-            i_epoch + 1, epochs, batch_size, num_batches
-        )
-    )
-    print("-" * 98)
-    # --------------------------------------------------------------------------
     ave_ssim, ave_psnr = 0, 0
     print_loss, print_ssim, print_psnr = [], [], []
 
-    start_time = time.time()
-    # --------------------------------------------------------------------------
     model.train()
-    # for i_batch, sample in enumerate(train_dataloader):
     for i_batch in range(num_batches):
         i_iter = i_batch + i_epoch * num_batches  # index of iteration
-        # ----------------------------------------------------------------------
+
         # load data
         # x, y = sample['lr'].to(device), sample['hr'].to(device)
         # y = y * ratio
 
+        # set input and target
         if model_name == "kernet_fp":
             inpt, gt = y, x
-        if model_name == "kernet":
-            if self_supervised == True:
+        elif model_name == "kernet":
+            if self_supervised:
                 inpt, gt = x, x
             else:
                 inpt, gt = x, y
+        else:
+            print("[ERROR] Model name is not defined!")
 
-        # ----------------------------------------------------------------------
-        # optimize
+        # optimize -------------------------------------------------------------
         if optimizer_type == "lbfgs":
-            # L-BFGS
-            loss = 0.0
-            pred = 0.0
+            # L-BFGS optimizer, may be better for simulated data
+            loss, pred = 0.0, 0.0
 
             def closure():
-                global loss
-                global pred
+                global loss, pred
                 pred = model(inpt)
                 optimizer.zero_grad()
                 loss = loss_main(pred, gt)
@@ -496,46 +474,24 @@ for i_epoch in range(epochs):
 
         # ----------------------------------------------------------------------
         # custom learning rate scheduler
-        if use_lr_schedule == True:
-            if (warm_up > 0) and (i_iter < warm_up):
-                lr = (i_iter + 1) / warm_up * scheduler_cus["lr"]
-                # set learning rate
-                for g in optimizer.param_groups:
-                    g["lr"] = lr
-
-            if i_iter >= warm_up:
-                if (i_iter + 1 - warm_up) % scheduler_cus["every"] == 0:
-                    lr = scheduler_cus["lr"] * (
-                        scheduler_cus["rate"]
-                        ** ((i_iter + 1 - warm_up) // scheduler_cus["every"])
-                    )
-                    lr = np.maximum(lr, scheduler_cus["min"])
-                    for g in optimizer.param_groups:
-                        g["lr"] = lr
-        else:
-            if (warm_up > 0) and (i_iter < warm_up):
-                lr = (i_iter + 1) / warm_up * scheduler_cus["lr"]
-                for g in optimizer.param_groups:
-                    g["lr"] = lr
-
-            if i_iter >= warm_up:
-                for g in optimizer.param_groups:
-                    g["lr"] = scheduler_cus["lr"]
-
-        # ----------------------------------------------------------------------
-        if multi_out == False:
-            out = pred
-        if multi_out == True:
-            out = pred[-1]
+        step_lr_schedule(
+            optimizer=optimizer,
+            i_iter=i_iter,
+            scheduler_cus=params_dict["scheduler_cus"],
+            warm_up=params_dict["warm_up"],
+            use_lr_schedule=params_dict["use_lr_schedule"],
+        )
 
         # ----------------------------------------------------------------------
         # plot loss and metrics
+        out = pred if multi_out == False else pred[-1]
+
         if i_iter % plot_every_iter == 0:
-            if dataset_dim == 2:
+            if params_dict["dataset_dim"] == 2:
                 ave_ssim, ave_psnr = eva.measure_2d(
                     img_test=out, img_true=gt, data_range=data_range
                 )
-            if dataset_dim == 3:
+            if params_dict["dataset_dim"] == 3:
                 ave_ssim, ave_psnr = eva.measure_3d(
                     img_test=out, img_true=gt, data_range=data_range
                 )
@@ -554,10 +510,10 @@ for i_epoch in range(epochs):
 
         # ----------------------------------------------------------------------
         # print and save model
-        if dataset_dim == 2:
-            s, p = eva.measure_2d(img_test=out, img_true=gt, data_range=data_range)
-        if dataset_dim == 3:
-            s, p = eva.measure_3d(img_test=out, img_true=gt, data_range=data_range)
+        if params_dict["dataset_dim"] == 2:
+            s, p = eva.measure_2d(img_test=out, img_true=gt, data_range=None)
+        if params_dict["dataset_dim"] == 3:
+            s, p = eva.measure_3d(img_test=out, img_true=gt, data_range=None)
         print_loss.append(loss.cpu().detach().numpy())
         print_ssim.append(s)
         print_psnr.append(p)

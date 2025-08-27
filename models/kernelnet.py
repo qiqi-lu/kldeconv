@@ -37,19 +37,32 @@ class TV_grad(nn.Module):
 
 
 class RadialSymmetricConv2D(nn.Module):
-    """2D convolution with radial symetric kernel."""
+    """
+    2D convolution with radial symetric kernel.
+    ### Parameters:
+    - `in_channels`: int, default=1, input channels.
+    - `kernel_size`: list, default=[25, 25], kernel size.
+    - `init`: str, default="gauss", initialization method.
+    - `std_init`: list, default=[1.0, 1.0], standard deviation of the kernel.
+    - `padding_mode`: str, default="reflect", padding mode.
+    - `positive`: bool, default=False, whether to use positive constraints.
+    - `interpolation`: bool, default=True, whether to use linear interpolation.
+    - `over_sampling`: int, default=2, over sampling factor.
+    - `kernel_norm`: bool, default=True, whether to normalize the kernel.
+    - `conv_mode`: str, default="direct", convolution mode. 'direct' or 'fft'.
+    """
 
     def __init__(
         self,
-        in_channels,
-        kernel_size=[25, 25],
+        in_channels: int = 1,
+        kernel_size=(25, 25),
         init="gauss",
-        std_init=[1.0, 1.0],
+        std_init=(1.0, 1.0),
         padding_mode="reflect",
-        positive=False,
-        interpolation=True,
+        positive: bool = False,
+        interpolation: bool = True,
         over_sampling=2,
-        kernel_norm=True,
+        kernel_norm: bool = True,
         conv_mode="direct",
     ):
         super().__init__()
@@ -65,8 +78,8 @@ class RadialSymmetricConv2D(nn.Module):
 
         # ----------------------------------------------------------------------
         # xy plane
-        Ny, Nx = self.kernel_size[0], self.kernel_size[1]
-        xp, yp = (Nx - 1) / 2, (Ny - 1) / 2
+        Ny, Nx = self.kernel_size
+        yp, xp = (Ny - 1) / 2, (Nx - 1) / 2  # position of the center of PSF
         maxRadius = (
             torch.round(torch.sqrt(((Nx - 1) - xp) ** 2 + ((Ny - 1) - yp) ** 2)) + 1
         )
@@ -77,11 +90,11 @@ class RadialSymmetricConv2D(nn.Module):
                 steps=int(maxRadius * over_sampling),
             )
             / over_sampling
-        )
+        )  # sampling points
 
         gridx = torch.linspace(start=0, end=Nx - 1, steps=Nx)
         gridy = torch.linspace(start=0, end=Ny - 1, steps=Ny)
-        Y, X = torch.meshgrid(gridx, gridy)
+        X, Y = torch.meshgrid(gridx, gridy)
 
         rPixel = torch.sqrt((X - xp) ** 2 + (Y - yp) ** 2)
         index = torch.floor(rPixel * over_sampling).type(torch.int)
@@ -97,26 +110,23 @@ class RadialSymmetricConv2D(nn.Module):
         # initialization
         if init == "gauss":
             psfapp_init = utils_data.gauss_kernel_2d(
-                shape=[R.shape[0] * 2 - 1, R.shape[0] * 2 - 1],
-                std=[std_init[0], std_init[1]],
-                pixel_size=[1.0 / over_sampling, 1.0 / over_sampling],
+                shape=(R.shape[0] * 2 - 1, R.shape[1] * 2 - 1),
+                std=std_init,
+                pixel_size=(1.0 / over_sampling,) * 2,
             )
             psfapp_init = psfapp_init * (over_sampling**2)
 
         if init == "ones":
-            psfapp_init = torch.ones(size=[R.shape[0] * 2 - 1, R.shape[0] * 2 - 1])
+            psfapp_init = torch.ones(size=(R.shape[0] * 2 - 1, R.shape[1] * 2 - 1))
             psfapp_init = psfapp_init / psfapp_init.sum()
 
         # ----------------------------------------------------------------------
         # extract half PSF
-        self.PSF_half = nn.Parameter(data=psfapp_init[R.shape[0] - 1, R.shape[0] - 1 :])
+        self.PSF_half = nn.Parameter(data=psfapp_init[R.shape[0] - 1, R.shape[1] - 1 :])
 
     def get_kernel(self):
         # positive constraints
-        if self.positive:
-            PSF_half = torch.abs(self.PSF_half)
-        else:
-            PSF_half = self.PSF_half
+        PSF_half = torch.abs(self.PSF_half) if self.positive else self.PSF_half
 
         # linear interpolation / left-nearest interpolation
         if self.interpolation == True:
@@ -154,17 +164,32 @@ class RadialSymmetricConv2D(nn.Module):
 
 
 class RadialSymmetricConv3D(nn.Module):
+    """
+    3D convolution with radial symetric kernel.
+    ### Parameters:
+    - `in_channels`: int, default=1, input channels.
+    - `kernel_size`: list, default=[25, 25, 25], kernel size.
+    - `init`: str, default="gauss", initialization method.
+    - `std_init`: list, default=[1.0, 1.0, 1.0], standard deviation of the kernel.
+    - `padding_mode`: str, default="reflect", padding mode.
+    - `positive`: bool, default=False, whether to use positive constraints.
+    - `interpolation`: bool, default=True, whether to use linear interpolation.
+    - `over_sampling`: int, default=2, over sampling factor.
+    - `kernel_norm`: bool, default=True, whether to normalize the kernel.
+    - `conv_mode`: str, default="direct", convolution mode.
+    """
+
     def __init__(
         self,
-        in_channels,
-        kernel_size=[25, 25, 25],
+        in_channels: int = 1,
+        kernel_size=(25, 25, 25),
         init="gauss",
-        std_init=[1.0, 1.0, 1.0],
+        std_init=(1.0, 1.0, 1.0),
         padding_mode="reflect",
-        positive=False,
-        interpolation=True,
+        positive: bool = False,
+        interpolation: bool = True,
         over_sampling=2,
-        kernel_norm=True,
+        kernel_norm: bool = True,
         conv_mode="direct",
     ):
         super().__init__()
@@ -258,6 +283,11 @@ class RadialSymmetricConv3D(nn.Module):
         )
 
     def get_kernel(self):
+        """
+        Get the kernel.
+        ### Returns:
+        - `weight`: torch.Tensor, kernel.
+        """
         # positive constraints
         # if self.positive == True:
         #     PSF_half = self.PSF_half
@@ -289,6 +319,12 @@ class RadialSymmetricConv3D(nn.Module):
         return weight
 
     def forward(self, x):
+        """
+        ### Parameters:
+        - `x`: torch.Tensor, input tensor.
+        ### Returns:
+        - `x`: torch.Tensor, output tensor.
+        """
         weight = self.get_kernel()
         pad_size = (
             self.kernel_size[2] // 2,
@@ -312,19 +348,36 @@ class RadialSymmetricConv3D(nn.Module):
 
 # ---------------------------------------------------------------------------
 class ForwardProject(nn.Module):
+    """
+    Forward kernel construction.
+    ### Parameters:
+    - `in_channels`: int, default=1, input channels.
+    - `scale_factor`: int, default=1, scale factor.
+    - `dim`: int, default=2, dimension of the kernel.
+    - `kernel_size`: list, default=None, kernel size.
+    - `std_init`: list, default=None, standard deviation of the kernel.
+    - `init`: str, default="gauss", initialization method.
+    - `trainable`: bool, default=True, whether the kernel is trainable.
+    - `padding_mode`: str, default="reflect", padding mode.
+    - `interpolation`: bool, default=True, whether to use linear interpolation.
+    - `over_sampling`: int, default=2, over sampling factor.
+    - `kernel_norm`: bool, default=True, whether to normalize the kernel.
+    - `conv_mode`: str, default="direct", convolution mode.
+    """
+
     def __init__(
         self,
-        in_channels=1,
+        in_channels: int = 1,
         scale_factor=1,
-        dim=3,
+        dim: int = 3,
         kernel_size=None,
         std_init=None,
         init="gauss",
-        trainable=True,
+        trainable: bool = True,
         padding_mode="reflect",
-        interpolation=True,
+        interpolation: bool = True,
         over_sampling=2,
-        kernel_norm=True,
+        kernel_norm: bool = True,
         conv_mode="direct",
     ):
         super().__init__()
@@ -332,9 +385,9 @@ class ForwardProject(nn.Module):
         # ----------------------------------------------------------------------
         if dim == 2:
             if std_init == None:
-                std_init = [1.0, 1.0]
+                std_init = (1.0, 1.0)
             if kernel_size == None:
-                kernel_size == [25, 25]
+                kernel_size == (25, 25)
 
             self.conv = RadialSymmetricConv2D(
                 in_channels=in_channels,
@@ -350,11 +403,12 @@ class ForwardProject(nn.Module):
             )
             self.pooling = nn.AvgPool2d(kernel_size=scale_factor)
 
+        # ----------------------------------------------------------------------
         if dim == 3:
             if std_init == None:
-                std_init = [1.0, 1.0, 1.0]
+                std_init = (1.0, 1.0, 1.0)
             if kernel_size == None:
-                kernel_size = [25, 25, 25]
+                kernel_size = (25, 25, 25)
 
             self.conv = RadialSymmetricConv3D(
                 in_channels=in_channels,
@@ -371,11 +425,16 @@ class ForwardProject(nn.Module):
             self.pooling = nn.AvgPool3d(kernel_size=scale_factor)
         # ----------------------------------------------------------------------
 
-        if trainable == False:
-            for param in self.conv.parameters():
-                param.requires_grad = False
+        for param in self.conv.parameters():
+            param.requires_grad = trainable
 
     def forward(self, x):
+        """
+        ### Parameters:
+        - `x`: torch.Tensor, input tensor.
+        ### Returns:
+        - `x`: torch.Tensor, output tensor.
+        """
         x = self.conv(x)
         x = self.pooling(x)
         x = torch.maximum(x, torch.tensor([0.0]))
@@ -384,19 +443,36 @@ class ForwardProject(nn.Module):
 
 # ------------------------------------------------------------------------------
 class BackwardProject(nn.Module):
+    """
+    Backward kernel construction.
+    ### Parameters:
+    - `in_channels`: int, default=1, input channels.
+    - `scale_factor`: int, default=1, scale factor.
+    - `dim`: int, default=2, dimension of the kernel.
+    - `kernel_size`: list, default=None, kernel size.
+    - `std_init`: list, default=None, standard deviation of the kernel.
+    - `init`: str, default="gauss", initialization method.
+    - `trainable`: bool, default=True, whether the kernel is trainable.
+    - `padding_mode`: str, default="reflect", padding mode.
+    - `interpolation`: bool, default=True, whether to use linear interpolation.
+    - `over_sampling`: int, default=2, over sampling factor.
+    - `kernel_norm`: bool, default=True, whether to normalize the kernel.
+    - `conv_mode`: str, default="direct", convolution mode.
+    """
+
     def __init__(
         self,
-        in_channels=1,
+        in_channels: int = 1,
         scale_factor=1,
-        dim=2,
+        dim: int = 2,
         kernel_size=None,
         std_init=None,
         init="gauss",
-        trainable=True,
+        trainable: bool = True,
         padding_mode="reflect",
-        interpolation=True,
+        interpolation: bool = True,
         over_sampling=2,
-        kernel_norm=True,
+        kernel_norm: bool = True,
         conv_mode="direct",
     ):
         super().__init__()
@@ -406,9 +482,9 @@ class BackwardProject(nn.Module):
         # ----------------------------------------------------------------------
         if dim == 2:
             if std_init == None:
-                std_init = [1.0, 1.0]
+                std_init = (1.0, 1.0)
             if kernel_size == None:
-                kernel_size = [25, 25]
+                kernel_size = (25, 25)
 
             self.conv = RadialSymmetricConv2D(
                 in_channels=in_channels,
@@ -425,9 +501,9 @@ class BackwardProject(nn.Module):
 
         if dim == 3:
             if std_init == None:
-                std_init = [1.0, 1.0, 1.0]
+                std_init = (1.0, 1.0, 1.0)
             if kernel_size == None:
-                kernel_size = [25, 25, 25]
+                kernel_size = (25, 25, 25)
 
             self.conv = RadialSymmetricConv3D(
                 in_channels=in_channels,
@@ -442,10 +518,12 @@ class BackwardProject(nn.Module):
                 conv_mode=conv_mode,
             )
         # ----------------------------------------------------------------------
+        for param in self.conv.parameters():
+            param.requires_grad = trainable
 
-        if trainable == False:
-            for param in self.conv.parameters():
-                param.requires_grad = False
+        print("[INFO] Initial SD of backward kernel: ", std_init)
+        print("[INFO] Kernel size of backward kernel: ", kernel_size)
+        print("[INFO] Trainable backward kernel: ", trainable)
 
     def forward(self, x):
         x = nn.functional.interpolate(
@@ -457,12 +535,37 @@ class BackwardProject(nn.Module):
 
 # ---------------------------------------------------------------------------
 class KernelNet(nn.Module):
+    """
+    KernelNet.
+    ### Parameters:
+    - `in_channels`: int, default=1, input channels.
+    - `scale_factor`: int, default=1, scale factor.
+    - `dim`: int, default=2, dimension of the kernel.
+    - `num_iter`: int, default=1, number of iterations.
+    - `kernel_size_fp`: list, default=None, kernel size of the forward projection.
+    - `kernel_size_bp`: list, default=None, kernel size of the backward projection.
+    - `init`: str, default="gauss", initialization method.
+    - `std_init`: list, default=None, standard deviation of the kernel.
+    - `padding_mode`: str, default="reflect", padding mode.
+    - `FP`: nn.Module, default=None, forward projection module.
+    - `BP`: nn.Module, default=None, backward projection module.
+    - `shared_bp`: bool, default=True, whether to share the backward projection kernel.
+    - `lam`: float, default=0.0, regularization parameter for the prior.
+    - `interpolation`: bool, default=True, whether to use linear interpolation.
+    - `over_sampling`: int, default=2, over sampling factor.
+    - `kernel_norm`: bool, default=True, whether to normalize the kernel.
+    - `conv_mode`: str, default="direct", convolution mode.
+    - `return_inter`: bool, default=False, whether to return the deconvolution results of intermediate iterations.
+    - `multi_out`: bool, default=False, whether to return multiple outputs.
+    - `self_supervised`: bool, default=False, whether to use self-supervised learning.
+    """
+
     def __init__(
         self,
-        in_channels=1,
+        in_channels: int = 1,
         scale_factor=1,
-        dim=2,
-        num_iter=1,
+        dim: int = 2,
+        num_iter: int = 1,
         kernel_size_fp=None,
         kernel_size_bp=None,
         init="gauss",
@@ -471,25 +574,27 @@ class KernelNet(nn.Module):
         FP=None,
         BP=None,
         shared_bp=True,
-        lam=0.0,
-        interpolation=True,
+        lam: float = 0.0,
+        interpolation: bool = True,
         over_sampling=2,
-        kernel_norm=True,
+        kernel_norm: bool = True,
         conv_mode="direct",
-        return_inter=False,
-        multi_out=False,
-        self_supervised=False,
+        return_inter: bool = False,
+        multi_out: bool = False,
+        self_supervised: bool = False,
     ):
         super().__init__()
 
-        if dim == 2 and (kernel_size_fp == None):
-            kernel_size_fp = [25, 25]
-        if dim == 2 and (kernel_size_bp == None):
-            kernel_size_bp = [25, 25]
-        if dim == 3 and (kernel_size_fp == None):
-            kernel_size_fp = [25, 25, 25]
-        if dim == 3 and (kernel_size_bp == None):
-            kernel_size_bp = [25, 25, 25]
+        if dim == 2:
+            if kernel_size_fp is None:
+                kernel_size_fp = [25, 25]
+            if kernel_size_bp is None:
+                kernel_size_bp = [25, 25]
+        elif dim == 3:
+            if kernel_size_fp is None:
+                kernel_size_fp = [25, 25, 25]
+            if kernel_size_bp is None:
+                kernel_size_bp = [25, 25, 25]
 
         self.scale_factor = scale_factor
         self.num_iter = num_iter
@@ -501,10 +606,10 @@ class KernelNet(nn.Module):
         self.return_inter = return_inter
         self.multi_out = multi_out
 
-        # ---------------------------------------------------------------------------
+        # ----------------------------------------------------------------------
         # Forward Projector
         if FP == None:
-            print(">> Create Forward Projector")
+            print("[INFO] Create Forward Projector")
             self.FP = ForwardProject(
                 dim=dim,
                 in_channels=in_channels,
@@ -520,13 +625,15 @@ class KernelNet(nn.Module):
                 conv_mode=conv_mode,
             )
         else:
+            print("[INFO] Use the given Forward Projector")
             self.FP = FP
 
-        # ---------------------------------------------------------------------------
+        # ----------------------------------------------------------------------
         # Backward Projector
         if BP == None:
+            print("[INFO] Create Backward Projector")
             if self.shared_bp == True:
-                print(">> Use the same kernel for every iteration")
+                print("[INFO] Use the same kernel for every iteration.")
                 self.BP = BackwardProject(
                     dim=dim,
                     in_channels=in_channels,
@@ -542,7 +649,7 @@ class KernelNet(nn.Module):
                     conv_mode=conv_mode,
                 )
             else:
-                print(">> Use different kernel for different iteration")
+                print("[INFO] Use different kernel for different iteration")
                 self.BP = nn.ModuleList()
                 for _ in range(self.num_iter):
                     bp = BackwardProject(
@@ -561,25 +668,42 @@ class KernelNet(nn.Module):
                     )
                     self.BP.append(bp)
         else:
+            print("[INFO] Use the given Backward Projector")
             self.BP = BP
         # ---------------------------------------------------------------------------
         # Prior
         if self.lam > 0:
-            print(">> Use Prior")
+            print("[INFO] Use a Prior")
             self.grad_R = TV_grad(epsilon=self.eps)
 
     def forward(self, x):
+        """
+        forward funciton.
+        ### Parameters:
+        - `x`: torch.Tensor, input tensor.
+        ### Returns:
+        - `xk`: torch.Tensor, result of the last iteration.
+        - `xk_inter`: torch.Tensor, input + intermediate results + result of last iteration.
+        - `xk_mulit_out`: torch.Tensor, intermediate results + result of last iteration.
+        """
+        # input + intermediate results + result of last iteration
         xk_inter = []
+
+        # intermediate results + result of last iteration,
+        # if using self-dupervised training, collect the forward projection of the reuslts
         xk_mulit_out = []
 
+        # interpolation to the same size as the ground truth
         xk = nn.functional.interpolate(
             x, scale_factor=self.scale_factor, mode="nearest-exact"
         )
+        # constraint the input tensor values
         xk = self.constraint(xk)
 
         if self.return_inter:
-            xk_inter.append(x)
+            xk_inter.append(x)  # original input
 
+        # ----------------------------------------------------------------------
         for i in range(self.num_iter):
             fp = self.FP(xk)
             dv = x / (fp + self.eps)
@@ -593,12 +717,15 @@ class KernelNet(nn.Module):
 
             xk = xk * bp
             xk = self.constraint(xk)
+
             if self.lam > 0:
                 xk = xk / (1 + self.lam * self.grad_R(xk))
                 xk = self.constraint(xk)
+            # ----------------------------------------------------------------------
 
             if self.return_inter == True:
                 xk_inter.append(xk)
+
             if self.multi_out == True:
                 if self.self_supervised == True:
                     xk_mulit_out.append(self.FP(xk))
@@ -607,16 +734,23 @@ class KernelNet(nn.Module):
 
         if self.return_inter == True:
             return torch.stack(xk_inter, dim=0)
-        if self.return_inter == False:
+        else:
             if self.multi_out == True:
                 return torch.stack(xk_mulit_out, dim=0)
-            else:
+            else:  # only return the result of the last iteration
                 if self.self_supervised == True:
                     return self.FP(xk)
                 else:
                     return xk
 
     def constraint(self, x):
+        """
+        Constraint the input tensor values.
+        ### Parameters:
+        - `x`: torch.Tensor, input tensor.
+        ### Returns:
+        - `x`: torch.Tensor, output tensor.
+        """
         x = torch.clamp(x, min=self.eps, max=None)
         return x
 

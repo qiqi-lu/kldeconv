@@ -11,7 +11,7 @@ def generation_combinations(n: int, k: int = 2):
     ### Parameters:
     - n (int): number of elements.
     - k (int): number of elements in each combination.
-    ### Returns:
+    ### ### Returns:
     - combinations (list): list of combinations.
     """
     assert n >= k, f"[n] must be greater than or equal to [k]."
@@ -25,7 +25,7 @@ def array_input_check(img):
     And convert it to numpy.ndarray if it is torch.Tensor.
     ### Parameters:
     - img (array): input array.
-    ### Returns:
+    ### ### Returns:
     - img (array): converted array.
     """
     assert img.ndim in [
@@ -49,7 +49,7 @@ def SSIM(img_true, img_test, data_range=1.0, version_wang: bool = False):
     - img_test (array): predicted image.
     - data_range (float, int): image value range.
     - version_wang (bool): use parameter used in Wang's paper.
-    ### Returns:
+    ### ### Returns:
     - ssim (float): structural similarity.
     """
     img_true = array_input_check(img_true)
@@ -95,7 +95,7 @@ def PSNR(img_true, img_test, data_range=255):
     - img_true (array): ground truth.
     - img_test (array): predicted image.
     - data_range (float, int): image value range.
-    ### Returns:
+    ### ### Returns:
     - psnr (float): peak signal-to-noise ratio.
     """
     img_true = array_input_check(img_true)
@@ -116,7 +116,7 @@ def SNR(img_true, img_test, type: int = 0):
     - `type` : Formula used to calculate the signal-to-noise ratio.
         - `0` for sum of squares-based.
         - `1` for variance-based.
-    ### Returns:
+    ### ### Returns:
     - `snr` : signal-to-noise ratio.
     """
     assert len(img_true.shape) == len(
@@ -140,7 +140,7 @@ def NCC(img_true, img_test):
     ### Parameters:
     - img_true (array): ground truth.
     - img_test (array): predicted image.
-    ### Returns:
+    ### ### Returns:
     - ncc (float): normalized cross-correlation.
     """
     img_true = array_input_check(img_true)
@@ -179,11 +179,11 @@ def MSSSIM(img_true, img_test, data_range=255):
 def measure(img_true, img_test, data_range=255):
     """
     Measure metrics of each sample (along the 0 axis) and average.
-    Args:
+    ### Parameters:
     - img_true (tensor): ground truth.
     - img_test (tensor): test image.
     - data_range (int, optional): The data range of the input images. Default: 255.
-    Returns:
+    ### Returns:
     - ave_ssim (float): average ssim.
     - ave_psnr (float): average psnr.
     """
@@ -205,18 +205,29 @@ def measure(img_true, img_test, data_range=255):
 
 
 def measure_3d(img_true, img_test, data_range=None):
+    """
+    Measure metrics of each sample (along the 0 axis) and average.
+    ### Parameters:
+    - `img_true` (tensor): ground truth.
+    - `img_test` (tensor): test image.
+    - `data_range` (int, optional): The data range of the input images. Default: 255.
+    ### ### Returns:
+    - `ave_ssim` (float): average ssim.
+    - `ave_psnr` (float): average psnr.
+    """
     ssim, psnr = [], []
 
+    # convert to numpy array
     if not isinstance(img_true, np.ndarray):
         ToNumpy = data.ToNumpy()
         img_test, img_true = ToNumpy(img_test), ToNumpy(img_true)
-        # if data_range is not None:
-        #     data_range = data_range.cpu().detach().numpy()
 
+    # loop through each sample
     for i in range(img_test.shape[0]):
         y, x = img_true[i, ..., 0], img_test[i, ..., 0]
         if data_range == None:
             data_range = y.max() - y.min()
+
         if y.shape[0] >= 7:
             ssim.append(
                 SSIM(
@@ -246,31 +257,34 @@ def measure_3d(img_true, img_test, data_range=None):
 
 
 def measure_2d(img_true, img_test, data_range=None):
+    """
+    Measure metrics of each sample (along the 0 axis) and average.
+    ### Parameters:
+    - `img_true` (tensor): ground truth.
+    - `img_test` (tensor): test image.
+    - `data_range` (int, optional): The data range of the input images. Default: 255.
+    ### ### Returns:
+    - `ave_ssim` (float): average ssim.
+    - `ave_psnr` (float): average psnr.
+    """
     ssim, psnr = [], []
 
     # convert to numpy array
     if not isinstance(img_true, np.ndarray):
         ToNumpy = data.ToNumpy()
         img_test, img_true = ToNumpy(img_test), ToNumpy(img_true)
-        # if data_range is not None:
-        #     data_range = data_range.cpu().detach().numpy()
 
+    # loop through each sample
     for i in range(img_test.shape[0]):
         y, x = img_true[i, ..., 0], img_test[i, ..., 0]
         if data_range == None:
             data_range = y.max() - y.min()
         ssim.append(
-            SSIM(
-                img_true=y,
-                img_test=x,
-                data_range=data_range,
-                multichannel=True,
-                channle_axis=0,
-                version_wang=False,
-            )
+            SSIM(img_true=y, img_test=x, data_range=data_range, version_wang=False)
         )
         psnr.append(PSNR(img_true=y, img_test=x, data_range=data_range))
 
+    # calculate average ssim and psnr
     ave_ssim, ave_psnr = np.mean(ssim), np.mean(psnr)
     return ave_ssim, ave_psnr
 
@@ -288,10 +302,14 @@ def metrics_batch(img_true, img_test, data_range=255):
 
 
 def count_parameters(model):
+    """
+    Count the number of parameters in the model.\n
+    print the number of trainable parameters and non-trainable parameters.
+    ### Parameters:
+    - model (nn.Module): model.
+    """
     total_para = sum(p.numel() for p in model.parameters())
     trainbale_para = sum(p.numel() for p in model.parameters() if p.requires_grad)
     print(
-        "Total Parameters: {:>10d}, Trainable Parameters: {:>10d}, Non-trainable Parameters: {:>10d}".format(
-            total_para, trainbale_para, total_para - trainbale_para
-        )
+        f"[INFO] Total Parameters: {total_para:>10d}, Trainable Parameters: {trainbale_para:>10d}, Non-trainable Parameters: {total_para - trainbale_para:>10d}"
     )
