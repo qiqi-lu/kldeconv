@@ -13,6 +13,7 @@ from utils.optimize import step_lr_schedule
 from utils import evaluation as eva
 from models import kernelnet
 from torchinfo import summary
+import statistics
 
 # ------------------------------------------------------------------------------
 torch.manual_seed(7)
@@ -482,72 +483,37 @@ for i_epoch in range(epochs):
             use_lr_schedule=params_dict["use_lr_schedule"],
         )
 
+        pbar.update(1)
+
         # ----------------------------------------------------------------------
         # plot loss and metrics
         out = pred if multi_out == False else pred[-1]
 
-        if i_iter % plot_every_iter == 0:
-            if params_dict["dataset_dim"] == 2:
-                ave_ssim, ave_psnr = eva.measure_2d(
-                    img_test=out, img_true=gt, data_range=data_range
-                )
-            if params_dict["dataset_dim"] == 3:
-                ave_ssim, ave_psnr = eva.measure_3d(
-                    img_test=out, img_true=gt, data_range=data_range
-                )
-            if writer != None:
-                writer.add_scalar("loss", loss, i_iter)
-                writer.add_scalar("psnr", ave_psnr, i_iter)
-                writer.add_scalar("ssim", ave_ssim, i_iter)
-                writer.add_scalar(
-                    "Leanring Rate", optimizer.param_groups[-1]["lr"], i_iter
-                )
-            # if (i_iter > 5000) & (ave_psnr < 10.0):
-            #     print('\nPSNR ({:>.4f}) is too low, break!'.format(ave_psnr))
-            #     writer.flush()
-            #     writer.close()
-            #     os._exit(0)
-
-        # ----------------------------------------------------------------------
-        # print and save model
         if params_dict["dataset_dim"] == 2:
             s, p = eva.measure_2d(img_test=out, img_true=gt, data_range=None)
         if params_dict["dataset_dim"] == 3:
             s, p = eva.measure_3d(img_test=out, img_true=gt, data_range=None)
-        print_loss.append(loss.cpu().detach().numpy())
-        print_ssim.append(s)
-        print_psnr.append(p)
-        print("#", end="")
+        loss_cpu = loss.cpu().detach().numpy()
+        pbar.set_postfix({"loss": loss_cpu, "psnr": p, "ssim": s})
 
-        if i_iter % print_every_iter == 0:
-            print(
-                "\nEpoch: {}, Iter: {}, loss: {:>.5f}, PSNR: {:>.5f},\
-                SSIM: {:>.5f}".format(
-                    i_epoch,
-                    i_iter,
-                    np.mean(print_loss),
-                    np.mean(print_psnr),
-                    np.mean(print_ssim),
-                )
-            )
-            print("Computation time: {:>.2f} s".format(time.time() - start_time))
-            start_time = time.time()
-            print_loss, print_ssim, print_psnr = [], [], []
+        if i_iter % plot_every_iter == 0:
+            if writer != None:
+                writer.add_scalar("loss", loss, i_iter)
+                writer.add_scalar("psnr", ave_psnr, i_iter)
+                writer.add_scalar("ssim", ave_ssim, i_iter)
+                writer.add_scalar("lr", optimizer.param_groups[-1]["lr"], i_iter)
 
         # ----------------------------------------------------------------------
         # save model and relative information
         if i_iter % save_every_iter == 0:
-            print("\nSave model ... (Epoch: {}, Iteration: {})".format(i_epoch, i_iter))
+            print("[INFO] Save model ...")
             model_dict = {"model_state_dict": model.state_dict()}
-            torch.save(
-                model_dict, os.path.join(path_model, "epoch_{}.pt".format(i_iter))
-            )
+            torch.save(model_dict, os.path.join(path_model, f"epoch_{i_iter}.pt"))
 
         # ----------------------------------------------------------------------
         # validation
         if (i_iter % val_every_iter == 0) and (validation_enable == True):
-            print("validation ...")
-            running_val_loss, running_val_ssim, running_val_psnr = 0, 0, 0
+            loss_val, ssim_val, psnr_val = [], [], []
             model.eval()
             for i_batch_val, sample_val in enumerate(valid_dataloader):
                 x_val = sample_val["lr"].to(device)
@@ -560,52 +526,33 @@ for i_epoch in range(epochs):
                 pred_val = model(inpt)
                 loss_val = loss_main(pred_val, gt)
 
-                if multi_out == True:
-                    out_val = pred_val[-1]
-                if multi_out == False:
-                    out_val = pred_val
+                out_val = pred_val[-1] if multi_out == True else pred_val
 
-                if dataset_dim == 2:
+                if params_dict["dataset_dim"] == 2:
                     ave_ssim, ave_psnr = eva.measure_2d(
-                        img_test=out_val, img_true=gt, data_range=data_range
+                        img_test=out_val, img_true=gt, data_range=None
                     )
-                if dataset_dim == 3:
+                if params_dict["dataset_dim"] == 3:
                     ave_ssim, ave_psnr = eva.measure_3d(
-                        img_test=out_val, img_true=gt, data_range=data_range
+                        img_test=out_val, img_true=gt, data_range=None
                     )
 
-                running_val_loss += loss_val.cpu().detach().numpy()
-                running_val_psnr += ave_psnr
-                running_val_ssim += ave_ssim
-                print("#", end="")
-
-            print(
-                "\nValidation, Loss: {:>.5f}, PSNR: {:>.5f}, SSIM: {:>.5f}".format(
-                    running_val_loss / num_batches_val,
-                    running_val_psnr / num_batches_val,
-                    running_val_ssim / num_batches_val,
-                )
-            )
+                loss_val.append(loss_val.cpu().detach().numpy())
+                psnr_val.append(ave_psnr)
+                ssim_val.append(ave_ssim)
 
             if writer != None:
-                writer.add_scalar(
-                    "loss_val", running_val_loss / num_batches_val, i_iter
-                )
-                writer.add_scalar(
-                    "psnr_val", running_val_psnr / num_batches_val, i_iter
-                )
-                writer.add_scalar(
-                    "ssim_val", running_val_ssim / num_batches_val, i_iter
-                )
+                writer.add_scalar("loss_val", statistics.mean(loss_val), i_iter)
+                writer.add_scalar("psnr_val", statistics.mean(psnr_val), i_iter)
+                writer.add_scalar("ssim_val", statistics.mean(ssim_val), i_iter)
             model.train()
-
+pbar.close()
 # ------------------------------------------------------------------------------
 # save the last one model
-print("\nSave model ... (Epoch: {}, Iteration: {})".format(i_epoch, i_iter + 1))
+print(f"[INFO] Save model ... (Epoch: {i_epoch}, Iteration: {i_iter + 1})")
 model_dict = {"model_state_dict": model.state_dict()}
-torch.save(model_dict, os.path.join(path_model, "epoch_{}.pt".format(i_iter + 1)))
+torch.save(model_dict, os.path.join(path_model, f"epoch_{i_iter + 1}.pt"))
 
-# ------------------------------------------------------------------------------
 writer.flush()
 writer.close()
 print("Training done!")

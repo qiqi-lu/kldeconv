@@ -11,7 +11,7 @@ def generation_combinations(n: int, k: int = 2):
     ### Parameters:
     - n (int): number of elements.
     - k (int): number of elements in each combination.
-    ### ### Returns:
+    ### Returns::
     - combinations (list): list of combinations.
     """
     assert n >= k, f"[n] must be greater than or equal to [k]."
@@ -25,7 +25,7 @@ def array_input_check(img):
     And convert it to numpy.ndarray if it is torch.Tensor.
     ### Parameters:
     - img (array): input array.
-    ### ### Returns:
+    ### Returns::
     - img (array): converted array.
     """
     assert img.ndim in [
@@ -40,7 +40,14 @@ def array_input_check(img):
     return img
 
 
-def SSIM(img_true, img_test, data_range=1.0, version_wang: bool = False):
+def SSIM(
+    img_true,
+    img_test,
+    data_range=1.0,
+    version_wang: bool = False,
+    multichannel: bool = False,
+    channle_axis: int = None,
+):
     """
     Structrual similarity for an single-channel 2D or 3D image.
 
@@ -49,7 +56,9 @@ def SSIM(img_true, img_test, data_range=1.0, version_wang: bool = False):
     - img_test (array): predicted image.
     - data_range (float, int): image value range.
     - version_wang (bool): use parameter used in Wang's paper.
-    ### ### Returns:
+    - multichannel (bool): whether the image is multi-channel.
+    - channle_axis (int): axis of the channel.
+    ### Returns:
     - ssim (float): structural similarity.
     """
     img_true = array_input_check(img_true)
@@ -57,16 +66,16 @@ def SSIM(img_true, img_test, data_range=1.0, version_wang: bool = False):
 
     if version_wang == False:
         ssim = skim.structural_similarity(
-            im1=img_true, im2=img_test, data_range=data_range, channel_axis=None
+            im1=img_true, im2=img_test, data_range=data_range, channel_axis=channle_axis
         )
 
     if version_wang == True:
         ssim = skim.structural_similarity(
             im1=img_true,
             im2=img_test,
-            multichannel=False,
+            multichannel=multichannel,
             data_range=data_range,
-            channel_axis=None,
+            channel_axis=channle_axis,
             gaussian_weights=True,
             sigma=1.5,
             use_sample_covariance=False,
@@ -95,7 +104,7 @@ def PSNR(img_true, img_test, data_range=255):
     - img_true (array): ground truth.
     - img_test (array): predicted image.
     - data_range (float, int): image value range.
-    ### ### Returns:
+    ### Returns::
     - psnr (float): peak signal-to-noise ratio.
     """
     img_true = array_input_check(img_true)
@@ -116,7 +125,7 @@ def SNR(img_true, img_test, type: int = 0):
     - `type` : Formula used to calculate the signal-to-noise ratio.
         - `0` for sum of squares-based.
         - `1` for variance-based.
-    ### ### Returns:
+    ### Returns::
     - `snr` : signal-to-noise ratio.
     """
     assert len(img_true.shape) == len(
@@ -140,7 +149,7 @@ def NCC(img_true, img_test):
     ### Parameters:
     - img_true (array): ground truth.
     - img_test (array): predicted image.
-    ### ### Returns:
+    ### Returns::
     - ncc (float): normalized cross-correlation.
     """
     img_true = array_input_check(img_true)
@@ -211,7 +220,7 @@ def measure_3d(img_true, img_test, data_range=None):
     - `img_true` (tensor): ground truth.
     - `img_test` (tensor): test image.
     - `data_range` (int, optional): The data range of the input images. Default: 255.
-    ### ### Returns:
+    ### Returns::
     - `ave_ssim` (float): average ssim.
     - `ave_psnr` (float): average psnr.
     """
@@ -240,6 +249,7 @@ def measure_3d(img_true, img_test, data_range=None):
                 )
             )
         else:
+            # when the number of slices is less than 7, use multichannel=True, treat the slices as channels
             ssim.append(
                 SSIM(
                     img_true=y,
@@ -263,7 +273,7 @@ def measure_2d(img_true, img_test, data_range=None):
     - `img_true` (tensor): ground truth.
     - `img_test` (tensor): test image.
     - `data_range` (int, optional): The data range of the input images. Default: 255.
-    ### ### Returns:
+    ### Returns::
     - `ave_ssim` (float): average ssim.
     - `ave_psnr` (float): average psnr.
     """
