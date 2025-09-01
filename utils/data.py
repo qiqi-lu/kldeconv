@@ -6,6 +6,28 @@ from skimage import io, transform
 from torchvision import transforms
 
 
+def pad_img_xy(img, n_pad):
+    """
+    Pad the image with edge values. only pad the last two dimensions.
+    ### Parameters:
+    - `img` (numpy.ndarray): Input image with a shape of `(Nz, Ny, Nx)`.
+    - `n_pad` (int): Number of pixels to pad.
+    ### Returns:
+    - `img` (numpy.ndarray): Padded image.
+    """
+    if img.ndim == 3:
+        Nz, Ny, Nx = img.shape
+        img = np.pad(
+            img, pad_width=((0, 0), (0, n_pad - Ny), (0, n_pad - Nx)), mode="edge"
+        )
+    elif img.ndim == 2:
+        Ny, Nx = img.shape
+        img = np.pad(img, pad_width=((0, n_pad - Ny), (0, n_pad - Nx)), mode="edge")
+    else:
+        raise ValueError(f"[ERROR] Input image should be 2D or 3D, but got {img.ndim}D")
+    return img
+
+
 def text2tuple(text: str):
     """
     Convert a string of numbers separated by commas into a tuple of integers.
@@ -16,7 +38,7 @@ def text2tuple(text: str):
     """
     text = text.replace("(", "").replace(")", "")
     text = text.split(",")
-    text_tuple = tuple([int(i) for i in text])
+    text_tuple = tuple([int(i) if "." not in i else float(i) for i in text])
     return text_tuple
 
 
@@ -30,8 +52,8 @@ def win2linux(win_path):
         - (str): The converted Linux path if the current operating system is Linux,
                otherwise the original path.
     """
-    if win_path == None:
-        return None
+    if not isinstance(win_path, str):
+        return ""
     elif os.name == "posix":
         linux_path = win_path.replace("\\", "/")
         if len(linux_path) > 1 and linux_path[1] == ":":
@@ -128,11 +150,8 @@ def gauss_kernel_3d(shape=(3, 3, 3), std=(1.0, 1.0, 1.0), pixel_size=(1.0, 1.0, 
     ### Returns:
     - `g` (torch.Tensor): The 3D Gaussian kernel.
     """
-    z = torch.linspace(start=0, end=shape[0] - 1, steps=shape[0])
-    y = torch.linspace(start=0, end=shape[1] - 1, steps=shape[1])
-    x = torch.linspace(start=0, end=shape[2] - 1, steps=shape[2])
-    z_grid, y_grid, x_grid = torch.meshgrid(z, y, x, indexing="ij")
-
+    grids = [torch.linspace(start=0, end=int(dim) - 1, steps=int(dim)) for dim in shape]
+    z_grid, y_grid, x_grid = torch.meshgrid(grids, indexing="ij")
     z_center, y_center, x_center = ((dim - 1) / 2 for dim in shape)
 
     g = torch.exp(
@@ -147,7 +166,15 @@ def gauss_kernel_3d(shape=(3, 3, 3), std=(1.0, 1.0, 1.0), pixel_size=(1.0, 1.0, 
 
 
 def padding_kernel(x, y):
-    dim = len(y.shape)
+    """
+    Padding the kernel to the same size as the ground-truth kernel.
+    ### Parameters:
+    - `x` (numpy.ndarray): Input kernel.
+    - `y` (numpy.ndarray): Ground-truth kernel.
+    ### Returns:
+    - `x` (numpy.ndarray): Padded kernel.
+    """
+    dim = y.ndim
     if dim == 3:
         i_x, j_x, k_x = x.shape
         i_y, j_y, k_y = y.shape
@@ -430,19 +457,21 @@ class SRDataset(Dataset):
             self.file_names_hr = self.file_names_hr[id_range[0] : id_range[1]]
 
         # ----------------------------------------------------------------------
+        print("-" * 80)
         print(f"[INFO] Use datasets. ({len(self.file_names_lr)}|{data_size_all})")
         if self.transform is not None:
-            print(f"[INFO] Enable Data Transform.")
+            print(f"[INFO] Enable data transformation.")
         else:
-            print(f"[INFO] Disable Data Transform.")
+            print(f"[INFO] Disable data transformation.")
         if self.normalization[0] == True:
             print(f"[INFO] Normalize LR data.")
         else:
-            print(f"[INFO] Do not normalize LR data.")
+            print(f"[INFO] Not normalize LR data.")
         if self.normalization[1] == True:
             print(f"[INFO] Normalize HR data.")
         else:
-            print(f"[INFO] Do not normalize HR data.")
+            print(f"[INFO] Not normalize HR data.")
+        print("-" * 80)
 
     def __len__(self):
         return len(self.file_names_lr)

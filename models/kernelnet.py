@@ -437,7 +437,7 @@ class ForwardProject(nn.Module):
         """
         x = self.conv(x)
         x = self.pooling(x)
-        x = torch.maximum(x, torch.tensor([0.0]))
+        x = torch.maximum(x, torch.tensor([0.0]).to(x.device))
         return x
 
 
@@ -555,8 +555,10 @@ class KernelNet(nn.Module):
     - `over_sampling`: int, default=2, over sampling factor.
     - `kernel_norm`: bool, default=True, whether to normalize the kernel.
     - `conv_mode`: str, default="direct", convolution mode.
-    - `return_inter`: bool, default=False, whether to return the deconvolution results of intermediate iterations.
-    - `multi_out`: bool, default=False, whether to return multiple outputs.
+    - `return_inter`: bool, default=False, whether to return the deconvolution
+            results of intermediate iterations. The first one will be the input.
+    - `multi_out`: bool, default=False, whether to return multiple outputs which
+            are the deconvolution results of intermediate iterations. (without the input)
     - `self_supervised`: bool, default=False, whether to use self-supervised learning.
     """
 
