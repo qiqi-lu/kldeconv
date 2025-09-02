@@ -14,8 +14,8 @@ from checkpoint_list import checkpoints_v1 as checkpoints_list
 # ------------------------------------------------------------------------------
 # id_device = "cpu"
 id_device = "cuda:0"
-output_inter = True  # output intermediate results
-# output_inter = False  # not to output intermediate results
+# output_inter = True  # output intermediate results
+output_inter = False  # not to output intermediate results
 
 # FP_type, BP_type = "known", "learned"
 # FP_type, BP_type = 'known', 'known'
@@ -34,12 +34,37 @@ id_sample = [0, 1, 2, 3, 4, 5, 6]
 # id_sample = [0]
 # id_sample = None
 
-# dataset_name = "SimuMix3D-128-31-0-0-1"
-# dataset_name = "Microtubule2-3d-1024"
-dataset_name = "Nuclear-pore-complex2-1024"
+# dataset_names = ("SimuMix3D-128-31-0-0-1", "SimuMix3D-128-31-0-0-1")
+# dataset_names = ("Microtubule2-3d-1024", "Microtubule2-3d-1024")
+# dataset_names = ("Microtubule2-3d-1024", "Nuclear-pore-complex2-1024")
+# dataset_names = ("Nuclear-pore-complex2-1024", "Nuclear-pore-complex2-1024")
+# dataset_names = ("Nuclear-pore-complex2-1024", "Microtubule2-3d-1024")
+# dataset_names = ("F-actin-nonlinear-9", "F-actin-nonlinear-9")
+# dataset_names = ("F-actin-nonlinear-9", "Microtubules2-9")
+# dataset_names = ("Microtubules2-9", "F-actin-nonlinear-9")
+# dataset_names = ("Microtubules2-9", "Microtubules2-9")
+# dataset_names = ("Microtubules2-8", "Microtubules2-9")
+# dataset_names = ("Microtubules2-7", "Microtubules2-9")
+# dataset_names = ("Microtubules2-6", "Microtubules2-9")
+# dataset_names = ("Microtubules2-5", "Microtubules2-9")
+# dataset_names = ("Microtubules2-4", "Microtubules2-9")
+# dataset_names = ("Microtubules2-3", "Microtubules2-9")
+# dataset_names = ("Microtubules2-2", "Microtubules2-9")
+# dataset_names = ("Microtubules2-1", "Microtubules2-9")
+# dataset_names = ("CCPs-9", "Microtubules2-9")
+# dataset_names = ("CCPs-9", "F-actin-nonlinear-9")
+# dataset_names = ("F-actin-9", "Microtubules2-9")
+# dataset_names = ("F-actin-9", "F-actin-nonlinear-9")
+# dataset_names = ("ER-6", "Microtubules2-9")
+dataset_names = ("ER-6", "F-actin-nonlinear-9")
+
+
+dataset_name_test, dataset_name_train = dataset_names
 
 # ------------------------------------------------------------------------------
-path_prediction = os.path.join("outputs", "predictions", dataset_name, "kernelnet")
+path_prediction = os.path.join(
+    "outputs", "predictions", dataset_name_test, "kernelnet", dataset_name_train
+)
 
 if FP_type == "known" and BP_type == "learned":
     folder = f"fp_knonw_bp_n{num_data_bp}_r{id_repeat_bp}"
@@ -57,7 +82,7 @@ os.makedirs(path_prediction, exist_ok=True)
 
 # ------------------------------------------------------------------------------
 info_xlsx = pandas.read_excel("datasets_test.xlsx")
-info = info_xlsx[info_xlsx["id"] == dataset_name].iloc[0]
+info = info_xlsx[info_xlsx["id"] == dataset_name_test].iloc[0]
 
 params_dict = dict(
     kernel_size_fp=text2tuple(info["ks_fp"]),
@@ -91,7 +116,7 @@ suffix_net = "_ss" if params_dict["train_mode"] == "ss" else ""
 params_dict["conv_mode"] = "direct" if params_dict["dim"] == 2 else "fft"
 
 print("-" * 80)
-print(f"[INFO] Dataset: {dataset_name}")
+print(f"[INFO] Dataset: {dataset_name_test}")
 print(f"[INFO] Device: {id_device}")
 print(f"[INFO] Output intermediate results: {output_inter}")
 
@@ -133,7 +158,9 @@ print("-" * 80)
 # ------------------------------------------------------------------------------
 if FP_type == "pre-trained":
     FP_path = win2linux(
-        checkpoints_list[dataset_name]["forward"][f"n{num_data_fp}_r{id_repeat_fp}"]
+        checkpoints_list[dataset_name_train]["forward"][
+            f"n{num_data_fp}_r{id_repeat_fp}"
+        ]
     )
 
     assert os.path.exists(FP_path), f"[ERROR] FP_path not found: {FP_path}"
@@ -234,7 +261,9 @@ model = kernelnet.KernelNet(
 # ------------------------------------------------------------------------------
 if BP_type == "learned":
     model_path = win2linux(
-        checkpoints_list[dataset_name]["backward"][f"n{num_data_bp}_r{id_repeat_bp}"]
+        checkpoints_list[dataset_name_train]["backward"][
+            f"n{num_data_bp}_r{id_repeat_bp}"
+        ]
     )
 
     assert os.path.exists(model_path), f"[ERROR] model_path not found: {model_path}"
@@ -303,7 +332,7 @@ params_dict.update(
         "id_repeat_bp": id_repeat_bp,
         "output_inter": output_inter,
         "id_device": id_device,
-        "dataset_name": dataset_name,
+        "dataset_name_test": dataset_name_test,
     }
 )
 path_params_json = os.path.join(path_prediction, "params.json")
@@ -366,8 +395,10 @@ for i in id_sample:
         save_image("x0.tif", x0)
         save_image("x0_fp.tif", x0_fp)
         save_image("bp.tif", bp)
+    save_image("y.tif", y)
+    save_image("x.tif", x)
 
-    if "ZeroShotDeconvNet" in dataset_name:
+    if "ZeroShotDeconvNet" in dataset_name_test:
         # this dataset have many images.
         # only save the resutl from the last iteration to save memory.
         save_image("y_pred_all.tif", y_pred_all[-1].astype(np.uint16))

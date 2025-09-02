@@ -110,19 +110,19 @@ class RadialSymmetricConv2D(nn.Module):
         # initialization
         if init == "gauss":
             psfapp_init = utils_data.gauss_kernel_2d(
-                shape=(R.shape[0] * 2 - 1, R.shape[1] * 2 - 1),
+                shape=(R.shape[0] * 2 - 1, R.shape[0] * 2 - 1),
                 std=std_init,
                 pixel_size=(1.0 / over_sampling,) * 2,
             )
             psfapp_init = psfapp_init * (over_sampling**2)
 
         if init == "ones":
-            psfapp_init = torch.ones(size=(R.shape[0] * 2 - 1, R.shape[1] * 2 - 1))
+            psfapp_init = torch.ones(size=(R.shape[0] * 2 - 1, R.shape[0] * 2 - 1))
             psfapp_init = psfapp_init / psfapp_init.sum()
 
         # ----------------------------------------------------------------------
         # extract half PSF
-        self.PSF_half = nn.Parameter(data=psfapp_init[R.shape[0] - 1, R.shape[1] - 1 :])
+        self.PSF_half = nn.Parameter(data=psfapp_init[R.shape[0] - 1, R.shape[0] - 1 :])
 
     def get_kernel(self):
         # positive constraints

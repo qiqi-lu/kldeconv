@@ -355,6 +355,7 @@ class Deconvolution(object):
         assert (device_id == "cpu") or (
             "cuda" in device_id
         ), "Only support 'cpu' and 'cuda' device."
+        print(f"[INFO] Run on device: {device_id}")
 
         self.device_id = device_id
         self.device = torch.device(device_id)
@@ -444,10 +445,10 @@ class Deconvolution(object):
         stack = torch.tensor(stack).to(self.device)
         stack_estimate = torch.tensor(stack_estimate).to(self.device)
         smallValue = torch.tensor(self.smallValue).to(self.device)
-        PSF_fp = torch.tensor(PSF_fp).to(self.device)
-        PSF_bp = torch.tensor(PSF_bp).to(self.device)
-        conv_fp = Convolution(PSF_fp, **dict_conv).to(self.device)
-        conv_bp = Convolution(PSF_bp, **dict_conv).to(self.device)
+        PSF1 = torch.tensor(self.PSF1).to(self.device)
+        PSF2 = torch.tensor(self.PSF2).to(self.device)
+        conv_fp = Convolution(PSF1, **dict_conv).to(self.device)
+        conv_bp = Convolution(PSF2, **dict_conv).to(self.device)
 
         # iterations
         pbar = tqdm.tqdm(desc="DECONV", total=num_iter, ncols=50, disable=not verbose)

@@ -1,3 +1,7 @@
+"""
+Display the image restored by different methods.
+"""
+
 import matplotlib.pyplot as plt
 import utils.evaluation as eva
 import skimage.io as io
