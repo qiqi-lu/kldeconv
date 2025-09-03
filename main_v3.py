@@ -6,7 +6,18 @@ import numpy as np
 
 from utils import data
 from utils import evaluation as eva
-from models import srcnn, srresnet, edsr, rln, rcan, swinir, rlsr, rrdbnet, ddn, dfcan
+from models import (
+    dfcan_2d,
+    rln_2d,
+    srcnn,
+    srresnet,
+    edsr,
+    rcan,
+    swinir,
+    rlsr,
+    rrdbnet,
+    ddn,
+)
 import utils.loss_functions as loss_func
 import sys
 
@@ -367,7 +378,7 @@ if model_name == "edsr":
     ).to(device)
 # ---------------------------------------------------------------------------------
 if model_name == "rln":
-    model = rln.RLN(
+    model = rln_2d.RLN(
         scale=scale_factor, in_channels=in_channels, n_features=4, kernel_size=3
     ).to(device)
 # ---------------------------------------------------------------------------------
@@ -403,7 +414,7 @@ if model_name == "swinir":
     ).to(device)
 
 if model_name == "dfcan":
-    model = dfcan.DFCAN(
+    model = dfcan_2d.DFCAN(
         in_channels=in_channels,
         scale_factor=scale_factor,
         num_features=64,
@@ -452,7 +463,7 @@ if model_name == "rlsr":
 
     if fp_mode == "known":
         ks, sig = 25, 2.0
-        ker = rln.gauss_kernel_2d(shape=(ks, ks), sigma=sig)
+        ker = rln_2d.gauss_kernel_2d(shape=(ks, ks), sigma=sig)
         ker = ker.repeat(repeats=(in_channels, 1, 1, 1)).to(device=device)
         padd = lambda x: torch.nn.functional.pad(
             input=x, pad=(ks // 2, ks // 2, ks // 2, ks // 2), mode="reflect"

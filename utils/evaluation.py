@@ -2,7 +2,20 @@ import skimage.metrics as skim
 from utils import data
 import numpy as np
 from pytorch_msssim import ms_ssim
-import torch, itertools
+import torch, itertools, math
+
+
+def tensor_to_array(img):
+    """
+    Convert torch Tensor to numpy array.
+    ### Parameters:
+    - `img`: (torch Tensor/ numpy array) input image.
+    ### Returns:
+    - `img`: (numpy array) output image.
+    """
+    if not isinstance(img, np.ndarray):
+        img = img.cpu().detach().numpy()
+    return img
 
 
 def generation_combinations(n: int, k: int = 2):
@@ -43,30 +56,47 @@ def array_input_check(img):
 def SSIM(
     img_true,
     img_test,
-    data_range=1.0,
-    version_wang: bool = False,
-    multichannel: bool = False,
-    channle_axis: int = None,
+    data_range=None,
+    multichannel=False,
+    channle_axis=None,
+    version_wang=False,
+    convert_to_255: bool = False,
 ):
     """
-    Structrual similarity for an single-channel 2D or 3D image.
+    Structrual similarity index.
 
     ### Parameters:
-    - img_true (array): ground truth.
-    - img_test (array): predicted image.
-    - data_range (float, int): image value range.
-    - version_wang (bool): use parameter used in Wang's paper.
-    - multichannel (bool): whether the image is multi-channel.
-    - channle_axis (int): axis of the channel.
+    - `img_true`: ground truth image.
+    - `img_test`: test image.
+    - `data_range`: the dynamic range of the images.
+    - `multichannel`: whether the image is multi-channel.
+    - `channle_axis`: the axis of the channel.
+    - `version_wang`: whether to use the Wang et al. version of SSIM.
+    - `convert_to_255`: whether to convert the image to [0,255].
+
     ### Returns:
-    - ssim (float): structural similarity.
+    - `ssim`: structural similarity index.
     """
     img_true = array_input_check(img_true)
     img_test = array_input_check(img_test)
 
+    if data_range == None:
+        data_range = img_true.max() - img_true.min()
+    if data_range == 0:
+        data_range = 1
+
+    if convert_to_255:
+        img_true = (img_true * 255).astype(np.uint8)
+        img_test = (img_test * 255).astype(np.uint8)
+        data_range = 255
+
     if version_wang == False:
         ssim = skim.structural_similarity(
-            im1=img_true, im2=img_test, data_range=data_range, channel_axis=channle_axis
+            im1=img_true,
+            im2=img_test,
+            multichannel=multichannel,
+            data_range=data_range,
+            channel_axis=channle_axis,
         )
 
     if version_wang == True:
@@ -83,10 +113,129 @@ def SSIM(
     return ssim
 
 
+def SSIM_tb(img_true, img_test, data_range=None, version_wang=False):
+    """
+    SSIM for a batch of tensor.
+    Support 3d and 2d single/multi-channel images.
+
+    ### Parameters:
+    - `img_true`: ground truth image. [B, C, [depth], H, W]
+    - `img_test`: test image. [B, C, [depth], H, W]
+    - `data_range`: the dynamic range of the images. default is None.
+    - `version_wang`: whether to use the Wang et al. version of SSIM. default is False.
+
+    ### Returns:
+    - `ssim`: structural similarity index (mena of batch).
+    """
+    # tensor to numpy array
+    img_true = tensor_to_array(img_true)
+    img_test = tensor_to_array(img_test)
+
+    assert (
+        img_true.shape == img_test.shape
+    ), "The shape of img_true and img_test must be the same."
+    assert len(img_true.shape) in [
+        4,
+        5,
+    ], f"The shape of img_true and img_test must be 2D (4 axis) or 3D (5 axis). But got {len(img_true.shape)}."
+
+    ssims = []
+
+    for i_sample in range(img_true.shape[0]):  # loop through each sample
+        x, y = img_test[i_sample], img_true[i_sample]
+
+        if len(y.shape) == 4:  # 3D image
+            if y.shape[0] == 1:  # one channel 3D image
+                if y.shape[1] >= 7:
+                    # SSIM only supports 3D images with more than 7 slices.
+                    ssims.append(
+                        SSIM(
+                            img_true=y[0],
+                            img_test=x[0],
+                            data_range=data_range,
+                            multichannel=False,
+                            channle_axis=None,
+                            version_wang=version_wang,
+                        )
+                    )
+                else:
+                    # if the image is 3D but with less than 7 slices,
+                    # calculate SSIM for each slice. And take the mean.
+                    tmp = []
+                    for i_slice in range(y.shape[1]):  # loop through each slice
+                        tmp.append(
+                            SSIM(
+                                img_true=y[0][i_slice],
+                                img_test=x[0][i_slice],
+                                data_range=data_range,
+                                multichannel=False,
+                                channle_axis=None,
+                                version_wang=version_wang,
+                            )
+                        )
+                    ssims.append(np.mean(tmp))
+            else:  # multi-channel 3D image
+                if y.shape[1] > 7:  # multi-channel 3D image with more than 7 slices.
+                    ssims.append(
+                        SSIM(
+                            img_true=y,
+                            img_test=x,
+                            data_range=data_range,
+                            multichannel=True,
+                            channle_axis=0,
+                            version_wang=version_wang,
+                        )
+                    )
+                else:
+                    # if the image is 3D but with less than 7 slices,
+                    # calculate SSIM for each sclice. And take the mean.
+                    tmp = []
+                    for i_slice in range(y.shape[1]):
+                        tmp.append(
+                            SSIM(
+                                img_true=y[:, i_slice, ...],
+                                img_test=x[:, i_slice, ...],
+                                data_range=data_range,
+                                multichannel=True,
+                                channle_axis=0,
+                                version_wang=version_wang,
+                            )
+                        )
+                    ssims.append(np.mean(tmp))
+
+        if len(y.shape) == 3:  # 2D
+            if y.shape[0] == 1:  # single-channel
+                ssims.append(SSIM(img_true=y[0], img_test=x[0], data_range=data_range))
+            else:  # mutli-channel
+                ssims.append(
+                    SSIM(
+                        img_true=y,
+                        img_test=x,
+                        data_range=data_range,
+                        multichannel=True,
+                        channle_axis=0,
+                        version_wang=False,
+                    )
+                )
+
+    return np.mean(ssims)
+
+
 def MSE(img_true, img_test):
-    """Mean Square error for one subject."""
-    mse = np.mean((img_test - img_true) ** 2)
-    return mse
+    """
+    Mean square error.
+
+    ### Parameters:
+    - `img_true`: ground truth image.
+    - `img_test`: test image.
+
+    ### Returns:
+    - `err`: mean square error.
+    """
+    img_true = tensor_to_array(img_true)
+    img_test = tensor_to_array(img_test)
+    err = np.mean((img_test - img_true) ** 2)
+    return err
 
 
 def RMSE(x, y):
@@ -97,23 +246,79 @@ def RMSE(x, y):
     return rmse
 
 
-def PSNR(img_true, img_test, data_range=255):
+def PSNR(img_true, img_test, data_range=None, convert_to_255=False):
     """
-    Peak Signal-to-Noise Ratio (PSNR).
+    Peak signal-to-noise ratio.
+
     ### Parameters:
-    - img_true (array): ground truth.
-    - img_test (array): predicted image.
-    - data_range (float, int): image value range.
-    ### Returns::
-    - psnr (float): peak signal-to-noise ratio.
+    - `img_true`: ground truth image.
+    - `img_test`: test image.
+    - `data_range`: the dynamic range of the images.
+
+    ### Returns:
+    - `psnr`: peak signal-to-noise ratio.
     """
     img_true = array_input_check(img_true)
     img_test = array_input_check(img_test)
 
-    psnr = skim.peak_signal_noise_ratio(
-        image_true=img_true, image_test=img_test, data_range=data_range
-    )
+    if data_range == None:
+        data_range = img_true.max() - img_true.min()
+    if data_range == 0:
+        data_range = 1
+
+    if convert_to_255:
+        img_true = (img_true * 255).astype(np.uint8)
+        img_test = (img_test * 255).astype(np.uint8)
+        data_range = 255
+
+    mse = np.mean((img_true - img_test) ** 2)
+    if mse == 0:
+        psnr = float("inf")
+    else:
+        psnr = skim.peak_signal_noise_ratio(
+            image_true=img_true, image_test=img_test, data_range=data_range
+        )
     return psnr
+
+
+def PSNR_tb(img_true, img_test, data_range=None):
+    """
+    PSNR for a batch of np tensor, the input should be [B, C, [depth], H, W].
+    Support 3d and 2d single/multi-channel images.
+
+    ### Parameters:
+    - `img_true`: ground truth image. [B, C, [depth], H, W]
+    - `img_test`: test image. [B, C, [depth], H, W]
+    - `data_range`: the dynamic range of the images. default is None.
+
+    ### Returns:
+    - `psnr`: peak signal-to-noise ratio (mean of the batch).
+    """
+    # tensor to numpy array
+    img_true = tensor_to_array(img_true)
+    img_test = tensor_to_array(img_test)
+
+    assert (
+        img_true.shape == img_test.shape
+    ), "The shape of img_true and img_test must be the same."
+    assert len(img_true.shape) in [
+        4,
+        5,
+    ], f"The shape of img_true and img_test must be 2D (4 axis) or 3D (5 axis). But got {len(img_true.shape)}."
+
+    psnrs = []
+    for i in range(img_true.shape[0]):
+        psnrs.append(
+            PSNR(img_true=img_true[i], img_test=img_test[i], data_range=data_range)
+        )
+
+    # only calculate no inf value.
+    psnrs_filtered = [v for v in psnrs if not math.isinf(v)]
+
+    if not psnrs_filtered:  # check whether list is empty
+        psnrs_filtered = psnrs
+
+    return np.mean(psnrs_filtered)
 
 
 def SNR(img_true, img_test, type: int = 0):

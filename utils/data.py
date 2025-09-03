@@ -6,6 +6,52 @@ from skimage import io, transform
 from torchvision import transforms
 
 
+class NormalizePercentile(object):
+    """
+    Percentile-based normalization.
+
+    ### Parameters:
+    - `p_low` : float, lower percentile.
+    - `p_high` : float, upper percentile.
+    """
+
+    def __init__(self, p_low=0.0, p_high=1.0, ndim=2):
+        self.p_low = p_low
+        self.p_high = p_high
+        self.ndim = ndim
+
+    def __call__(self, image):
+        """
+        ### Parameters:
+        - `image` : numpy array, image to be normalized. [C, H, W] or [1, C, H, W].
+
+        ### Returns:
+        - `image` : numpy array, normalized image. [C, H, W] or [1, C, H, W].
+        """
+        if isinstance(image, np.ndarray):
+            if self.ndim == 2:
+                dict_perc = {"axis": (-2, -1), "keepdims": True}
+            else:
+                dict_perc = {"axis": (-3, -2, -1), "keepdims": True}
+            vmin = np.percentile(a=image, q=self.p_low * 100, **dict_perc)
+            vmax = np.percentile(a=image, q=self.p_high * 100, **dict_perc)
+
+        if isinstance(image, torch.Tensor):
+            if self.ndim == 2:
+                dict_perc = {"dim": (-2, -1), "keepdim": True}
+            else:
+                dict_perc = {"dim": (-3, -2, -1), "keepdim": True}
+            vmin = torch.quantile(input=image, q=self.p_low, **dict_perc)
+            vmax = torch.quantile(input=image, q=self.p_high, **dict_perc)
+
+        # avoid divide by zero
+        amp = vmax - vmin
+        amp[amp == 0] = 1
+        # normalize
+        image = (image - vmin) / amp
+        return image
+
+
 def pad_img_xy(img, n_pad):
     """
     Pad the image with edge values. only pad the last two dimensions.
@@ -493,109 +539,6 @@ class SRDataset(Dataset):
         # scale = np.percentile(image_hr, 95)
         # return {'lr': torch.tensor(image_lr/scale), 'hr': torch.tensor(image_hr/scale)}
         return {"lr": torch.tensor(image_lr), "hr": torch.tensor(image_hr)}
-
-
-class CytoDataset(Dataset):
-    """
-    Super-Resolution dataset.
-    - A total of 239100 tile LR and HR registered image pairs from 28 different whole slide image.
-    - The registered image pairs were divided into training and testing according to an 8:2 ration.
-    - There are 191280 pairs of tile images in the training set and 47820 pairs of tile images in
-    the testing set.
-    """
-
-    def __init__(self, txt_file, root_dir, id_range=None, transform=None):
-        super().__init__()
-        txt_file_lr = os.path.join(txt_file, "lr.txt")
-        txt_file_hr = os.path.join(txt_file, "hr.txt")
-
-        with open(txt_file_lr) as f:
-            self.file_names_lr = f.read().splitlines()
-        with open(txt_file_hr) as f:
-            self.file_names_hr = f.read().splitlines()
-
-        if id_range != None:
-            data_size = len(self.file_names_lr)
-            self.file_names_lr = self.file_names_lr[id_range[0] : id_range[1]]
-            self.file_names_hr = self.file_names_hr[id_range[0] : id_range[1]]
-            print(
-                "Use only part of datasets. ({}|{})".format(
-                    len(self.file_names_lr), data_size
-                )
-            )
-
-        self.root_dir = root_dir
-        self.transform = transform
-
-    def __len__(self):
-        return len(self.file_names_lr)
-
-    def __getitem__(self, idx):
-        if torch.is_tensor(idx):
-            idx = idx.tolist()
-
-        img_dir_lr = os.path.join(self.root_dir, self.file_names_lr[idx])
-        img_dir_hr = os.path.join(self.root_dir, self.file_names_hr[idx])
-
-        image_lr = io.imread(img_dir_lr)
-        image_hr = io.imread(img_dir_hr)
-
-        if self.transform:
-            image_lr = self.transform(image_lr)
-            image_hr = self.transform(image_hr)
-
-        sample = {"lr": image_lr, "hr": image_hr}
-
-        return sample
-
-
-class CytoDataset_synth(Dataset):
-    def __init__(self, txt_file, dir_hr, dir_synth, id_range=None, transform=None):
-        super().__init__()
-        print("Training on synthetic datasets: ", dir_synth)
-        txt_file_hr = os.path.join(txt_file, "hr.txt")
-
-        with open(txt_file_hr) as f:
-            self.file_names_hr = f.read().splitlines()
-
-        if id_range != None:
-            data_size = len(self.file_names_hr)
-            self.file_names_hr = self.file_names_hr[id_range[0] : id_range[1]]
-            print(
-                "Use only part of datasets. ({}|{})".format(
-                    len(self.file_names_hr), data_size
-                )
-            )
-        else:
-            print("Use all datasets, total {}.".format(len(self.file_names_hr)))
-
-        self.dir_hr = dir_hr
-        self.dir_synth = dir_synth
-        self.transform = transform
-
-    def __len__(self):
-        return len(self.file_names_hr)
-
-    def __getitem__(self, idx):
-        if torch.is_tensor(idx):
-            idx = idx.tolist()
-
-        p = os.path.split(self.file_names_hr[idx])
-        subject = os.path.split(p[0])[1]
-
-        img_dir_lr = os.path.join(self.dir_synth, subject, p[1])
-        img_dir_hr = os.path.join(self.dir_hr, self.file_names_hr[idx])
-
-        image_lr = io.imread(img_dir_lr)
-        image_hr = io.imread(img_dir_hr)
-
-        if self.transform:
-            image_lr = self.transform(image_lr)
-            image_hr = self.transform(image_hr)
-
-        sample = {"lr": image_lr, "hr": image_hr}
-
-        return sample
 
 
 class Rescale(object):
