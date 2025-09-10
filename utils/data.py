@@ -9,6 +9,7 @@ from torchvision import transforms
 class NormalizePercentile(object):
     """
     Percentile-based normalization.
+    Support 2D and 3D images.
 
     ### Parameters:
     - `p_low` : float, lower percentile.
@@ -23,10 +24,9 @@ class NormalizePercentile(object):
     def __call__(self, image):
         """
         ### Parameters:
-        - `image` : numpy array, image to be normalized. [C, H, W] or [1, C, H, W].
-
+        - `image` : numpy array, image to be normalized.
         ### Returns:
-        - `image` : numpy array, normalized image. [C, H, W] or [1, C, H, W].
+        - `image` : numpy array, normalized image.
         """
         if isinstance(image, np.ndarray):
             if self.ndim == 2:
@@ -37,12 +37,19 @@ class NormalizePercentile(object):
             vmax = np.percentile(a=image, q=self.p_high * 100, **dict_perc)
 
         if isinstance(image, torch.Tensor):
+            dict_perc = {"dim": -1, "keepdim": True}
             if self.ndim == 2:
-                dict_perc = {"dim": (-2, -1), "keepdim": True}
+                image_flat = image.flatten(start_dim=-2)
+            elif self.ndim == 3:
+                image_flat = image.flatten(start_dim=-3)
             else:
-                dict_perc = {"dim": (-3, -2, -1), "keepdim": True}
-            vmin = torch.quantile(input=image, q=self.p_low, **dict_perc)
-            vmax = torch.quantile(input=image, q=self.p_high, **dict_perc)
+                raise ValueError(f"[ERROR] ndim should be 2 or 3, but got {self.ndim}")
+            vmin = torch.quantile(input=image_flat, q=self.p_low, **dict_perc)
+            vmax = torch.quantile(input=image_flat, q=self.p_high, **dict_perc)
+
+            # restore the dimension
+            vmin = vmin.view(*vmin.shape[:-1], *([1] * self.ndim))
+            vmax = vmax.view(*vmax.shape[:-1], *([1] * self.ndim))
 
         # avoid divide by zero
         amp = vmax - vmin

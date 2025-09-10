@@ -5,8 +5,8 @@ import numpy as np
 
 def gauss_kernel_3d(shape=[3, 3, 3], sigma=1.0):
     """
-    Create 3D Gaussian kernel.
-    Args:
+    Create  Gaussian kernel.
+    ### Parameter:
     - shape (tuple[int]): kernel shape. Default: (3, 3, 3).
     - sigma (float): kernel std. Default: 1.0.
     """
@@ -32,8 +32,8 @@ def gauss_kernel_3d(shape=[3, 3, 3], sigma=1.0):
 
 def gauss_kernel_3d_multichannel(shape=[4, 3, 3, 3, 3], stddev=[2.0, 0.5, 1.0, 1.5]):
     """
-    Create multi-channel 3D Gaussian kernel for initialization of convolutional layer.
-    Args:
+    Create multi-channel  Gaussian kernel for initialization of convolutional layer.
+    ### Parameter:
     - shape (tuple[int]): kernel shape (out_channels, in_channels, kernel_size[0], kernel_size[1], kernel_size[2]).
     - stddev (tuple[int]): kernel std in each channel.
     """
@@ -56,9 +56,9 @@ def gauss_kernel_3d_multichannel(shape=[4, 3, 3, 3, 3], stddev=[2.0, 0.5, 1.0, 1
     return init
 
 
-class FP1_3D(nn.Module):
+class FP1(nn.Module):
     """
-    Args:
+    ### Parameter:
     - in_channels (int): channel number of input image. Default: 3.
     - n_features (int): number of features. Default: 4.
     - kernel_size (int): kernel size. Default: 3.
@@ -136,9 +136,9 @@ class FP1_3D(nn.Module):
         return out
 
 
-class FP2_3D(nn.Module):
+class FP2(nn.Module):
     """
-    Args:
+    ### Parameter:
     - in_channels (int): channel number of input image. Default: 3.
     - n_features (int): number of features. Default: 4.
     - kernel_size (int): kernel size. Default: 3.
@@ -196,9 +196,9 @@ class FP2_3D(nn.Module):
         return out
 
 
-class BP1_3D(nn.Module):
+class BP1(nn.Module):
     """
-    Args:
+    ### Parameter:
     - in_channels (int): channel number of input image. Default: 3.
     - n_features (int): number of features. Default: 8.
     - kernel_size (int): kernel size. Default: 3.
@@ -259,9 +259,9 @@ class BP1_3D(nn.Module):
         return out_3
 
 
-class BP2_3D(nn.Module):
+class BP2(nn.Module):
     """
-    Args:
+    ### Parameter:
     - in_channels (int): channel number of input image. Default: 3.
     - n_features (int): number of features. Default: 8.
     - kernel_size (int): kernel size. Default: 3.
@@ -307,9 +307,9 @@ class BP2_3D(nn.Module):
         return out_2
 
 
-class BP1up_3D(nn.Module):
+class BP1up(nn.Module):
     """
-    Args:
+    ### Parameter:
     - in_channels (int): channel number of input image. Default: 8.
     - n_features (int): number of features. Default: 4.
     - kernel_size (int): kernel size. Default: 3.
@@ -354,10 +354,10 @@ class BP1up_3D(nn.Module):
         return out
 
 
-class DV_3D(nn.Module):
+class DV(nn.Module):
     """
     output = a / (b + eps).
-    Args:
+    ### Parameter:
     - in_channels (int): channel number of input image. Default: 3.
     - eps (float): epsilon. Default: 0.0001.
     """
@@ -372,10 +372,10 @@ class DV_3D(nn.Module):
         return dv
 
 
-class MUL_3D(nn.Module):
+class MUL(nn.Module):
     """
     output = a * b.
-    Args:
+    ### Parameter:
     - in_channels (int): channel number of input image.
     """
 
@@ -390,9 +390,9 @@ class MUL_3D(nn.Module):
         return mul
 
 
-class Merge_3D(nn.Module):
+class Merge(nn.Module):
     """
-    Args:
+    ### Parameter:
     - in_channels (int): channel number of input image. Default: 3.
     - n_features (int): Number of features. Default: 8.
     - kernel_size (int): kernel size. Default: 3.
@@ -454,59 +454,67 @@ class Merge_3D(nn.Module):
 
 class RLN_3D(nn.Module):
     """
-    Args:
-    - scale (int): upsampling scale factor. Default: 4.
+    Parameters:
+    - scale (int): upsampling scale factor. Default: 1.
+        The original RLN can not unsampling image.
     - in_channels (int): channel number of input image. Default: 3.
     - n_features (int): number of features. Default: 4.
     - kernel_size (int): kernel size. Default: 3.
     """
 
-    def __init__(self, scale=4, in_channels=3, n_features=4, kernel_size=3):
+    def __init__(
+        self,
+        scale: int = 1,
+        in_channels: int = 1,
+        n_features: int = 4,
+        kernel_size: int = 3,
+    ):
         super().__init__()
         self.scale = scale
         self.in_channels = in_channels
+
         # H1
         self.ave_pool = nn.AvgPool3d(kernel_size=(2, 2, 2), stride=(2, 2, 2), padding=0)
-        self.FP1 = FP1_3D(
+        self.FP1 = FP1(
             in_channels=in_channels,
             n_features=n_features,
             kernel_size=kernel_size,
             bias=False,
         )
-        self.DV1 = DV_3D(in_channels=in_channels)
-        self.BP1 = BP1_3D(
+        self.DV1 = DV(in_channels=in_channels)
+        self.BP1 = BP1(
             in_channels=in_channels,
             n_features=8,
             kernel_size=kernel_size,
             init_w_std=1.0,
             bias=False,
         )
-        self.BP1up = BP1up_3D(
+        self.BP1up = BP1up(
             in_channels=8,
             n_features=n_features,
             kernel_size=kernel_size,
             init_w_std=1.0,
             bias=False,
         )
-        self.MUL1 = MUL_3D(in_channels=in_channels)
+        self.MUL1 = MUL(in_channels=in_channels)
         # H2
-        self.FP2 = FP2_3D(
+        self.FP2 = FP2(
             in_channels=in_channels,
             n_features=n_features,
             kernel_size=kernel_size,
             bias=False,
         )
-        self.DV2 = DV_3D(in_channels=in_channels)
-        self.BP2 = BP1_3D(
+        self.DV2 = DV(in_channels=in_channels)
+        self.BP2 = BP1(
             in_channels=in_channels,
             n_features=8,
             kernel_size=kernel_size,
             init_w_std=1.0,
             bias=False,
         )
-        self.MUL2 = MUL_3D(in_channels=in_channels)
+        self.MUL2 = MUL(in_channels=in_channels)
         # H3
-        self.Merge = Merge_3D(
+        self.Merge = Merge(
             in_channels=in_channels,
             n_features=8,
             kernel_size=kernel_size,
@@ -529,7 +537,7 @@ class RLN_3D(nn.Module):
         )
 
     def forward(self, x):
-        # trilinear interpolation (3D equivalent of bicubic)
+        # trilinear interpolation ( equivalent of bicubic)
         x = nn.functional.interpolate(
             input=x, scale_factor=self.scale, mode="trilinear", align_corners=False
         )
@@ -570,13 +578,13 @@ class RLN_3D(nn.Module):
 
 if __name__ == "__main__":
     kernel = gauss_kernel_3d(shape=[3, 3, 3], sigma=1.0)
-    print("3D Gaussian kernel shape:", kernel.shape)
-    print("3D Gaussian kernel:\n", kernel[0, 0])
+    print(" Gaussian kernel shape:", kernel.shape)
+    print(" Gaussian kernel:\n", kernel[0, 0])
 
     kernels = gauss_kernel_3d_multichannel(
         shape=[4, 3, 3, 3, 3], stddev=np.linspace(0.5, 2.0, 4)
     )
-    print("Multi-channel 3D Gaussian kernels shape:", kernels.shape)
+    print("Multi-channel  Gaussian kernels shape:", kernels.shape)
     print("First kernel sample:\n", kernels[0, 0, :, :, 1])  # middle slice
 
     input_shape = (4, 1, 32, 64, 64)  # (B, C, D, H, W)

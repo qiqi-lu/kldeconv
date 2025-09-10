@@ -7,6 +7,21 @@ import numpy as np
 import skimage.io as io
 from utils.data import win2linux, read_txt
 
+
+def normalization(image, p_low, p_high):
+    vmin = np.percentile(a=image, q=p_low * 100)
+    vmax = np.percentile(a=image, q=p_high * 100)
+    if vmax == 0:
+        image *= 0.0
+    else:
+        amp = vmax - vmin
+        if amp == 0:
+            amp = 1
+        image = (image - vmin) / amp
+
+    return image, vmin, vmax
+
+
 datasets_name = (
     # "F-actin-nonlinear-9",
     # "F-actin-nonlinear-8",
@@ -17,47 +32,50 @@ datasets_name = (
     # "F-actin-nonlinear-3",
     # "F-actin-nonlinear-2",
     # "F-actin-nonlinear-1",
-    "Microtubules2-9",
-    "Microtubules2-8",
-    "Microtubules2-7",
-    "Microtubules2-6",
-    "Microtubules2-5",
-    "Microtubules2-4",
-    "Microtubules2-3",
-    "Microtubules2-2",
-    "Microtubules2-1",
-    "CCPs-9",
-    "CCPs-8",
-    "CCPs-7",
-    "CCPs-6",
-    "CCPs-5",
-    "CCPs-4",
-    "CCPs-3",
-    "CCPs-2",
-    "CCPs-1",
-    "F-actin-12",
-    "F-actin-11",
-    "F-actin-10",
-    "F-actin-9",
-    "F-actin-8",
-    "F-actin-7",
-    "F-actin-6",
-    "F-actin-5",
-    "F-actin-4",
-    "F-actin-3",
-    "F-actin-2",
-    "F-actin-1",
-    "ER-6",
-    "ER-5",
-    "ER-4",
-    "ER-3",
-    "ER-2",
-    "ER-1",
+    # "Microtubules2-9",
+    # "Microtubules2-8",
+    # "Microtubules2-7",
+    # "Microtubules2-6",
+    # "Microtubules2-5",
+    # "Microtubules2-4",
+    # "Microtubules2-3",
+    # "Microtubules2-2",
+    # "Microtubules2-1",
+    # "CCPs-9",
+    # "CCPs-8",
+    # "CCPs-7",
+    # "CCPs-6",
+    # "CCPs-5",
+    # "CCPs-4",
+    # "CCPs-3",
+    # "CCPs-2",
+    # "CCPs-1",
+    # "F-actin-12",
+    # "F-actin-11",
+    # "F-actin-10",
+    # "F-actin-9",
+    # "F-actin-8",
+    # "F-actin-7",
+    # "F-actin-6",
+    # "F-actin-5",
+    # "F-actin-4",
+    # "F-actin-3",
+    # "F-actin-2",
+    # "F-actin-1",
+    # "ER-6",
+    # "ER-5",
+    # "ER-4",
+    # "ER-3",
+    # "ER-2",
+    # "ER-1",
+    # "Microtubule2-3d-1024",
+    "Nuclear-pore-complex2-1024",
 )
 
 params = dict(
     patch_size=128,
     step_size=64,
+    normalization=(0.03, 0.995),
 )
 
 info_df = pandas.read_excel("datasets_train.xlsx")
@@ -100,6 +118,13 @@ for ds in datasets_name:
         pbar = tqdm.tqdm(total=num_sample, desc="Patching", ncols=80)
         for filename in filenames:
             img = io.imread(os.path.join(path_img, filename)).astype(np.float32)
+            img = np.clip(img, a_min=0.0, a_max=None)
+            img, _, _ = normalization(
+                img,
+                p_low=params["normalization"][0],
+                p_high=params["normalization"][1],
+            )
+
             if ndim == 2:
                 assert img.ndim == 2, f"[ERROR] Dimension is disagreement. {img.shape}"
                 Ny, Nx = img.shape
@@ -129,6 +154,8 @@ for ds in datasets_name:
                 Nz, Ny, Nx = img.shape
                 # get the number of patches
                 num_patch_z = (Nz - params["patch_size"]) // params["step_size"] + 1
+                if num_patch_z < 0:
+                    num_patch_z = 1
                 num_patch_y = (Ny - params["patch_size"]) // params["step_size"] + 1
                 num_patch_x = (Nx - params["patch_size"]) // params["step_size"] + 1
                 # get the patches

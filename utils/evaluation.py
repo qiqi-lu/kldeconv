@@ -44,6 +44,7 @@ def array_input_check(img):
     assert img.ndim in [
         2,
         3,
+        4,
     ], f"[img] must be 2D or 3D array, but got {img.ndim}D array."
     assert isinstance(img, np.ndarray) or isinstance(
         img, torch.Tensor

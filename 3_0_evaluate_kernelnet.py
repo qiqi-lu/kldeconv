@@ -39,10 +39,31 @@ id_sample = [0, 1, 2, 3, 4, 5, 6]
 # dataset_names = ("Microtubule2-3d-1024", "Nuclear-pore-complex2-1024")
 # dataset_names = ("Nuclear-pore-complex2-1024", "Nuclear-pore-complex2-1024")
 # dataset_names = ("Nuclear-pore-complex2-1024", "Microtubule2-3d-1024")
+
 # dataset_names = ("F-actin-nonlinear-9", "F-actin-nonlinear-9")
 # dataset_names = ("F-actin-nonlinear-9", "Microtubules2-9")
+# dataset_names = ("F-actin-nonlinear-9", "CCPs-9")
+# dataset_names = ("F-actin-nonlinear-9", "ER-6")
+# dataset_names = ("F-actin-nonlinear-9", "F-actin-9")
+
+# dataset_names = ("F-actin-nonlinear-1", "F-actin-nonlinear-1")
+# dataset_names = ("F-actin-nonlinear-1", "Microtubules2-1")
+# dataset_names = ("F-actin-nonlinear-1", "CCPs-1")
+# dataset_names = ("F-actin-nonlinear-1", "ER-1")
+# dataset_names = ("F-actin-nonlinear-1", "F-actin-1")
+
 # dataset_names = ("Microtubules2-9", "F-actin-nonlinear-9")
 # dataset_names = ("Microtubules2-9", "Microtubules2-9")
+# dataset_names = ("Microtubules2-9", "CCPs-9")
+# dataset_names = ("Microtubules2-9", "ER-6")
+# dataset_names = ("Microtubules2-9", "F-actin-9")
+
+# dataset_names = ("Microtubules2-1", "F-actin-nonlinear-1")
+dataset_names = ("Microtubules2-1", "Microtubules2-1")
+# dataset_names = ("Microtubules2-1", "CCPs-1")
+# dataset_names = ("Microtubules2-1", "ER-1")
+# dataset_names = ("Microtubules2-1", "F-actin-1")
+
 # dataset_names = ("Microtubules2-8", "Microtubules2-9")
 # dataset_names = ("Microtubules2-7", "Microtubules2-9")
 # dataset_names = ("Microtubules2-6", "Microtubules2-9")
@@ -51,12 +72,73 @@ id_sample = [0, 1, 2, 3, 4, 5, 6]
 # dataset_names = ("Microtubules2-3", "Microtubules2-9")
 # dataset_names = ("Microtubules2-2", "Microtubules2-9")
 # dataset_names = ("Microtubules2-1", "Microtubules2-9")
+
 # dataset_names = ("CCPs-9", "Microtubules2-9")
 # dataset_names = ("CCPs-9", "F-actin-nonlinear-9")
+# dataset_names = ("CCPs-9", "CCPs-9")
+# dataset_names = ("CCPs-9", "ER-6")
+# dataset_names = ("CCPs-9", "F-actin-9")
+
+# dataset_names = ("CCPs-1", "Microtubules2-1")
+# dataset_names = ("CCPs-1", "F-actin-nonlinear-1")
+# dataset_names = ("CCPs-1", "CCPs-1")
+# dataset_names = ("CCPs-1", "ER-1")
+# dataset_names = ("CCPs-1", "F-actin-1")
+
 # dataset_names = ("F-actin-9", "Microtubules2-9")
 # dataset_names = ("F-actin-9", "F-actin-nonlinear-9")
+# dataset_names = ("F-actin-9", "CCPs-9")
+# dataset_names = ("F-actin-9", "ER-6")
+# dataset_names = ("F-actin-9", "F-actin-9")
+
+# dataset_names = ("F-actin-1", "Microtubules2-1")
+# dataset_names = ("F-actin-1", "F-actin-nonlinear-1")
+# dataset_names = ("F-actin-1", "CCPs-1")
+# dataset_names = ("F-actin-1", "ER-1")
+# dataset_names = ("F-actin-1", "F-actin-1")
+
 # dataset_names = ("ER-6", "Microtubules2-9")
-dataset_names = ("ER-6", "F-actin-nonlinear-9")
+# dataset_names = ("ER-6", "F-actin-nonlinear-9")
+# dataset_names = ("ER-6", "CCPs-9")
+# dataset_names = ("ER-6", "ER-6")
+# dataset_names = ("ER-6", "F-actin-9")
+
+# dataset_names = ("ER-1", "Microtubules2-1")
+# dataset_names = ("ER-1", "F-actin-nonlinear-1")
+# dataset_names = ("ER-1", "CCPs-1")
+# dataset_names = ("ER-1", "ER-1")
+# dataset_names = ("ER-1", "F-actin-1")
+
+# ------------------------------------------------------------------------------
+# dataset_names = ("F-actin-nonlinear-2", "F-actin-nonlinear-2")
+# dataset_names = ("F-actin-nonlinear-2", "Microtubules2-2")
+# dataset_names = ("F-actin-nonlinear-2", "CCPs-2")
+# dataset_names = ("F-actin-nonlinear-2", "ER-2")
+# dataset_names = ("F-actin-nonlinear-2", "F-actin-2")
+
+# dataset_names = ("Microtubules2-2", "F-actin-nonlinear-2")
+# dataset_names = ("Microtubules2-2", "Microtubules2-2")
+# dataset_names = ("Microtubules2-2", "CCPs-2")
+# dataset_names = ("Microtubules2-2", "ER-2")
+# dataset_names = ("Microtubules2-2", "F-actin-2")
+
+# dataset_names = ("CCPs-2", "Microtubules2-2")
+# dataset_names = ("CCPs-2", "F-actin-nonlinear-2")
+# dataset_names = ("CCPs-2", "CCPs-2")
+# dataset_names = ("CCPs-2", "ER-2")
+# dataset_names = ("CCPs-2", "F-actin-2")
+
+# dataset_names = ("F-actin-2", "Microtubules2-2")
+# dataset_names = ("F-actin-2", "F-actin-nonlinear-2")
+# dataset_names = ("F-actin-2", "CCPs-2")
+# dataset_names = ("F-actin-2", "ER-2")
+# dataset_names = ("F-actin-2", "F-actin-2")
+
+# dataset_names = ("ER-2", "Microtubules2-2")
+# dataset_names = ("ER-2", "F-actin-nonlinear-2")
+# dataset_names = ("ER-2", "CCPs-2")
+# dataset_names = ("ER-2", "ER-2")
+# dataset_names = ("ER-2", "F-actin-2")
 
 
 dataset_name_test, dataset_name_train = dataset_names
@@ -93,6 +175,7 @@ params_dict = dict(
     scale_factor=int(info["scale_factor"]),
     interpolation=True,
     kernel_norm_fp=False,
+    # kernel_norm_fp=True,
     kernel_norm_bp=True,
     over_sampling=2,
     padding_mode="reflect",
@@ -303,6 +386,9 @@ print("[INFO] save kernels to:", path_save_kernel)
 ker_fp_init = padding_kernel(ker_fp_init, PSF_true)
 ker_FP = padding_kernel(ker_FP, PSF_true)
 ker_BP = padding_kernel(ker_BP, PSF_true)
+
+print(f"[INFO] Sum of FP kernel: {np.sum(ker_FP)}")
+print(f"[INFO] Sum of BP kernel: {np.sum(ker_BP)}")
 
 save_kernel("kernel_true.tif", PSF_true)
 save_kernel("kernel_init.tif", ker_fp_init)

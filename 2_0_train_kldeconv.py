@@ -2,292 +2,303 @@
 KLDeconv training.
 """
 
-import torch, os, time, sys, pandas, tqdm
+import torch, os, time, pandas, tqdm, datetime, json
 from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
 import numpy as np
 import skimage.io as io
 from fft_conv_pytorch import fft_conv
-from utils.data import win2linux, SRDataset, text2tuple
+from utils.data import win2linux, SRDataset, text2tuple, NormalizePercentile
 from utils.optimize import step_lr_schedule
-from utils import evaluation as eva
+import utils.evaluation as utils_eva
 from models import kernelnet
 from torchinfo import summary
 import statistics
+from checkpoint_list import checkpoints_v1 as checkpoints_list
 
-# ------------------------------------------------------------------------------
+today_date = datetime.date.today()
 torch.manual_seed(7)
-input_normalization = 0
-validation_enable = False
-normalization = (False, False)
-
 # ------------------------------------------------------------------------------
-# Dataset
+#                                   Paramsters
 # ------------------------------------------------------------------------------
-dataset_name = (
-    "F-actin-nonlinear-9",
-    # "Microtubules2-9",
-    # "SimuBeads3D-128-31-0-0-1",
-    # "SimuBeads3D-128-31-05-1-1",
-    # "SimuBeads3D-128-31-05-1-03",
-    # "SimuBeads3D-128-31-05-1-01",
-    # "SimuMix3D-128-31-0-0-1",
-    # "SimuMix3D-128-31-05-1-1",
-    # "SimuMix3D-128-31-05-1-03",
-    # "SimuMix3D-128-31-05-1-01",
-    # "SimuMix3D-256-31-0-0-1",
-    # "SimuMix3D-256-31-05-1-1",
-    # "SimuMix3D-256-31-05-1-03",
-    # "SimuMix3D-256-31-05-1-01",
-    # "SimuMix3D-382-101-05-1-1-560",
-    # "SimuMix3D-382-101-05-1-1-642",
-    # "Microtubule-3d-128-0",
-    # "Microtubule-3d-1024",
-    # "Microtubule2-3d-512",
-    # "Microtubule2-3d-1024",
-    # "Nuclear-pore-complex-128-0",
-    # "Nuclear-pore-complex-1024",
-    # "Nuclear-pore-complex2-512",
-    # "Nuclear-pore-complex2-1024",
-    # "ZeroShotDeconvNet-642",
-    # "ZeroShotDeconvNet-560",
-)
-
-assert len(dataset_name) == 1, "[ERROR] Only one dataset can be selected."
-path_train_excel = os.path.join("datasets_train.xlsx")
-dataset_id = dataset_name[0]
-
-if dataset_id in [
-    "Microtubule",
-    "Microtubule2",
-    "Nuclear_Pore_complex",
-    "Nuclear_Pore_complex2",
-    "F-actin_Nonlinear",
-    "Microtubules2",
-]:
-    FP_type, BP_type = "pre-trained", None
-    print("[INFO] Use pre-trained forward kernel, and learn backward kernel.")
-else:
-    FP_type, BP_type = "known", None
-    print("[INFO] Known forward kernel, and to learn backward kernel.")
-
-
-# ------------------------------------------------------------------------------
-# model_name = 'kernet_fp'
+# model_name = "kernet_fp"
 model_name = "kernet"
 
 # ------------------------------------------------------------------------------
-# load dataset info
-# load excel file to get dataset info
-df = pandas.read_excel(path_train_excel)
-info = df.loc[df["id"] == dataset_id].loc[0]
-
-params_dict = dict(
-    device="cuda:0",
-    num_workers=6,
-    path_checkpoint=os.path.join("checkpoints", "v2"),
-    dataset_dim=info["ndim"],
-    in_channels=1,
-    hr_root_path=win2linux(info["path_hr"]),
-    lr_root_path=win2linux(info["path_lr"]),
-    hr_txt_file_path=win2linux(info["path_txt"]),
-    lr_txt_file_path=win2linux(info["path_txt"]),
-    kernel_size_fp=text2tuple(info["kf_size"]),
-    kernel_size_bp=text2tuple(info["kb_size"]),
-    scale_factor=info["scale_factor"],
-    ratio=info["ratio"],
-    id_range=text2tuple(info["id_sample"]),
-    id_range_val=text2tuple(info["id_sample_val"]),
-    std_init=info["ker_std_init"],
-    epoch_fp=info["epoch_fp"],
-    epoch_bp=info["epoch_bp"],
-    FP_path=win2linux(info["path_fp"]),
-    PSF_path=win2linux(info["path_psf"]),
-    conv_mode="fft",
-    padding_mode="reflect",
-    kernel_init="gauss",
-    interpolation=True,
-    kernel_norm_fp=False,
-    kernel_norm_bp=True,
-    over_sampling=2,
-    warm_up=0,
-    use_lr_schedule=True,
-    scheduler_cus={
+params = {
+    "device_id": "cuda:0",
+    "num_workers": 6,
+    # --------------------------------------------------------------------------
+    "dataset_name": (
+        # "F-actin-nonlinear-9",
+        # "Microtubules2-9",
+        # "CCPs-9",
+        # "ER-6",
+        # "F-actin-9",
+        # ----------------------------------------------------------------------
+        # "F-actin-nonlinear-1",
+        # "Microtubules2-1",
+        # "CCPs-1",
+        # "ER-1",
+        # "F-actin-1",
+        # ----------------------------------------------------------------------
+        # "F-actin-nonlinear-2",
+        # "Microtubules2-2",
+        # "CCPs-2",
+        # "ER-2",
+        "F-actin-2",
+        # ----------------------------------------------------------------------
+        # "SimuBeads3D-128-31-0-0-1",
+        # "SimuBeads3D-128-31-05-1-1",
+        # "SimuBeads3D-128-31-05-1-03",
+        # "SimuBeads3D-128-31-05-1-01",
+        # "SimuMix3D-128-31-0-0-1",
+        # "SimuMix3D-128-31-05-1-1",
+        # "SimuMix3D-128-31-05-1-03",
+        # "SimuMix3D-128-31-05-1-01",
+        # "SimuMix3D-256-31-0-0-1",
+        # "SimuMix3D-256-31-05-1-1",
+        # "SimuMix3D-256-31-05-1-03",
+        # "SimuMix3D-256-31-05-1-01",
+        # "SimuMix3D-382-101-05-1-1-560",
+        # "SimuMix3D-382-101-05-1-1-642",
+        # "Microtubule-3d-128-0",
+        # "Microtubule-3d-1024",
+        # "Microtubule2-3d-512",
+        # "Microtubule2-3d-1024",
+        # "Nuclear-pore-complex-128-0",
+        # "Nuclear-pore-complex-1024",
+        # "Nuclear-pore-complex2-512",
+        # "Nuclear-pore-complex2-1024",
+        # "ZeroShotDeconvNet-642",
+        # "ZeroShotDeconvNet-560",
+    ),
+    "batch_size": 1,
+    "normalization": (False, False),
+    "in_channels": 1,
+    "input_normalization": 0,
+    "data_clip_eva": (0, 2.5),
+    # --------------------------------------------------------------------------
+    "FP_type": "pre-trained",
+    # "FP_type": 'known',
+    "BP_type": None,
+    "conv_mode": "fft",
+    "padding_mode": "reflect",
+    "kernel_init": "gauss",
+    "interpolation": True,
+    "kernel_norm_fp": False,
+    # "kernel_norm_fp": True,
+    "kernel_norm_bp": True,
+    "over_sampling": 2,
+    # --------------------------------------------------------------------------
+    "experiment": "n1_r1",
+    "sample_range": (0, 1),
+    "loss_function": "mse",
+    "use_lr_schedule": True,
+    "scheduler_cus": {
         "lr": 0.00001,
         "every": 2000,  # 300
         "rate": 0.5,
         "min": 0.00000001,
     },
-)
-
-device = torch.device(params_dict["device"])
-training_data_size = params_dict["id_range"][1] - params_dict["id_range"][0]
-ker_size_fp = params_dict["kernel_size_fp"][-1]
-ker_size_bp = params_dict["kernel_size_bp"][-1]
-
-print(
-    f"[INFO] Device:{params_dict['device']} | Num of workers:{params_dict['num_workers']}"
-)
-print(f"[INFO] Path to checkpoint: {params_dict['path_checkpoint']}")
-print(f"[INFO] Dataset: {dataset_id} | Dim: {params_dict['dataset_dim']}")
-print(f"[INFO] HR: {params_dict['hr_root_path']}")
-print(f"[INFO] LR: {params_dict['lr_root_path']}")
-print(f"[INFO] TXT: {params_dict['hr_txt_file_path']}")
-print(f"[INFO] Kernel size FP: {params_dict['kernel_size_fp']}")
-print(f"[INFO] Kernel size BP: {params_dict['kernel_size_bp']}")
-print(f"[INFO] Scale factor: {params_dict['scale_factor']}")
-print(
-    f"[INFO] Train data size: {training_data_size} | ID range: {params_dict['id_range']}"
-)
-print(
-    f"[INFO] Validation data size: {params_dict['id_range_val']} | ID range: {params_dict['id_range_val']}"
-)
-print(f"[INFO] Std init: {params_dict['std_init']}")
-print(f"[INFO] Epoch FP: {params_dict['epoch_fp']} | BP: {params_dict['epoch_bp']}")
-print(f"[INFO] FP path: {params_dict['FP_path']}")
+    "warm_up": 0,
+    "eva_during_train": False,
+    # --------------------------------------------------------------------------
+    "validation_enable": True,
+    "sample_range_val": (10, 20),
+    # --------------------------------------------------------------------------
+    "normalization_eva": (0.03, 0.995),
+    "path_checkpoint_save": os.path.join("checkpoints", "v2"),
+}
 
 # ------------------------------------------------------------------------------
-# Model
-# ------------------------------------------------------------------------------
-if dataset_id in [
-    "SimuMix3D_382",
-    "ZeroShotDeconvNet",
-    "Microtubule",
-    "Microtubule2",
-    "Nuclear_Pore_complex",
-    "Nuclear_Pore_complex2",
-]:
-    batch_size = training_data_size
+assert len(params["dataset_name"]) == 1, "[ERROR] Only one dataset can be selected."
+dataset_id = params["dataset_name"][0]
+
+info_df = pandas.read_excel(os.path.join("datasets_train.xlsx"))
+info = info_df[info_df["id"] == dataset_id].iloc[0]
+
+assert model_name in (
+    "kernet_fp",
+    "kernet",
+), f"[ERROR] Unsupported model name: {model_name}"
+model_part = "forward" if model_name == "kernet_fp" else "backward"
+
+try:
+    path_fp = checkpoints_list[dataset_id]["forward"][params["experiment"]]
+except:
+    print("[WARNNING] No pre-trained forward model available.")
+    path_fp = None
+
+params.update(
+    {
+        "FP_path": path_fp,
+        "PSF_path": win2linux(info["path_psf"]),
+        "ndim": int(info["ndim"]),
+        "hr_root_path": win2linux(info["path_hr"]),
+        "lr_root_path": win2linux(info["path_lr"]),
+        "hr_txt_file_path": win2linux(info["path_txt"]),
+        "lr_txt_file_path": win2linux(info["path_txt"]),
+        "kernel_size_fp": text2tuple(info["kf_size"]),
+        "kernel_size_bp": text2tuple(info["kb_size"]),
+        "scale_factor": int(info["scale_factor"]),
+        "ratio": float(info["ratio"]),
+        "std_init": text2tuple(info["ker_std_init"]),
+        "epoch_fp": int(info["epoch_fp"]),
+        "epoch_bp": int(info["epoch_bp"]),
+    }
+)
+
+device = torch.device(params["device_id"])
+training_data_size = params["sample_range"][1] - params["sample_range"][0]
+ker_size_fp = params["kernel_size_fp"][-1]
+ker_size_bp = params["kernel_size_bp"][-1]
 
 # ------------------------------------------------------------------------------
 if model_name == "kernet_fp":
-    suffix = f"_ker_{ker_size_fp}_mse_over{params_dict['over_sampling']}_inter_normx_{params_dict['conv_mode']}_ts_{params_dict['id_range'][0]}_{params_dict['id_range'][1]}_s100"
-    multi_out = False
-    self_supervised = False
-    loss_main = torch.nn.MSELoss()
-    optimizer_type = "adam"
-    # start_learning_rate = 0.0001
-    start_learning_rate = 0.001
-    # optimizer_type = 'lbfgs'
+    norm_tag = "norm" if params["kernel_norm_fp"] else "normx"
+
+    suffix = f"_ker_{ker_size_fp}_{params['loss_function']}_over{params['over_sampling']}_inter_{norm_tag}_{params['conv_mode']}_ts_{params['sample_range'][0]}_{params['sample_range'][1]}_s100"
+
+    params.update(
+        {
+            "multi_out": False,
+            "self_supervised": False,
+            "optimizer_type": "adam",
+            # 'optimizer_type': 'lbfgs',
+            "save_every_iter": 100,
+            "plot_every_iter": 2,
+            "val_every_iter": 1000,
+            "print_every_iter": 1000,
+        }
+    )
     # start_learning_rate = 1
-    epochs = params_dict["epoch_fp"]
+    # start_learning_rate = 0.01
+    start_learning_rate = 0.001  # F-actin-nonlinear-9,
+    # start_learning_rate = 0.0001
+    # start_learning_rate = 0.00001
+    epochs = params["epoch_fp"]
 
 if model_name == "kernet":
-    num_iter = 2
-    lam = 0.0  # lambda for prior
-    multi_out = False
-    shared_bp = True
-    self_supervised = False
-    # self_supervised = True
-
-    if self_supervised:
-        ss_marker = "_ss"
-    else:
-        ss_marker = ""
-
-    suffix = f"_iter_{num_iter}_ker_{ker_size_bp}_mse_over{params_dict['over_sampling']}_inter_norm_{params_dict['conv_mode']}_ts_{params_dict['id_range'][0]}_{params_dict['id_range'][1]}{ss_marker}"
-
-    loss_main = torch.nn.MSELoss()
-
-    optimizer_type = "adam"
-    if self_supervised:
-        start_learning_rate = 0.000001
-    else:
-        # start_learning_rate = 0.00001
-        start_learning_rate = 0.000001
-    # start_learning_rate = 0.000001
-    epochs = params_dict["epoch_bp"]
-
-# ------------------------------------------------------------------------------
-params_dict["scheduler_cus"]["lr"] = start_learning_rate
-print_every_iter = 1000
-
-if model_name == "kernet":
-    save_every_iter, plot_every_iter, val_every_iter = 1000, 50, 1000
-if model_name == "kernet_fp":
-    save_every_iter, plot_every_iter, val_every_iter = 5, 2, 1000
-
-# ------------------------------------------------------------------------------
-#                                   Data
-# ------------------------------------------------------------------------------
-# Training data
-training_data = SRDataset(
-    hr_root_path=params_dict["hr_root_path"],
-    lr_root_path=params_dict["lr_root_path"],
-    hr_txt_file_path=params_dict["hr_txt_file_path"],
-    lr_txt_file_path=params_dict["lr_txt_file_path"],
-    normalization=normalization,
-    id_range=params_dict["id_range"],
-)
-
-train_dataloader = DataLoader(
-    dataset=training_data,
-    batch_size=batch_size,
-    shuffle=True,
-    num_workers=params_dict["num_workers"],
-)
-
-# Validation data
-if validation_enable == True:
-    validation_data = SRDataset(
-        hr_root_path=params_dict["hr_root_path"],
-        lr_root_path=params_dict["lr_root_path"],
-        hr_txt_file_path=params_dict["hr_txt_file_path"],
-        lr_txt_file_path=params_dict["lr_txt_file_path"],
-        normalization=normalization,
-        id_range=params_dict["id_range_val"],
+    params.update(
+        {
+            "num_iter": 2,
+            "lam": 0.0,  # lambda for prior
+            "multi_out": False,
+            "shared_bp": True,
+            "self_supervised": False,
+            # 'self_supervised': True,
+            "optimizer_type": "adam",
+            "save_every_iter": 1000,
+            "plot_every_iter": 50,
+            "val_every_iter": 1000,
+            "print_every_iter": 1000,
+        }
     )
 
+    ss_marker = "_ss" if params["self_supervised"] else ""
+    norm_tag = "fp_norm" if params["kernel_norm_fp"] else "fp_normx"
+    norm_tag += "_bp_norm" if params["kernel_norm_bp"] else "_bp_normx"
+    suffix = f"_iter_{params['num_iter']}_ker_{ker_size_bp}_{params['loss_function']}_over{params['over_sampling']}_inter_{norm_tag}_{params['conv_mode']}_ts_{params['sample_range'][0]}_{params['sample_range'][1]}{ss_marker}"
+
+    # start_learning_rate = 0.001
+    start_learning_rate = 0.0001  # 2D real
+    # start_learning_rate = 0.00001
+    # start_learning_rate = 0.000001
+    epochs = params["epoch_bp"]
+
+params["scheduler_cus"]["lr"] = start_learning_rate
+
+# print params dict
+print("-" * 80)
+for key, value in params.items():
+    print(f"[INFO] {key}: {value}")
+print("-" * 80)
+
+# ------------------------------------------------------------------------------
+#                                   Dataset
+# ------------------------------------------------------------------------------
+print("INFO] Load data...")
+dict_data = dict(
+    hr_root_path=params["hr_root_path"],
+    lr_root_path=params["lr_root_path"],
+    hr_txt_file_path=params["hr_txt_file_path"],
+    lr_txt_file_path=params["lr_txt_file_path"],
+    normalization=params["normalization"],
+)
+dict_dataloader = dict(
+    batch_size=params["batch_size"], num_workers=params["num_workers"]
+)
+# Training data ----------------------------------------------------------------
+training_data = SRDataset(id_range=params["sample_range"], **dict_data)
+train_dataloader = DataLoader(dataset=training_data, shuffle=True, **dict_dataloader)
+
+# Validation data --------------------------------------------------------------
+if params["validation_enable"]:
+    validation_data = SRDataset(id_range=params["sample_range_val"], **dict_data)
     valid_dataloader = DataLoader(
-        dataset=validation_data,
-        batch_size=batch_size,
-        shuffle=True,
-        num_workers=params_dict["num_workers"],
+        dataset=validation_data, shuffle=False, **dict_dataloader
     )
 
 # ------------------------------------------------------------------------------
 #                                   Model
 # ------------------------------------------------------------------------------
-if model_name == "kernet":
-    FP, BP = None, None
-    if FP_type == "pre-trained":
-        print("[INFO] Load pre-trained PSF")
-        print(f"[INFO] Load from: {params_dict['FP_path']}")
+dict_model = dict(
+    dim=params["ndim"],
+    in_channels=params["in_channels"],
+    scale_factor=params["scale_factor"],
+    std_init=params["std_init"],
+    init=params["kernel_init"],
+    padding_mode=params["padding_mode"],
+    conv_mode=params["conv_mode"],
+    over_sampling=params["over_sampling"],
+    interpolation=params["interpolation"],
+)
 
-        # load FP parameters
+# KernelNet (forward + backward) -----------------------------------------------
+if model_name == "kernet":
+    print("[INFO] Use KernelNet (forward + backward)")
+    FP, BP = None, None
+
+    # pre-trained forward projector --------------------------------------------
+    if params["FP_type"] == "pre-trained":
+        print("[INFO] Load pre-trained PSF")
+
+        assert params["FP_path"] is not None, "[ERROR] FP path is not provided."
+        assert os.path.exists(params["FP_path"]), "[ERROR] FP path does not exist."
+
+        print(f"[INFO] Load from: {params['FP_path']}")
+
+        # create forward projector
         FP = kernelnet.ForwardProject(
-            dim=params_dict["dataset_dim"],
-            in_channels=params_dict["in_channels"],
-            scale_factor=params_dict["scale_factor"],
-            kernel_size=params_dict["kernel_size_fp"],
-            std_init=params_dict["std_init"],
-            padding_mode=params_dict["padding_mode"],
-            init=params_dict["kernel_init"],
+            kernel_size=params["kernel_size_fp"],
+            kernel_norm=params["kernel_norm_fp"],
             trainable=False,
-            interpolation=params_dict["interpolation"],
-            kernel_norm=params_dict["kernel_norm_fp"],
-            over_sampling=params_dict["over_sampling"],
-            conv_mode=params_dict["conv_mode"],
+            **dict_model,
         )
 
-        FP_para = torch.load(params_dict["FP_path"], map_location=device)
-        FP.load_state_dict(FP_para["model_state_dict"])
+        # load parameters
+        FP.load_state_dict(
+            torch.load(params["FP_path"], map_location=device, weights_only=True)[
+                "model_state_dict"
+            ]
+        )
         FP.eval()
 
-    if FP_type == "known":
+    # known FP (i.e., PSF) -----------------------------------------------------
+    elif params["FP_type"] == "known":
         print("[INFO] Use known PSF")
-        if params_dict["dataset_dim"] == 3:
-            psf_path = params_dict["PSF_path"]
+
+        if params["ndim"] == 3:  # only 3d data has PSF in our dataset
+            psf_path = params["PSF_path"]
             print("[INFO] Load from: ", psf_path)
 
             assert psf_path is not None, "[ERROR] PSF path is not provided."
             assert os.path.exists(psf_path), "[ERROR] PSF path does not exist."
             assert psf_path.endswith(".tif"), "[ERROR] PSF path should be a tif file."
 
-            PSF_true = io.imread(psf_path).astype(np.float32)
-            PSF_true = torch.tensor(PSF_true[None, None]).to(
-                device=device
-            )  # [1, 1, Nz, Ny, Nx]
+            PSF_true = io.imread(psf_path)[None, None].astype(np.float32)
+            PSF_true = torch.tensor(PSF_true).to(device=device)  # [1, 1, Nz, Ny, Nx]
             PSF_true = torch.round(PSF_true, decimals=16)
             ks = PSF_true.shape
             padd_fp = lambda x: torch.nn.functional.pad(
@@ -300,131 +311,149 @@ if model_name == "kernet":
                     ks[-3] // 2,
                     ks[-3] // 2,
                 ),
-                mode=params_dict["padding_mode"],
+                mode=params["padding_mode"],
             )
-            if params_dict["conv_mode"] == "direct":
+            if params["conv_mode"] == "direct":
                 conv_fp = lambda x: torch.nn.functional.conv3d(
-                    input=padd_fp(x), weight=PSF_true, groups=params_dict["in_channels"]
+                    input=padd_fp(x),
+                    weight=PSF_true,
+                    groups=params["in_channels"],
                 )
-            if params_dict["conv_mode"] == "fft":
+            elif params["conv_mode"] == "fft":
                 conv_fp = lambda x: fft_conv(
                     signal=padd_fp(x),
                     kernel=PSF_true,
-                    groups=params_dict["in_channels"],
+                    groups=params["in_channels"],
                 )
+            else:
+                raise ValueError(f"[ERROR] Unknown conv mode: {params['conv_mode']}")
+
             FP = lambda x: torch.nn.functional.avg_pool3d(
                 conv_fp(x),
-                kernel_size=params_dict["scale_factor"],
-                stride=params_dict["scale_factor"],
+                kernel_size=params["scale_factor"],
+                stride=params["scale_factor"],
             )
+        else:
+            raise ValueError(f"[ERROR] Unsupported ndim: {params['ndim']}")
+    else:
+        raise ValueError(f"[ERROR] Unknown FP type: {params['FP_type']}")
 
-    # --------------------------------------------------------------------------
+    # combine into a single model ----------------------------------------------
     model = kernelnet.KernelNet(
-        dim=params_dict["dataset_dim"],
-        in_channels=params_dict["in_channels"],
-        scale_factor=params_dict["scale_factor"],
-        num_iter=num_iter,
-        kernel_size_fp=params_dict["kernel_size_fp"],
-        kernel_size_bp=params_dict["kernel_size_bp"],
-        std_init=params_dict["std_init"],
-        init=params_dict["kernel_init"],
+        num_iter=params["num_iter"],
+        kernel_size_fp=params["kernel_size_fp"],
+        kernel_size_bp=params["kernel_size_bp"],
         FP=FP,
-        BP=BP,
-        lam=lam,
-        padding_mode=params_dict["padding_mode"],
-        multi_out=multi_out,
-        interpolation=params_dict["interpolation"],
-        kernel_norm=params_dict["kernel_norm_bp"],
-        over_sampling=params_dict["over_sampling"],
-        shared_bp=shared_bp,
-        self_supervised=self_supervised,
-        conv_mode=params_dict["conv_mode"],
-    ).to(device)
+        BP=None,
+        lam=params["lam"],
+        multi_out=params["multi_out"],
+        kernel_norm=params["kernel_norm_bp"],
+        shared_bp=params["shared_bp"],
+        self_supervised=params["self_supervised"],
+        **dict_model,
+    )
 
-# ------------------------------------------------------------------------------
-if model_name == "kernet_fp":
+# Only the Forward pojector ----------------------------------------------------
+elif model_name == "kernet_fp":
     model = kernelnet.ForwardProject(
-        dim=params_dict["dataset_dim"],
-        in_channels=params_dict["in_channels"],
-        scale_factor=params_dict["scale_factor"],
-        kernel_size=params_dict["kernel_size_fp"],
-        std_init=params_dict["std_init"],
-        init=params_dict["kernel_init"],
-        padding_mode=params_dict["padding_mode"],
+        kernel_size=params["kernel_size_fp"],
+        kernel_norm=params["kernel_norm_fp"],
         trainable=True,
-        kernel_norm=params_dict["kernel_norm_fp"],
-        interpolation=params_dict["interpolation"],
-        conv_mode=params_dict["conv_mode"],
-        over_sampling=params_dict["over_sampling"],
-    ).to(device)
+        **dict_model,
+    )
 
-# ------------------------------------------------------------------------------
-eva.count_parameters(model)
-print(model)
-if params_dict["dataset_dim"] == 2:
-    summary(model, input_size=(1, 1, 128, 128))
-if params_dict["dataset_dim"] == 3:
-    summary(model, input_size=(1, 1, 128, 128, 128))
+else:
+    raise ValueError(f"[ERROR] Unknown model name: {model_name}")
+
+model = model.to(device)
+
+# if params["ndim"] == 2:
+#     summary(model, input_size=(1, 1, 128, 128), device=device)
+# if params["ndim"] == 3:
+#     summary(model, input_size=(1, 1, 128, 128, 128), device=device)
+
+utils_eva.count_parameters(model)
 
 # ------------------------------------------------------------------------------
 # save
-if model_name == "kernet_fp":
-    model_part = "forward"
-if model_name == "kernet":
-    model_part = "backward"
-
-path_model = os.path.join(
-    params_dict["path_checkpoint"],
+path_model_save_to = os.path.join(
+    params["path_checkpoint_save"],
     dataset_id,
+    "kernelnet",
     model_part,
-    f"{model_name}_bs_{batch_size}_lr_{start_learning_rate}{suffix}",
+    f"{model_name}_bs_{params['batch_size']}_lr_{start_learning_rate}{suffix}",
 )
 
+print("[INFO] Save model to", path_model_save_to)
+writer = SummaryWriter(os.path.join(path_model_save_to, "log"))
 
-print("[INFO] Save model to", path_model)
-writer = SummaryWriter(os.path.join(path_model, "log"))
+# save parameters into a json file
+path_params_json = os.path.join(path_model_save_to, "params.json")
+with open(path_params_json, "w") as f:
+    json.dump(params, f, indent=4)
 
 # ------------------------------------------------------------------------------
-# OPTIMIZATION
+#                                   Training
 # ------------------------------------------------------------------------------
-if optimizer_type == "adam":
+# loass function
+if params["loss_function"] == "mse":
+    loss_main = torch.nn.MSELoss()
+
+# optimizer --------------------------------------------------------------------
+if params["optimizer_type"] == "adam":
     optimizer = torch.optim.Adam(model.parameters(), lr=start_learning_rate)
-if optimizer_type == "lbfgs":
+elif params["optimizer_type"] == "lbfgs":
     # optimizer = torch.optim.LBFGS(model.parameters(), lr=start_learning_rate)
     optimizer = torch.optim.LBFGS(
         model.parameters(), lr=start_learning_rate, line_search_fn="strong_wolfe"
     )
+else:
+    raise ValueError(f"[ERROR] Unsupported optimizer type: {params['optimizer_type']}")
 
 
+# ------------------------------------------------------------------------------
 num_batches = len(train_dataloader)
-num_batches_val = len(valid_dataloader) if validation_enable == True else 0
+num_batches_val = len(valid_dataloader) if params["validation_enable"] == True else 0
 
 print("[INFO] Start training ... ")
 print(f"[INFO] Start time: {time.asctime(time.localtime(time.time()))}")
-print(f"[INFO] Num of batches: (train) {num_batches}, (valid) {num_batches_val}")
-print(f"[INFO] Training under self-supervised mode: {self_supervised}")
+print(f"[INFO] Num of batches: (train | valid) {num_batches} | {num_batches_val}")
+print(f"[INFO] Training under self-supervised mode: {params['self_supervised']}")
 
+# ------------------------------------------------------------------------------
 # pre-load data to save trianing time
 if training_data_size == 1:
     sample = training_data[0]
     x, y = sample["lr"].to(device)[None], sample["hr"].to(device)[None]
-    y = y * params_dict["ratio"]
+    y = y * params["ratio"]
 elif training_data_size > 1:
     x, y = [], []
     for i in range(training_data_size):
         sample = training_data[i]
         x.append(sample["lr"])
         y.append(sample["hr"])
-    x = torch.stack(x)
-    y = torch.stack(y)
-    x, y = x.to(device), y.to(device)
-    y = y * params_dict["ratio"]
+    x = torch.stack(x).to(device)
+    y = torch.stack(y).to(device)
+    y = y * params["ratio"]
 else:
     print("[ERROR] Training data size is 0!")
 
 print(f"[INFO] Num of baches: {num_batches}")
-print(f"[INFO] Epoch: {epochs} | Batch size: {batch_size}")
+print(f"[INFO] Epoch: {epochs} | Batch size: {params['batch_size']}")
 print("-" * 80)
+
+# ------------------------------------------------------------------------------
+normalizer = NormalizePercentile(
+    params["normalization_eva"][0],
+    params["normalization_eva"][1],
+    ndim=params["ndim"],
+)
+
+dict_clip = {
+    "min": torch.Tensor([params["data_clip_eva"][0]]).to(device),
+    "max": torch.Tensor([params["data_clip_eva"][1]]).to(device),
+}
+data_range = params["data_clip_eva"][1] - params["data_clip_eva"][0]
 
 # ------------------------------------------------------------------------------
 pbar = tqdm.tqdm(total=epochs, desc="Training", ncols=80)
@@ -435,6 +464,7 @@ for i_epoch in range(epochs):
     model.train()
     for i_batch in range(num_batches):
         i_iter = i_batch + i_epoch * num_batches  # index of iteration
+        pbar.update(1)
 
         # load data
         # x, y = sample['lr'].to(device), sample['hr'].to(device)
@@ -444,7 +474,7 @@ for i_epoch in range(epochs):
         if model_name == "kernet_fp":
             inpt, gt = y, x
         elif model_name == "kernet":
-            if self_supervised:
+            if params["self_supervised"]:
                 inpt, gt = x, x
             else:
                 inpt, gt = x, y
@@ -452,7 +482,7 @@ for i_epoch in range(epochs):
             print("[ERROR] Model name is not defined!")
 
         # optimize -------------------------------------------------------------
-        if optimizer_type == "lbfgs":
+        if params["optimizer_type"] == "lbfgs":
             # L-BFGS optimizer, may be better for simulated data
             loss, pred = 0.0, 0.0
 
@@ -478,80 +508,95 @@ for i_epoch in range(epochs):
         step_lr_schedule(
             optimizer=optimizer,
             i_iter=i_iter,
-            scheduler_cus=params_dict["scheduler_cus"],
-            warm_up=params_dict["warm_up"],
-            use_lr_schedule=params_dict["use_lr_schedule"],
+            scheduler_cus=params["scheduler_cus"],
+            warm_up=params["warm_up"],
+            use_lr_schedule=params["use_lr_schedule"],
         )
 
-        pbar.update(1)
-
         # ----------------------------------------------------------------------
-        # plot loss and metrics
-        out = pred if multi_out == False else pred[-1]
+        out = pred if params["multi_out"] == False else pred[-1]
+        # ----------------------------------------------------------------------
 
-        if params_dict["dataset_dim"] == 2:
-            s, p = eva.measure_2d(img_test=out, img_true=gt, data_range=None)
-        if params_dict["dataset_dim"] == 3:
-            s, p = eva.measure_3d(img_test=out, img_true=gt, data_range=None)
-        loss_cpu = loss.cpu().detach().numpy()
-        pbar.set_postfix({"loss": loss_cpu, "psnr": p, "ssim": s})
+        if params["eva_during_train"]:
+            # plot loss and metrics
+            out = torch.clamp(normalizer(out), **dict_clip)
+            gt = torch.clamp(normalizer(gt), **dict_clip)
 
-        if i_iter % plot_every_iter == 0:
+            dict_eva = dict(img_true=gt, img_test=out, data_range=data_range)
+            ave_psnr = utils_eva.PSNR_tb(**dict_eva)
+            ave_ssim = utils_eva.SSIM_tb(**dict_eva)
+
+        if i_iter % params["plot_every_iter"] == 0:
             if writer != None:
-                writer.add_scalar("loss", loss, i_iter)
-                writer.add_scalar("psnr", ave_psnr, i_iter)
-                writer.add_scalar("ssim", ave_ssim, i_iter)
-                writer.add_scalar("lr", optimizer.param_groups[-1]["lr"], i_iter)
+                writer.add_scalar(params["loss_function"], loss, i_iter)
+                writer.add_scalar(
+                    "Learning rate", optimizer.param_groups[-1]["lr"], i_iter
+                )
+                if params["eva_during_train"]:
+                    writer.add_scalar("PSNR", ave_psnr, i_iter)
+                    writer.add_scalar("SSIM", ave_ssim, i_iter)
 
         # ----------------------------------------------------------------------
         # save model and relative information
-        if i_iter % save_every_iter == 0:
-            print("[INFO] Save model ...")
-            model_dict = {"model_state_dict": model.state_dict()}
-            torch.save(model_dict, os.path.join(path_model, f"epoch_{i_iter}.pt"))
+        if i_iter % params["save_every_iter"] == 0:
+            # print("[INFO] Save model ...")
+            torch.save(
+                {"model_state_dict": model.state_dict()},
+                os.path.join(path_model_save_to, f"epoch_{i_epoch}_{i_iter}.pt"),
+            )
 
         # ----------------------------------------------------------------------
         # validation
-        if (i_iter % val_every_iter == 0) and (validation_enable == True):
-            loss_val, ssim_val, psnr_val = [], [], []
+        if (i_iter % params["val_every_iter"] == 0) and (
+            params["validation_enable"] == True
+        ):
+            loss_val_list, ssim_val_list, psnr_val_list = [], [], []
             model.eval()
-            for i_batch_val, sample_val in enumerate(valid_dataloader):
-                x_val = sample_val["lr"].to(device)
-                y_val = sample_val["hr"].to(device)
-                if model_name == "kernel_fp":
-                    inpt, gt = y_val, x_val
-                if model_name == "kernet":
-                    inpt, gt = x_val, y_val
+            with torch.no_grad():
+                for i_batch_val, sample_val in enumerate(valid_dataloader):
+                    x_val = sample_val["lr"].to(device)
+                    y_val = sample_val["hr"].to(device)
 
-                pred_val = model(inpt)
-                loss_val = loss_main(pred_val, gt)
+                    if model_name == "kernet_fp":
+                        inpt_val, gt_val = y_val, x_val
+                    if model_name == "kernet":
+                        inpt_val, gt_val = x_val, y_val
 
-                out_val = pred_val[-1] if multi_out == True else pred_val
+                    pred_val = model(inpt_val)
+                    loss_val = loss_main(pred_val, gt_val)
 
-                if params_dict["dataset_dim"] == 2:
-                    ave_ssim, ave_psnr = eva.measure_2d(
-                        img_test=out_val, img_true=gt, data_range=None
+                    out_val = pred_val[-1] if params["multi_out"] == True else pred_val
+
+                    out_val = torch.clamp(normalizer(out_val), **dict_clip)
+                    gt_val = torch.clamp(normalizer(gt_val), **dict_clip)
+                    dict_eva_val = dict(
+                        img_true=gt_val, img_test=out_val, data_range=data_range
                     )
-                if params_dict["dataset_dim"] == 3:
-                    ave_ssim, ave_psnr = eva.measure_3d(
-                        img_test=out_val, img_true=gt, data_range=None
-                    )
 
-                loss_val.append(loss_val.cpu().detach().numpy())
-                psnr_val.append(ave_psnr)
-                ssim_val.append(ave_ssim)
+                    ave_psnr = utils_eva.PSNR_tb(**dict_eva_val)
+                    ave_ssim = utils_eva.SSIM_tb(**dict_eva_val)
+
+                    loss_val_list.append(float(loss_val.cpu().detach().numpy()))
+                    psnr_val_list.append(ave_psnr)
+                    ssim_val_list.append(ave_ssim)
 
             if writer != None:
-                writer.add_scalar("loss_val", statistics.mean(loss_val), i_iter)
-                writer.add_scalar("psnr_val", statistics.mean(psnr_val), i_iter)
-                writer.add_scalar("ssim_val", statistics.mean(ssim_val), i_iter)
+                writer.add_scalar(
+                    f"{params['loss_function']}_val",
+                    statistics.mean(loss_val_list),
+                    i_iter,
+                )
+                writer.add_scalar("psnr_val", statistics.mean(psnr_val_list), i_iter)
+                writer.add_scalar("ssim_val", statistics.mean(ssim_val_list), i_iter)
             model.train()
 pbar.close()
 # ------------------------------------------------------------------------------
 # save the last one model
-print(f"[INFO] Save model ... (Epoch: {i_epoch}, Iteration: {i_iter + 1})")
-model_dict = {"model_state_dict": model.state_dict()}
-torch.save(model_dict, os.path.join(path_model, f"epoch_{i_iter + 1}.pt"))
+print(f"[INFO] Save model ... (Epoch: {i_epoch}, Iteration: {i_iter})")
+torch.save(
+    {"model_state_dict": model.state_dict()},
+    os.path.join(path_model_save_to, f"epoch_{i_epoch}_{i_iter}.pt"),
+)
 
 writer.flush()
 writer.close()

@@ -140,6 +140,11 @@ def on_load_checkpoint(checkpoint: dict, complie_mode=False):
     ### Parameters:
         - checkpoint (dict): The checkpoint to load the parameters from.
         - complie_mode (bool): Whether the model is compiled. Default is False.
+            - If True, the parameters in the checkpoint are loaded into the
+            model with the keys prefixed with "_orig_mod.".
+            The model should be compiled first.
+            - If False, the parameters in the checkpoint are loaded into the
+            model without the keys prefixed with "_orig_mod.".
 
     ### Returns:
         - checkpoint (dict): The checkpoint with the parameters loaded into the model.
