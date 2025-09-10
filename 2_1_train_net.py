@@ -31,27 +31,32 @@ params = {
     "enable_amp": False,
     "enable_gradscaler": False,
     # model parameters ---------------------------------------------------------
-    "dim": 2,
     "model_name": "dfcan",
     # loss function ------------------------------------------------------------
     # "loss": "mse",
     "loss": "mae",
     # learning rate ------------------------------------------------------------
+    # "lr": 0.001,
+    # "batch_size": 16, # 2D
+    # "num_epochs": 15000,
     "lr": 0.0001,
-    "batch_size": 16,
-    "num_epochs": 300,
+    "batch_size": 4,  # 3D
+    "num_epochs": 700,
     "warm_up": 0,
-    "lr_decay_every_iter": 10000 * 10,
+    "lr_decay_every_iter": 10000,
     "lr_decay_rate": 0.5,
     "lr_min": 0.0000001,
+    "save_every_iter": 1000,
+    "plot_every_iter": 100,
+    "print_loss": False,
     # validation ---------------------------------------------------------------
     "enable_validation": True,
-    "frac_val": 0.01,
-    "validate_every_iter": 5000,
+    "frac_val": 0.2,
+    "validate_every_iter": 500,
     # dataset ------------------------------------------------------------------
-    "path_dataset_excel": "dataset_train.xlsx",
+    "path_dataset_excel": "datasets_train.xlsx",
     "datasets_id": [
-        "F-actin-nonlinear-9",
+        # "F-actin-nonlinear-9",
         # "F-actin-nonlinear-8",
         # "F-actin-nonlinear-7",
         # "F-actin-nonlinear-6",
@@ -96,6 +101,8 @@ params = {
         # "ER-3",
         # "ER-2",
         # "ER-1",
+        "Microtubule2-3d-1024",
+        # "Nuclear-pore-complex2-1024",
     ],
     "sample_range": (0, 1),
     "scale_factor": 1,
@@ -105,29 +112,24 @@ params = {
     # checkpoints --------------------------------------------------------------
     "suffix": "",
     "path_checkpoints": "checkpoints",
-    "save_every_iter": 5000,
-    "plot_every_iter": 100,
-    "print_loss": False,
+    # --------------------------------------------------------------------------
+    "saved_checkpoint": None,
 }
 
 # ------------------------------------------------------------------------------
 device = torch.device(params["device"])
 torch.manual_seed(params["random_seed"])
-normalizer = NormalizePercentile(
-    params["normalization_eva"][0],
-    params["normalization_eva"][1],
-    ndim=params["dim"],
-)
 dict_clip = {
-    "a_min": params["data_clip_eva"][0],
-    "a_max": params["data_clip_eva"][1],
+    "min": torch.Tensor([params["data_clip_eva"][0]]).to(device),
+    "max": torch.Tensor([params["data_clip_eva"][1]]).to(device),
 }
 data_range = params["data_clip_eva"][1] - params["data_clip_eva"][0]
-params['suffix'] += f'_id_{params['sample_range'][0]}_{params['sample_range'][1]}'
+params["suffix"] += f"_id_{params['sample_range'][0]}_{params['sample_range'][1]}"
 
 path_save_model = os.path.join(
     params["path_checkpoints"],
     params["datasets_id"][0],
+    params["model_name"],
     "{}_{}_bs_{}_lr_{}{}".format(
         params["model_name"],
         params["loss"],
@@ -138,34 +140,38 @@ path_save_model = os.path.join(
 )
 os.makedirs(path_save_model, exist_ok=True)
 
-# print parameters in the dict
-print("-" * 80)
-print("[INFO] Parameters:")
-for key, value in params.items():
-    print(f"  {key}: {value}")
-
 # ------------------------------------------------------------------------------
 #                                 load dataset
 # ------------------------------------------------------------------------------
+assert len(params["datasets_id"]) == 1, "[ERROR] Only one dataset is supported."
 data_frame = pandas.read_excel(params["path_dataset_excel"])
 info = data_frame[data_frame["id"] == params["datasets_id"][0]].iloc[0]
 
 path_dataset_lr = win2linux(info["path_lr"]) + "_patch"
-path_dataset_hr = win2linux(data_frame["path_hr"]) + "_patch"
-path_index_file = win2linux(data_frame["path_txt"]) + f"_patch_{params['sample_range'][0]}_{params['sample_range'][1]}"
+path_dataset_hr = win2linux(info["path_hr"]) + "_patch"
+path_index_file = win2linux(info["path_txt"]).replace(
+    ".txt", f"_patch_{params['sample_range'][0]}_{params['sample_range'][1]}.txt"
+)
+
 ratio = info["ratio"]
 
 for path in [path_dataset_lr, path_dataset_hr, path_index_file]:
     assert os.path.exists(path), f"[ERROR] {path} does not exist."
-
 
 params.update(
     {
         "path_dataset_lr": path_dataset_lr,
         "path_dataset_hr": path_dataset_hr,
         "path_index_file": path_index_file,
-        "ratio": ratio,
+        "ratio": float(ratio),
+        "dim": int(info["ndim"]),
     }
+)
+
+normalizer = NormalizePercentile(
+    params["normalization_eva"][0],
+    params["normalization_eva"][1],
+    ndim=params["dim"],
 )
 
 dataset_all = SRDataset(
@@ -216,6 +222,11 @@ img_hr_shape = dataset_train[0]["hr"].shape
 print(f"[INFO] Num of Batches (train| valid): {num_batches_train}|{num_batch_val}")
 print(f"[INFO] Image shape: (input) {img_lr_shape} | (gt) {img_hr_shape}")
 
+# print parameters in the dict
+print("-" * 80)
+print("[INFO] Parameters:")
+for key, value in params.items():
+    print(f"- {key}: {value}")
 # save parameters
 with open(os.path.join(path_save_model, f"params-{today_date}.json"), "w") as f:
     f.write(json.dumps(params, indent=1))
@@ -247,6 +258,7 @@ model.to(device=device)
 
 # complie
 if params["complie"]:
+    print("[INFO] Complie model.")
     model = torch.compile(model)
 
 # load pre-trained model parameters --------------------------------------------
@@ -258,9 +270,7 @@ if params["saved_checkpoint"] is not None:
         map_location=device,
         weights_only=True,
     )["model_state_dict"]
-    state_dict = on_load_checkpoint(
-        state_dict, complie_mode=params["complie"]
-    )
+    state_dict = on_load_checkpoint(state_dict, complie_mode=params["complie"])
     model.load_state_dict(state_dict)
     start_iter = params["saved_checkpoint"].split(".")[-2].split("_")[-1]
     start_iter = int(start_iter)
@@ -303,13 +313,19 @@ print(f"[INFO] Save model to {path_save_model}")
 
 scaler = torch.GradScaler("cuda", enabled=params["enable_gradscaler"])
 
+disable_pbar_epoch = True if num_batches_train > 10 else False
 try:
+    pbar_epoch = tqdm.tqdm(
+        total=params["num_epochs"], desc="Epoch", ncols=80, disable=disable_pbar_epoch
+    )
     for i_epoch in range(params["num_epochs"]):
         pbar = tqdm.tqdm(
             total=num_batches_train,
             desc=f"Epoch {i_epoch + 1}|{params['num_epochs']}",
             ncols=80,
+            disable=not disable_pbar_epoch,
         )
+        pbar_epoch.update(1)
 
         # ----------------------------------------------------------------------
         for i_batch, data in enumerate(dataloader_train):
@@ -448,12 +464,13 @@ try:
                         "ssim_val", running_val_ssim / num_batch_val, i_iter
                     )
                     log_writer.add_scalar(
-                        "mse_val", running_val_mse / num_batch_val, i_iter
+                        f"{params['loss']}_val", running_val_mse / num_batch_val, i_iter
                     )
                 pbar_val.close()
                 # convert model to train mode
                 model.train(True)
         pbar.close()
+    pbar_epoch.close()
 
     # ------------------------------------------------------------------------------
     # save and finish
@@ -483,6 +500,7 @@ except KeyboardInterrupt:
     )
 
     pbar.close()
+    pbar_epoch.close()
     log_writer.flush()
     log_writer.close()
     print("[INFO] Training done.")
