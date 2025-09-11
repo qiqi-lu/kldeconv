@@ -1,12 +1,16 @@
 import skimage.exposure as exposure
 import numpy as np
 from matplotlib.colors import ListedColormap
+import matplotlib.pyplot as plt
+from skimage.measure import profile_line
+
 
 def render_color(img, vmax=None):
     # norlaization
     if vmax == None:
-        vmax = np.array([np.percentile(img[..., 0], 99),\
-                         np.percentile(img[..., 1], 99)])
+        vmax = np.array(
+            [np.percentile(img[..., 0], 99), np.percentile(img[..., 1], 99)]
+        )
         # vmax = np.percentile(img, 99.99)
         # vmax = np.percentile(img, 99)
         # vmax = np.max(img)
@@ -17,47 +21,219 @@ def render_color(img, vmax=None):
     # img = exposure.adjust_gamma(img, gamma=0.5)
 
     # set colors
-    color_magenta = np.asarray([255, 0, 255]).reshape((1, 1, -1)) # 642
-    color_green   = np.asarray([0, 255, 0]).reshape((1, 1, -1))   # 560
+    color_magenta = np.asarray([255, 0, 255]).reshape((1, 1, -1))  # 642
+    color_green = np.asarray([0, 255, 0]).reshape((1, 1, -1))  # 560
 
-    img_color = (img[..., 0][..., None] * color_magenta\
-               + img[..., 1][..., None] * color_green)
+    img_color = (
+        img[..., 0][..., None] * color_magenta + img[..., 1][..., None] * color_green
+    )
     img_color = np.clip(img_color, 0, 255)
 
     return img_color.astype(np.uint8)
 
-def normalization(img_gray, vmin, vmax):
-    """Normalize image to 0-1.
+
+def add_scale_bar(
+    ax, image, pixel_size, bar_length, bar_height=0.01, bar_color="white", pos=(20, 20)
+):
     """
+    Add a scale bar to the given axes.
+
+    ### Parameters:
+    - `ax` (matplotlib.axes.Axes): The axes to which the scale bar will be added.
+    - `image` (np.ndarray): The 2D image array. The shape of the image array should be (H, W).
+    - `pixel_size` (float): The size of each pixel in the image (um).
+    - `bar_length` (float): The desired length of the scale bar (um).
+    - `bar_height` (float, optional): The height of the scale bar as a fraction
+            of the image height. Default is 0.02.
+    - `bar_color` (str, optional): The color of the scale bar. Default is 'white'.
+    - `pos` (tuple, optional): The position of the scale bar in the image (pixels). Default is (20, 20).
+    """
+    # Calculate the number of pixels corresponding to the bar length
+    bar_pixels = bar_length / pixel_size
+
+    # Get the image dimensions
+    image_height, image_width = image.shape[-2:]
+
+    # Calculate the physical height of the bar
+    bar_physical_height = bar_height * image_height
+
+    # Add the scale bar rectangle
+    rect = plt.Rectangle(
+        pos, bar_pixels, bar_physical_height, color=bar_color, zorder=10
+    )
+    ax.add_patch(rect)
+
+
+def add_patch(
+    ax: plt.Axes,
+    image: np.ndarray,
+    pos: tuple,
+    size: int,
+    percent: float = 0.45,
+    show_box=False,
+    axes_lw=1,
+    box_lw=0.5,
+    box_color="white",
+):
+    """
+    Add a patch to the given axes.
+    ### Parameters:
+    - `ax` (matplotlib.axes.Axes): The axes to which the patch will be added.
+    - `image` (np.ndarray): The 2D image array. The shape of the image array should be (H, W) or (H, W, 3).
+    - `pos` (tuple): The position of the patch in the image (pixels).
+    - `size` (tuple): The size of the patch in the image (pixels).
+    - `percent` (float): The percentage of the patch to be displayed. Default is 0.45.
+    - `show_box` (bool): Whether to show the box in image. Default is False.
+    - `axes_lw` (float): The linewidth of the axes. Default is 1.
+    """
+
+    assert image.ndim in [2, 3], "The shape of image should be (H, W) or (H, W, 3)"
+    if image.ndim == 3:
+        assert image.shape[-1] == 3, "The shape of image should be (H, W, 3)"
+
+    # add box in the image -----------------------------------------------------
+    dict_box = dict(fill=False, edgecolor=box_color, linewidth=box_lw)
+
+    if show_box:
+        box = plt.Rectangle(xy=(pos[0], pos[1]), width=size, height=size, **dict_box)
+        ax.add_patch(box)
+
+    # crop patch ---------------------------------------------------------------
+    patch = image[pos[1] : pos[1] + size, pos[0] : pos[0] + size]
+    # add patch to the figure
+    patch = np.flipud(patch)
+    # set the size of patch
+    img_shape = image.shape
+    w_box, h_box = (max(img_shape[1] * percent, img_shape[0] * percent),) * 2
+    ax_patch = ax.inset_axes(
+        [img_shape[1] - w_box, img_shape[0] - h_box, w_box, h_box],
+        transform=ax.transData,
+    )
+    ax_patch.imshow(patch)
+
+    # adjust apperence ---------------------------------------------------------
+    ax_patch.set_xlim(0, size - 1)
+    ax_patch.set_ylim(0, size - 1)
+    # del the ticks and their labels
+    ax_patch.set_xticks([])
+    ax_patch.set_yticks([])
+    ax_patch.set_xticklabels([])
+    ax_patch.set_yticklabels([])
+    # set the color of axes to white and width to 1
+    ax_patch.spines["top"].set_color("white")
+    ax_patch.spines["left"].set_color("white")
+    ax_patch.spines["top"].set_linewidth(axes_lw)
+    ax_patch.spines["left"].set_linewidth(axes_lw)
+    # del the left and bottom spines
+    ax_patch.spines["right"].set_visible(False)
+    ax_patch.spines["bottom"].set_visible(False)
+
+
+def add_line_profile(
+    ax: plt.Axes,
+    image: np.ndarray,
+    line_pos: tuple,
+    profile_pos: tuple,
+    profiel_ylim=2.0,
+    line_color="white",
+    line_width=1,
+    show_line=False,
+):
+    """
+    Add a line profile to the given axes.
+    ### Parameters:
+    - `ax` (matplotlib.axes.Axes): The axes to which the line profile will be added.
+    - `image` (np.ndarray): The 2D image array. The shape of the image array should be (H, W).
+    - `line_pos` (tuple): The position of the line profile in the image (pixels).
+        (x1,y1, x2, y2).
+    - `profile_pos` (tuple): The position of the line profile in the figure (pixels).
+        (w_box, h_box).
+    - `line_color` (str): The color of the line profile. Default is 'white'.
+    - `line_width` (float): The width of the line profile. Default is 1.
+    """
+    assert image.ndim == 2, "The shape of image should be (H, W)"
+    assert len(line_pos) == 4, "The length of line_pos should be 4"
+
+    dict_line = dict(color=line_color, linewidth=line_width)
+    x1, y1, x2, y2 = line_pos
+    w_box, h_box = profile_pos
+    img_shape = image.shape
+
+    # plot the line in the image
+    if show_line:
+        ax.plot([x1, x2], [y1, y2], linestyle="--", **dict_line)
+
+    profile = profile_line(
+        # np.mean(img_color, axis=-1), (y1, x1), (y2, x2), linewidth=1
+        image,
+        (y1, x1),
+        (y2, x2),
+        linewidth=1,
+    )
+    profile_ax = ax.inset_axes(
+        [img_shape[1] - w_box, img_shape[0] - h_box * 1.5, w_box, h_box * 0.5],
+        transform=ax.transData,
+    )
+    profile_ax.plot(profile, **dict_line)
+    profile_ax.set_ylim((0, profiel_ylim))
+    profile_ax.set_axis_off()
+
+
+def colorize(image, vmin=0, vmax=1, color=(0, 255, 0)):
+    """
+    Create an RGB image from a single-channel image using a
+    specific color.
+
+    ### Parameters:
+    - `image`: numpy array, shape (H, W), single channel image.
+    - `vmin`: float, the minimum value of the image.
+    - `vmax`: float, the maximum value of the image.
+    - `color`: tuple, the color to use for the image.
+
+    ### Returns:
+    - `image`: numpy array, shape (H, W, 3), RGB image.
+    """
+    # Rescale the image
+    image_clip = np.clip(image, vmin, vmax)
+    image_clip = (image_clip - vmin) / (vmax - vmin)
+    image_clip_3 = np.repeat(image_clip[..., None], 3, axis=-1)
+    image_clip_3 = image_clip_3 * color
+    return image_clip_3.astype(np.uint8)
+
+
+def normalization(img_gray, vmin, vmax):
+    """Normalize image to 0-1."""
     vmin, vmax = np.array(vmin), np.array(vmax)
-    img_norm = (img_gray - vmin)/(vmax - vmin)
+    img_norm = (img_gray - vmin) / (vmax - vmin)
     img_norm = np.clip(img_norm, 0, 1)
     return img_norm
 
-def look_up(img_gray, lut, rgb_type='rgb'):
-    """Apply LUT to numpy array.""" 
+
+def look_up(img_gray, lut, rgb_type="rgb"):
+    """Apply LUT to numpy array."""
     img_gray_flat = img_gray.reshape(-1)
-    rgb = lut(img_gray_flat)  
-    rgb = rgb.reshape(img_gray.shape+(4,))
-    rgb = rgb[...,:-1]
-    if rgb_type == 'bgr':
+    rgb = lut(img_gray_flat)
+    rgb = rgb.reshape(img_gray.shape + (4,))
+    rgb = rgb[..., :-1]
+    if rgb_type == "bgr":
         rgb = np.flip(rgb, axis=-1)
     return rgb
 
+
 def merge(imgs):
-    assert imgs.__len__() >1, "imgs shoud be an array with at least two images"
+    assert imgs.__len__() > 1, "imgs shoud be an array with at least two images"
     merged = 0
     for img in imgs:
         merged += img.astype(np.float64)
-    merged = merged*255.
-    merged[merged>255] = 255
+    merged = merged * 255.0
+    merged[merged > 255] = 255
     return merged.astype(np.uint8)
 
-def render(img, cmaps=['gray'], vmin=None, vmax=None, rgb_type='rgb'):
-    """The last dimention should be the channel.
-    """
+
+def render(img, cmaps=["gray"], vmin=None, vmax=None, rgb_type="rgb"):
+    """The last dimention should be the channel."""
     num_channel = img.shape[-1]
-    assert num_channel == len(cmaps), 'One cmap for each channel'
+    assert num_channel == len(cmaps), "One cmap for each channel"
 
     if vmax == None:
         vmax = []
@@ -71,14 +247,14 @@ def render(img, cmaps=['gray'], vmin=None, vmax=None, rgb_type='rgb'):
             vmin.append(np.percentile(img[..., i], 0))
         vmin = np.array(vmin)
 
-    #Normalise images to defined value (0-255).
+    # Normalise images to defined value (0-255).
     img_norm = normalization(img, vmin, vmax)
 
-    #Grayscale images converted to rgb with a LUT
+    # Grayscale images converted to rgb with a LUT
     imgs = []
     for i in range(num_channel):
         # img_sc = exposure.adjust_gamma(img_norm[...,i], gamma=2.0)
-        img_sc = img_norm[...,i]
+        img_sc = img_norm[..., i]
         imgs.append(look_up(img_sc, cmaps[i], rgb_type=rgb_type))
 
     img_merged = merge(imgs)

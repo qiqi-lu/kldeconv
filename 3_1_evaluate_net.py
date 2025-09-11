@@ -3,6 +3,7 @@ import numpy as np
 from skimage import io
 from models.dfcan_2d import DFCAN
 from models.dfcan_3d import DFCAN3D
+from models.rln_3d import RLN3D
 from utils.data import text2tuple, win2linux, SRDataset, NormalizePercentile
 from checkpoint_list import checkpoints_v1 as checkpoints_list
 from utils.optimize import on_load_checkpoint
@@ -11,13 +12,15 @@ from utils.optimize import on_load_checkpoint
 #                             Paramsters
 # ------------------------------------------------------------------------------
 id_device = "cuda:0"
+# model_name = "dfcan"
+model_name = "rln"
 
 # id_sample = [7, 8, 9, 10, 11, 12, 13, 14, 15, 16]
 id_sample = [0, 1, 2, 3, 4, 5, 6]
 # id_sample = [0]
 
 # dataset_names = ("SimuMix3D-128-31-0-0-1", "SimuMix3D-128-31-0-0-1")
-# dataset_names = ("Microtubule2-3d-1024", "Microtubule2-3d-1024")
+dataset_names = ("Microtubule2-3d-1024", "Microtubule2-3d-1024")
 # dataset_names = ("Microtubule2-3d-1024", "Nuclear-pore-complex2-1024")
 # dataset_names = ("Nuclear-pore-complex2-1024", "Nuclear-pore-complex2-1024")
 # dataset_names = ("Nuclear-pore-complex2-1024", "Microtubule2-3d-1024")
@@ -49,7 +52,7 @@ id_sample = [0, 1, 2, 3, 4, 5, 6]
 # dataset_names = ("Microtubules2-2", "Microtubules2-9")
 # dataset_names = ("Microtubules2-1", "Microtubules2-9")
 
-dataset_names = ("Microtubules2-1", "Microtubules2-1")
+# dataset_names = ("Microtubules2-1", "Microtubules2-1")
 # dataset_names = ("Microtubules2-1", "F-actin-nonlinear-1")
 # dataset_names = ("Microtubules2-1", "CCPs-1")
 # dataset_names = ("Microtubules2-1", "ER-1")
@@ -107,7 +110,7 @@ path_prediction = os.path.join(
     "outputs",
     "predictions",
     dataset_name_test,
-    "dfcan",
+    model_name,
     dataset_name_train,
     f"n{num_data}_r{id_repeat}",
 )
@@ -169,12 +172,21 @@ if params["ndim"] == 2:
         num_groups=4,
     )
 elif params["ndim"] == 3:
-    model = DFCAN3D(
-        in_channels=params["in_channels"],
-        scale_factor=1,
-        num_features=64,
-        num_groups=4,
-    )
+    if model_name == "rln":
+        model = RLN3D(
+            scale=1, in_channels=params["in_channels"], n_features=4, kernel_size=3
+        )
+    elif model_name == "dfcan":
+        model = DFCAN3D(
+            in_channels=params["in_channels"],
+            scale_factor=1,
+            num_features=64,
+            num_groups=4,
+        )
+    else:
+        raise ValueError(
+            f"[ERROR] Model is not supported. {model_name} ({params['ndim']}D)"
+        )
 else:
     raise ValueError(f"[ERROR] Dimension is not supported. {params['dim']}")
 
@@ -182,7 +194,7 @@ model = model.to(device)
 
 # load trained parameters ------------------------------------------------------
 path_checkpoint = win2linux(
-    checkpoints_list[dataset_name_train]["dfcan"][f"n{num_data}_r{id_repeat}"]
+    checkpoints_list[dataset_name_train][model_name][f"n{num_data}_r{id_repeat}"]
 )
 assert os.path.exists(
     path_checkpoint

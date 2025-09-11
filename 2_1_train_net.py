@@ -11,6 +11,7 @@ from torch.utils.tensorboard import SummaryWriter
 
 from models.dfcan_2d import DFCAN
 from models.dfcan_3d import DFCAN3D
+from models.rln_3d import RLN3D
 
 from utils.data import win2linux, SRDataset, NormalizePercentile
 from utils.optimize import on_load_checkpoint, StepLR_iter
@@ -22,16 +23,18 @@ today_date = datetime.date.today()
 # ------------------------------------------------------------------------------
 params = {
     # device
-    "device": "cuda:0",
+    "device": "cuda:1",
     "random_seed": 7,
     "data_shuffle": True,
     "num_workers": 8,
-    "complie": True,
+    # "complie": True,
+    "complie": False,
     # mixed-precision ----------------------------------------------------------
     "enable_amp": False,
     "enable_gradscaler": False,
     # model parameters ---------------------------------------------------------
-    "model_name": "dfcan",
+    # "model_name": "dfcan",
+    "model_name": "rln",
     # loss function ------------------------------------------------------------
     # "loss": "mse",
     "loss": "mae",
@@ -39,7 +42,7 @@ params = {
     # "lr": 0.001,
     # "batch_size": 16, # 2D
     # "num_epochs": 15000,
-    "lr": 0.0001,
+    "lr": 0.01,
     "batch_size": 4,  # 3D
     "num_epochs": 700,
     "warm_up": 0,
@@ -101,10 +104,10 @@ params = {
         # "ER-3",
         # "ER-2",
         # "ER-1",
-        "Microtubule2-3d-1024",
-        # "Nuclear-pore-complex2-1024",
+        # "Microtubule2-3d-1024",
+        "Nuclear-pore-complex2-1024",
     ],
-    "sample_range": (0, 1),
+    "sample_range": (0, 2),
     "scale_factor": 1,
     "normalization": (False, False),
     "normalization_eva": (0.03, 0.995),
@@ -250,6 +253,14 @@ elif params["model_name"] == "dfcan" and params["dim"] == 3:
         scale_factor=params["scale_factor"],
         num_features=64,
         num_groups=4,
+    )
+elif params["model_name"] == "rln" and params["dim"] == 3:
+    print("[INFO] Using RLN model (3D version).")
+    model = RLN3D(
+        scale=params["scale_factor"],
+        in_channels=1,
+        n_features=4,
+        kernel_size=3,
     )
 else:
     print(f"[ERROR] Model name ({params['model_name']}) is not supported.")
