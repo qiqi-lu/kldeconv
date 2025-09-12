@@ -129,6 +129,70 @@ def add_patch(
     ax_patch.spines["bottom"].set_visible(False)
 
 
+def add_significant_bars(ax, x1, x2, y, p_value, dict_line={}, dict_asterisks={}):
+    """
+    Add significant bars to the given axes.
+
+    ### Parameters:
+    - `ax`: matplotlib.axes.Axes, the axes to which the significant bars will be added.
+    - `x1`: float, the x-coordinate of the left edge of the bar.
+    - `x2`: float, the x-coordinate of the right edge of the bar.
+    - `y`: float, the y-coordinate of the bar.
+    - `p_value`: float, the p-value of the comparison.
+    - `significant_level`: float, the significance level. Default is 0.05.
+    """
+    if p_value <= 0.0001:
+        asterisks = "****"
+    elif p_value <= 0.001:
+        asterisks = "***"
+    elif p_value <= 0.01:
+        asterisks = "**"
+    elif p_value <= 0.05:
+        asterisks = "*"
+    else:
+        asterisks = "ns"
+
+    offset = 0.05
+    dict_l = {"color": "black", "linewidth": 1}
+    dict_a = {"ha": "left", "va": "bottom", "fontsize": 10, "color": "black"}
+
+    if dict_line:
+        dict_l.update(dict_line)
+    if dict_asterisks:
+        dict_a.update(dict_asterisks)
+
+    # ax.plot([x1, x1, x2, x2], [y, y + offset, y + offset, y], **dict_l)
+    ax.plot([x1, x2], [y, y], **dict_l)
+    # ax.text((x1 + x2) / 2, y * 1.001, asterisks, **dict_a)
+    ax.text(x1, y * 0.98, asterisks, **dict_a)
+
+
+def add_significant_star(ax, x, y, p_value, dict_asterisks={}):
+    """
+    Add significant stars to the given axes at a specific position.
+
+    ### Parameters:
+    - `ax`: matplotlib.axes.Axes, the axes to which the significant stars will be added.
+    - `x`: float, the x-coordinate of the star.
+    - `y`: float, the y-coordinate of the star.
+    - `p_value`: float, the p-value of the comparison.
+    """
+    if p_value <= 0.0001:
+        asterisks = "****"
+    elif p_value <= 0.001:
+        asterisks = "***"
+    elif p_value <= 0.01:
+        asterisks = "**"
+    elif p_value <= 0.05:
+        asterisks = "*"
+    else:
+        asterisks = "ns"
+    dict_a = {"ha": "center", "va": "bottom", "fontsize": 10, "color": "black"}
+    if dict_asterisks:
+        dict_a.update(dict_asterisks)
+    ax.text(x, y, asterisks, **dict_a)
+
+
 def add_line_profile(
     ax: plt.Axes,
     image: np.ndarray,
