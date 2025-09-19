@@ -29,7 +29,6 @@ params = {
     "num_workers": 8,
     # "complie": True,
     "complie": False,
-    # mixed-precision ----------------------------------------------------------
     "enable_amp": False,
     "enable_gradscaler": False,
     # model parameters ---------------------------------------------------------
@@ -39,12 +38,19 @@ params = {
     # "loss": "mse",
     "loss": "mae",
     # learning rate ------------------------------------------------------------
+    # 2D real ------------------------------------------------------------------
     # "lr": 0.001,
     # "batch_size": 16, # 2D
     # "num_epochs": 15000,
-    "lr": 0.01,
-    "batch_size": 4,  # 3D
-    "num_epochs": 700,
+    # 3D real ------------------------------------------------------------------
+    # "lr": 0.01,
+    # "batch_size": 4,  # 3D
+    # "num_epochs": 700,
+    # 3D simu ------------------------------------------------------------------
+    "lr": 0.001,
+    "batch_size": 1,  # 3D
+    "num_epochs": 30000,
+    # --------------------------------------------------------------------------
     "warm_up": 0,
     "lr_decay_every_iter": 10000,
     "lr_decay_rate": 0.5,
@@ -53,7 +59,7 @@ params = {
     "plot_every_iter": 100,
     "print_loss": False,
     # validation ---------------------------------------------------------------
-    "enable_validation": True,
+    "enable_validation": False,
     "frac_val": 0.2,
     "validate_every_iter": 500,
     # dataset ------------------------------------------------------------------
@@ -105,9 +111,13 @@ params = {
         # "ER-2",
         # "ER-1",
         # "Microtubule2-3d-1024",
-        "Nuclear-pore-complex2-1024",
+        # "Nuclear-pore-complex2-1024",
+        # "SimuMix3D-128-31-0-0-1",
+        # "SimuMix3D-128-31-05-1-1",
+        # "SimuMix3D-128-31-05-1-03",
+        "SimuMix3D-128-31-05-1-01",
     ],
-    "sample_range": (0, 2),
+    "sample_range": (0, 1),
     "scale_factor": 1,
     "normalization": (False, False),
     "normalization_eva": (0.03, 0.995),
@@ -150,11 +160,18 @@ assert len(params["datasets_id"]) == 1, "[ERROR] Only one dataset is supported."
 data_frame = pandas.read_excel(params["path_dataset_excel"])
 info = data_frame[data_frame["id"] == params["datasets_id"][0]].iloc[0]
 
-path_dataset_lr = win2linux(info["path_lr"]) + "_patch"
-path_dataset_hr = win2linux(info["path_hr"]) + "_patch"
-path_index_file = win2linux(info["path_txt"]).replace(
-    ".txt", f"_patch_{params['sample_range'][0]}_{params['sample_range'][1]}.txt"
-)
+if "Simu" not in params["datasets_id"][0]:
+    path_dataset_lr = win2linux(info["path_lr"]) + "_patch"
+    path_dataset_hr = win2linux(info["path_hr"]) + "_patch"
+    path_index_file = win2linux(info["path_txt"]).replace(
+        ".txt", f"_patch_{params['sample_range'][0]}_{params['sample_range'][1]}.txt"
+    )
+else:
+    path_dataset_lr = win2linux(info["path_lr"])
+    path_dataset_hr = win2linux(info["path_hr"])
+    path_index_file = win2linux(info["path_txt"]).replace(
+        ".txt", f"_{params['sample_range'][0]}_{params['sample_range'][1]}.txt"
+    )
 
 ratio = info["ratio"]
 

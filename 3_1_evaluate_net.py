@@ -4,7 +4,7 @@ from skimage import io
 from models.dfcan_2d import DFCAN
 from models.dfcan_3d import DFCAN3D
 from models.rln_3d import RLN3D
-from utils.data import text2tuple, win2linux, SRDataset, NormalizePercentile
+from utils.data import win2linux, SRDataset, NormalizePercentile, read_txt
 from checkpoint_list import checkpoints_v1 as checkpoints_list
 from utils.optimize import on_load_checkpoint
 
@@ -16,15 +16,19 @@ id_device = "cuda:0"
 model_name = "rln"
 
 # id_sample = [7, 8, 9, 10, 11, 12, 13, 14, 15, 16]
-id_sample = [0, 1, 2, 3, 4, 5, 6]
+# id_sample = [0, 1, 2, 3, 4, 5, 6]
 # id_sample = [0]
+id_sample = []
 
+# ------------------------------------------------------------------------------
 # dataset_names = ("SimuMix3D-128-31-0-0-1", "SimuMix3D-128-31-0-0-1")
-dataset_names = ("Microtubule2-3d-1024", "Microtubule2-3d-1024")
+dataset_names = ("SimuMix3D-128-31-05-1-01", "SimuMix3D-128-31-05-1-01")
+# ------------------------------------------------------------------------------
+# dataset_names = ("Microtubule2-3d-1024", "Microtubule2-3d-1024")
 # dataset_names = ("Microtubule2-3d-1024", "Nuclear-pore-complex2-1024")
 # dataset_names = ("Nuclear-pore-complex2-1024", "Nuclear-pore-complex2-1024")
 # dataset_names = ("Nuclear-pore-complex2-1024", "Microtubule2-3d-1024")
-
+# ------------------------------------------------------------------------------
 # dataset_names = ("F-actin-nonlinear-9", "F-actin-nonlinear-9")
 # dataset_names = ("F-actin-nonlinear-9", "Microtubules2-9")
 # dataset_names = ("F-actin-nonlinear-9", "CCPs-9")
@@ -37,8 +41,8 @@ dataset_names = ("Microtubule2-3d-1024", "Microtubule2-3d-1024")
 # dataset_names = ("F-actin-nonlinear-1", "ER-1")
 # dataset_names = ("F-actin-nonlinear-1", "F-actin-1")
 
-# dataset_names = ("Microtubules2-9", "F-actin-nonlinear-9")
 # dataset_names = ("Microtubules2-9", "Microtubules2-9")
+# dataset_names = ("Microtubules2-9", "F-actin-nonlinear-9")
 # dataset_names = ("Microtubules2-9", "CCPs-9")
 # dataset_names = ("Microtubules2-9", "ER-6")
 # dataset_names = ("Microtubules2-9", "F-actin-9")
@@ -93,6 +97,7 @@ dataset_names = ("Microtubule2-3d-1024", "Microtubule2-3d-1024")
 # dataset_names = ("ER-1", "Microtubules2-1")
 # dataset_names = ("ER-1", "CCPs-1")
 # dataset_names = ("ER-1", "F-actin-1")
+# ------------------------------------------------------------------------------
 
 num_data, id_repeat = 1, 1
 dataset_name_test, dataset_name_train = dataset_names
@@ -102,7 +107,6 @@ print(f"[INFO] Dataset test: {dataset_name_test}")
 print(f"[INFO] Dataset train: {dataset_name_train}")
 print(f"[INFO] Num data: {num_data}")
 print(f"[INFO] Id repeat: {id_repeat}")
-print(f"[INFO] Id sample: {id_sample}")
 print("-" * 80)
 
 # ------------------------------------------------------------------------------
@@ -139,9 +143,16 @@ params = dict(
 
 device = torch.device(id_device)
 
+filenames = read_txt(params["path_lr_txt"])
+num_samples = len(filenames)
+if params["id_sample"] == []:
+    print("[INFO] Predict all samples.")
+    params["id_sample"] = list(range(num_samples))
+
 print("-" * 80)
 print(f"[INFO] Dataset: {dataset_name_test}")
 print(f"[INFO] Training dataset: {dataset_name_train}")
+print(f"[INFO] Id sample test: {params['id_sample']}")
 print(f"[INFO] Device: {device}")
 print("-" * 80)
 for key, value in params.items():
@@ -219,7 +230,9 @@ print(f"[INFO] Parameters are saved to {path_params_json}")
 # ------------------------------------------------------------------------------
 print("-" * 80)
 print("[INFO] Start evaluating...")
-assert id_sample is not None and len(id_sample) > 0, "[ERROR] id_sample is None"
+assert (
+    params["id_sample"] is not None and len(params["id_sample"]) > 0
+), "[ERROR] id_sample is None"
 
 normalizer = NormalizePercentile(
     p_low=params["norm_pred"][0],
@@ -228,8 +241,8 @@ normalizer = NormalizePercentile(
 )
 
 # ------------------------------------------------------------------------------
-pbar = tqdm.tqdm(total=len(id_sample), desc="Evaluating", ncols=80)
-for id in id_sample:
+pbar = tqdm.tqdm(total=len(params["id_sample"]), desc="Evaluating", ncols=80)
+for id in params["id_sample"]:
     data = dataset_test[id]
     x = torch.clamp(data["lr"], min=0.0, max=None)
     x = normalizer(x).to(device)[None]
@@ -238,7 +251,7 @@ for id in id_sample:
         y_pred = model(x)
 
     # save results -------------------------------------------------------------
-    path_sample = os.path.join(path_prediction, f"sample_{id}")
+    path_sample = os.path.join(path_prediction, filenames[id].split(".")[0])
     os.makedirs(path_sample, exist_ok=True)
     x = x.cpu().detach().numpy()[0, 0]
     y_pred = y_pred.cpu().detach().numpy()[0, 0]

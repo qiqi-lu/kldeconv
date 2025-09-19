@@ -6,7 +6,7 @@ from models import kernelnet
 from fft_conv_pytorch import fft_conv
 
 # from
-from utils.data import text2tuple, win2linux, SRDataset, padding_kernel
+from utils.data import text2tuple, win2linux, SRDataset, padding_kernel, read_txt
 from checkpoint_list import checkpoints_v1 as checkpoints_list
 
 # ------------------------------------------------------------------------------
@@ -14,32 +14,42 @@ from checkpoint_list import checkpoints_v1 as checkpoints_list
 # ------------------------------------------------------------------------------
 # id_device = "cpu"
 id_device = "cuda:0"
-# output_inter = True  # output intermediate results
-output_inter = False  # not to output intermediate results
+output_inter = True  # output intermediate results
+# output_inter = False  # not to output intermediate results
 
-# FP_type, BP_type = "known", "learned"
+FP_type, BP_type = "known", "learned"  # simulation data
 # FP_type, BP_type = 'known', 'known'
-FP_type, BP_type = "pre-trained", "learned"
+# FP_type, BP_type = "pre-trained", "learned" # 2D and 3D real data
 # FP_type, BP_type = 'pre-trained', 'known'
 
 num_data_fp, id_repeat_fp = 1, 1
-num_data_bp, id_repeat_bp = 1, 1
+# num_data_bp, id_repeat_bp = 1, 1
+num_data_bp, id_repeat_bp = 3, 1
+num_iter_test = 2
 
 # id_sample = [0, 346, 609, 700, 770, 901]
 # id_sample = [0, 1, 2, 3, 4, 5]
 # id_sample = range(0, 1000, 4)
 # id_sample = [0, 1, 2, 3, 4, 5, 6]
 # id_sample = [7, 8, 9, 10, 11, 12, 13, 14, 15, 16]
-id_sample = [0, 1, 2, 3, 4, 5, 6]
+# id_sample = [0, 1, 2, 3, 4, 5, 6]
 # id_sample = [0]
-# id_sample = None
+id_sample = []
+# id_sample = None # will only save the kernels
 
+# ------------------------------------------------------------------------------
+#                  test dataset | train dataset
+# ------------------------------------------------------------------------------
 # dataset_names = ("SimuMix3D-128-31-0-0-1", "SimuMix3D-128-31-0-0-1")
+# dataset_names = ("SimuMix3D-128-31-05-1-01", "SimuMix3D-128-31-05-1-01")
+# dataset_names = ("SimuMix3D-128-31-05-1-03", "SimuMix3D-128-31-05-1-03")
+dataset_names = ("SimuMix3D-128-31-05-1-1", "SimuMix3D-128-31-05-1-1")
+# ------------------------------------------------------------------------------
 # dataset_names = ("Microtubule2-3d-1024", "Microtubule2-3d-1024")
 # dataset_names = ("Microtubule2-3d-1024", "Nuclear-pore-complex2-1024")
 # dataset_names = ("Nuclear-pore-complex2-1024", "Nuclear-pore-complex2-1024")
 # dataset_names = ("Nuclear-pore-complex2-1024", "Microtubule2-3d-1024")
-
+# ------------------------------------------------------------------------------
 # dataset_names = ("F-actin-nonlinear-9", "F-actin-nonlinear-9")
 # dataset_names = ("F-actin-nonlinear-9", "Microtubules2-9")
 # dataset_names = ("F-actin-nonlinear-9", "CCPs-9")
@@ -59,7 +69,7 @@ id_sample = [0, 1, 2, 3, 4, 5, 6]
 # dataset_names = ("Microtubules2-9", "F-actin-9")
 
 # dataset_names = ("Microtubules2-1", "F-actin-nonlinear-1")
-dataset_names = ("Microtubules2-1", "Microtubules2-1")
+# dataset_names = ("Microtubules2-1", "Microtubules2-1")
 # dataset_names = ("Microtubules2-1", "CCPs-1")
 # dataset_names = ("Microtubules2-1", "ER-1")
 # dataset_names = ("Microtubules2-1", "F-actin-1")
@@ -109,7 +119,6 @@ dataset_names = ("Microtubules2-1", "Microtubules2-1")
 # dataset_names = ("ER-1", "ER-1")
 # dataset_names = ("ER-1", "F-actin-1")
 
-# ------------------------------------------------------------------------------
 # dataset_names = ("F-actin-nonlinear-2", "F-actin-nonlinear-2")
 # dataset_names = ("F-actin-nonlinear-2", "Microtubules2-2")
 # dataset_names = ("F-actin-nonlinear-2", "CCPs-2")
@@ -175,7 +184,6 @@ params_dict = dict(
     scale_factor=int(info["scale_factor"]),
     interpolation=True,
     kernel_norm_fp=False,
-    # kernel_norm_fp=True,
     kernel_norm_bp=True,
     over_sampling=2,
     padding_mode="reflect",
@@ -190,7 +198,7 @@ params_dict = dict(
     normalization=(False, False),
     in_channels=1,
     train_mode=info["train_mode"],
-    num_iter_test=2,
+    num_iter_test=num_iter_test,
 )
 
 # ------------------------------------------------------------------------------
@@ -231,6 +239,12 @@ dataset_test = SRDataset(
     normalization=params_dict["normalization"],
     id_range=None,
 )
+
+filenames = read_txt(params_dict["lr_txt_file_path"])
+num_samples_all = len(filenames)
+if id_sample == []:
+    # use all the samples
+    id_sample = list(range(num_samples_all))
 
 # ------------------------------------------------------------------------------
 # Model
@@ -469,7 +483,7 @@ for i in id_sample:
     pbar.update(1)
 
     # Save results -------------------------------------------------------------
-    path_sample = os.path.join(path_prediction, f"sample_{i}")
+    path_sample = os.path.join(path_prediction, filenames[i].split(".")[0])
     os.makedirs(path_sample, exist_ok=True)
 
     save_image = lambda fname, arr: io.imsave(

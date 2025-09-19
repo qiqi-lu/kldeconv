@@ -1,5 +1,5 @@
 """
-Display the image restored by different methods.
+Display the image restored by different methods. (2D / 3D)
 """
 
 import matplotlib.pyplot as plt
@@ -9,15 +9,13 @@ from skimage.measure import profile_line
 import numpy as np
 import os, pandas, tqdm
 from utils import evaluation as eva
-import matplotlib.patches as patches
-import matplotlib.colors as colors
 from utils.data import NormalizePercentile, win2linux, read_txt
 from utils.plot import (
     colorize,
     add_scale_bar,
     add_patch,
-    add_significant_bars,
     add_significant_star,
+    interp_iso_z,
 )
 from scipy.stats import wilcoxon
 
@@ -25,18 +23,28 @@ plt.rcParams["svg.fonttype"] = "none"
 # ------------------------------------------------------------------------------
 # figure_name = "2d_real"
 figure_name = "3d_real"
-num_samples = 6
+num_samples = 20
 
 # ------------------------------------------------------------------------------
 # dataset name, id sample, pos, size
 dataset_show_info_list = {
     "2d_real": (
-        ("F-actin-nonlinear-9", 5, (200, 200), 100, (255, 0, 0)),
+        # ("F-actin-nonlinear-9", 5, (200, 200), 100, (255, 0, 0)),
+        ("CCPs-9", 0, (200, 200), 100, (0, 255, 0)),
         ("Microtubules2-9", 0, (200, 200), 100, (3, 174, 210)),
+        ("ER-6", 0, (200, 200), 100, (255, 0, 255)),
+        ("F-actin-9", 0, (200, 200), 100, (255, 165, 0)),
     ),
     "3d_real": (
-        ("Microtubule2-3d-1024", 0, 1, (200, 200), 100, (3, 174, 210)),
-        ("Nuclear-pore-complex2-1024", 0, 1, (200, 200), 100, (0, 255, 0)),
+        ("Microtubule2-3d-1024", 0, (1, 512, 100, 200), (200, 200), 100, (3, 174, 210)),
+        (
+            "Nuclear-pore-complex2-1024",
+            0,
+            (1, 512, 100, 200),
+            (200, 200),
+            100,
+            (0, 255, 0),
+        ),
     ),
 }
 
@@ -50,7 +58,7 @@ methods_show_info_list = {
     "3d_real": (
         ("DeconvBlind", "deconvblind", "deconv.tif", "#42B4B5"),
         ("RLN", "rln", "y_pred.tif", "#B78E72"),
-        ("RLD@15", "traditional", "deconv_15.tif", "#4D8FCB"),
+        ("RLD@20", "traditional", "deconv_iter_20.tif", "#4D8FCB"),
         ("KLD", "kernelnet", "y_pred_all.tif", "#D95D5B"),
     ),
 }
@@ -107,7 +115,7 @@ for i_dataset in range(num_datasets):
 
     # --------------------------------------------------------------------------
     results = []
-    pbar = tqdm.tqdm(total=range(num_samples), desc="Load results", ncols=80)
+    pbar = tqdm.tqdm(total=num_samples, desc="Load results", ncols=80)
     for i_sample in range(num_samples):
         pbar.update(1)
         results_ss = []
@@ -116,9 +124,9 @@ for i_dataset in range(num_datasets):
         filenames = read_txt(win2linux(info["path_txt"]))
         x = io.imread(os.path.join(path_raw, filenames[i_sample]))
         y = io.imread(os.path.join(path_gt, filenames[i_sample]))
-
         results_ss.append(x.astype(np.float32))
 
+        filename_wo_ext = filenames[i_sample].split(".")[0]
         for i_meth in range(num_methods):
             meth_title, meth_tag, meth_file = methods_show_info[i_meth][:3]
 
@@ -129,7 +137,7 @@ for i_dataset in range(num_datasets):
                     meth_tag,
                     dataset_name_test,
                     "fp_n1_r1_bp_n1_r1",
-                    f"sample_{i_sample}",
+                    filename_wo_ext,
                 )
                 y_pred = io.imread(os.path.join(path_tmp, "y_pred_all.tif"))
 
@@ -145,13 +153,13 @@ for i_dataset in range(num_datasets):
                     meth_tag,
                     dataset_name_test,
                     "n1_r1",
-                    f"sample_{i_sample}",
+                    filename_wo_ext,
                     meth_file,
                 )
                 y_pred = io.imread(path_tmp)
             else:
                 path_tmp = os.path.join(
-                    path_result, meth_tag, f"sample_{i_sample}", meth_file
+                    path_result, meth_tag, filename_wo_ext, meth_file
                 )
                 y_pred = io.imread(path_tmp)
 
@@ -170,46 +178,85 @@ print(f"[INFO] Shape of image : {results_all[0][0][0].shape}")
 print("-" * 80)
 
 # ------------------------------------------------------------------------------
-# show results
+#                               show results
 # ------------------------------------------------------------------------------
+print("[INFO] Show results...")
 nr, nc = num_datasets, num_methods + 2
+
+if ndim == 3:
+    nr = nr * 2
+
 fig, axes = plt.subplots(nrows=nr, ncols=nc, figsize=(3 * nc, 3 * nr), **dict_fig)
 [ax.set_axis_off() for ax in axes.ravel()]
 
 for i_dataset in range(num_datasets):
-    axes_ds = axes[i_dataset]
-
     if ndim == 2:
+        axes_ds = axes[i_dataset]
         dataset_name_test, id_sample, pos, size, color_img = dataset_show_info[
             i_dataset
         ]
     if ndim == 3:
+        axes_ds = axes[i_dataset * 2 : i_dataset * 2 + 2]
         dataset_name_test, id_sample, id_slice, pos, size, color_img = (
             dataset_show_info[i_dataset]
         )
 
     info = info_df[info_df["id"] == dataset_name_test].iloc[0]
-    pixel_size = float(info["pixel_size"])
-    results = results_all[i_dataset][id_sample]
-    N_meth = len(results)  # number of methods (include raw and gt)
+    pixel_size = float(info["pixel_size"]) / 1000  # pixel size (um)
 
-    # get input and gt image ---------------------------------------------------
-    img_raw, img_gt = results[0], results[-1]
-    # normalize image
-    img_raw = np.clip(normalizer(img_raw), **dict_clip)
-    img_gt = np.clip(normalizer(img_gt), **dict_clip)
+    if ndim == 3:
+        id_slice_xy, id_slice_zx, x_start, x_stop = (
+            id_slice  # slice index to show in xy and xz plane
+        )
+        slice_space = float(info["slice_space"]) / 1000  # slice spacing (um)
+        # recalculate the slice index
+        id_slice_xy = round((id_slice_xy + 1) * slice_space / pixel_size) - 1
+
+    results = results_all[i_dataset][id_sample]
+
+    # get gt image -------------------------------------------------------------
+    img_gt = np.clip(normalizer(results[-1]), **dict_clip)
 
     # show restored image from different methods -------------------------------
-    for i_meth in range(N_meth):
+    for i_meth in range(len(results)):
         img = np.clip(normalizer(results[i_meth]), **dict_clip)
+        if ndim == 2:
+            img_color = colorize(img, vmin=0.0, vmax=0.9, color=color_img)
+        elif ndim == 3:
+            # interpolate the image to have a isotropic voxel size
+            img_interp = interp_iso_z(
+                img, ps_xy=pixel_size, ps_z=slice_space
+            )  # (D, H, W)
+            # plot color image
+            img_color = colorize(img_interp, vmin=0.0, vmax=0.9, color=color_img)
+        else:
+            raise ValueError(f"[ERROR] Cannot find the dimension of the figure.")
 
-        # plot color image
-        img_color = colorize(img, vmin=0.0, vmax=0.9, color=color_img)
-        axes_ds[i_meth].imshow(img_color)
+        if ndim == 2:
+            axes_ds[i_meth].imshow(img_color)
+            img_shape = img.shape
+        elif ndim == 3:
+            img_shape = img[0].shape
+            # show image in xy plane
+            axes_ds[0, i_meth].imshow(img_color[id_slice_xy, :, :])
+            # show image in xz plane
+            axes_ds[1, i_meth].imshow(img_color[:, id_slice_zx, x_start:x_stop])
+
+        # set which ax to show info
+        if ndim == 2:
+            axes_tag = axes_ds[i_meth]
+        elif ndim == 3:
+            axes_tag = axes_ds[0, i_meth]
+            axes_tag.plot(
+                [x_start, x_stop],
+                [id_slice_zx, id_slice_zx],
+                "-",
+                linewidth=1,
+                color="white",
+            )
 
         # add scale bar --------------------------------------------------------
         if i_meth == len(results) - 1:
-            img_shape = img.shape
             tp = 0.05
             dict_scale_bar = {
                 "pixel_size": pixel_size,
@@ -218,10 +265,30 @@ for i_dataset in range(num_datasets):
                 "bar_color": "white",
                 "pos": (int(img_shape[1] * tp), int(img_shape[0] * (1 - tp))),
             }
-            add_scale_bar(axes_ds[i_meth], image=img, **dict_scale_bar)
+            if ndim == 2:
+                add_scale_bar(axes_tag, image=img, **dict_scale_bar)
+            elif ndim == 3:
+                add_scale_bar(axes_tag, image=img[0], **dict_scale_bar)
+
+                # image_crop = img[:, id_slice_zx, x_start:x_stop]
+                # dict_scale_bar["pos"] = (
+                #     int(image_crop.shape[1] * tp),
+                #     int(image_crop.shape[0] * (1 - tp)),
+                # )
+                # add_scale_bar(axes_ds[1, i_meth], image=image_crop, **dict_scale_bar)
 
         # add metrics value ----------------------------------------------------
-        pos_text = (int(img.shape[0] * 0.04), int(img.shape[1] * 0.04))
+        if ndim == 2:
+            pos_text = (
+                img.shape[0] - int(img.shape[0] * 0.04),
+                int(img.shape[1] * 0.04),
+            )
+        elif ndim == 3:
+            pos_text = (
+                img[0].shape[0] - int(img[0].shape[0] * 0.04),
+                int(img[0].shape[1] * 0.04),
+            )
+
         dict_text_metric = {
             "fontsize": 14,
             "color": "white",
@@ -231,10 +298,15 @@ for i_dataset in range(num_datasets):
         if i_meth != len(results) - 1:
             dict_eva = {"img_true": img_gt, "img_test": img}
             psnr = eva.PSNR(**dict_eva, data_range=data_range)
-            ssim = eva.SSIM(**dict_eva, data_range=data_range)
-            axes_ds[i_meth].text(
+            # ssim = eva.SSIM(**dict_eva, data_range=data_range)
+            ssim = eva.SSIM_tb(
+                img_true=img_gt[None, None],
+                img_test=img[None, None],
+                data_range=data_range,
+            )
+            axes_tag.text(
                 pos_text[1],
-                img.shape[0] - pos_text[0],
+                pos_text[0],
                 f"{psnr:.2f} | {ssim*100:.2f}",
                 **dict_text_metric,
             )
@@ -242,9 +314,15 @@ for i_dataset in range(num_datasets):
         # add zoom patch -------------------------------------------------------
         if show_patch:
             show_box = True if i_meth == len(results) - 1 else False
+
+            if ndim == 2:
+                img_tmp = img_color
+            elif ndim == 3:
+                img_tmp = img_color[id_slice_xy]
+
             add_patch(
-                ax=axes_ds[i_meth],
-                image=img_color,
+                ax=axes_tag,
+                image=img_tmp,
                 pos=pos,
                 size=size,
                 show_box=show_box,
@@ -255,18 +333,33 @@ for i_dataset in range(num_datasets):
 
         # add title ------------------------------------------------------------
         dict_text_meth = {"fontsize": 14, "color": "white", "ha": "right", "va": "top"}
-        pos_text = (int(img.shape[0] * 0.04), int(img.shape[1] * 0.04))
-        if i_dataset == 0:
-            axes_ds[i_meth].text(
-                img.shape[1] - pos_text[1],
-                pos_text[0],
-                methods_names[i_meth],
-                **dict_text_meth,
+
+        if ndim == 2:
+            pos_text = (
+                int(img.shape[0] * 0.04),
+                img.shape[1] - int(img.shape[1] * 0.04),
+            )
+        elif ndim == 3:
+            pos_text = (
+                int(img[0].shape[0] * 0.04),
+                img.shape[1] - int(img[0].shape[1] * 0.04),
             )
 
+        if i_dataset == 0:
+            axes_tag.text(
+                pos_text[1], pos_text[0], methods_names[i_meth], **dict_text_meth
+            )
+
+        # add title (structure) ------------------------------------------------
         dict_text_struc = {"fontsize": 14, "color": "white", "ha": "left", "va": "top"}
+
+        if ndim == 2:
+            pos_text = (int(img.shape[0] * 0.04), int(img.shape[1] * 0.04))
+        elif ndim == 3:
+            pos_text = (int(img[0].shape[0] * 0.04), int(img[0].shape[1] * 0.04))
+
         if i_meth == 0:
-            axes_ds[i_meth].text(
+            axes_tag.text(
                 pos_text[1], pos_text[0], dataset_name_test, **dict_text_struc
             )
 
@@ -295,7 +388,12 @@ for i_dataset in range(num_datasets):
 
             dict_eva = {"img_true": img_gt, "img_test": img}
             psnr = eva.PSNR(**dict_eva, data_range=data_range)
-            ssim = eva.SSIM(**dict_eva, data_range=data_range)
+            # ssim = eva.SSIM(**dict_eva, data_range=data_range)
+            ssim = eva.SSIM_tb(
+                img_true=img_gt[None, None],
+                img_test=img[None, None],
+                data_range=data_range,
+            )
             ncc = eva.NCC(**dict_eva)
             metrics_meth.append([psnr, ssim, ncc])
         metrics_sample.append(metrics_meth)
@@ -337,7 +435,10 @@ print(f"[INFO] pvalues shape : {pvalues_data.shape}")
 # ------------------------------------------------------------------------------
 print("-" * 80)
 print("[INFO] Show statistics analysis...")
-y_lim_metrics = ((20, 36), (0.4, 1), (0.75, 1))
+if figure_name == "2d_real":
+    y_lim_metrics = ((20, 36), (0.4, 1), (0.75, 1))
+elif figure_name == "3d_real":
+    y_lim_metrics = ((20, 30), (0.3, 0.65), (0.6, 0.85))
 
 method_colors = ["#8E99AB"]
 for i_meth in range(num_methods):
@@ -353,12 +454,15 @@ width = 0.9 / (num_methods + 1)  # the width of the bars
 width_bar = width * 0.85
 x = np.arange(num_datasets)  # the label locations
 
-axes[0].set_yticks([20, 25, 30, 35, 40])
-axes[0].set_yticklabels([20, 25, 30, 35, 40], fontsize=font_size)
-axes[1].set_yticks([0.4, 0.6, 0.8, 1.0])
-axes[1].set_yticklabels([0.4, 0.6, 0.8, 1.0], fontsize=font_size)
-axes[2].set_yticks([0.75, 0.8, 0.85, 0.9, 0.95, 1.0])
-axes[2].set_yticklabels([0.75, 0.8, 0.85, 0.9, 0.95, 1.0], fontsize=font_size)
+ticks = np.round(np.linspace(0, 60, 13), decimals=1)
+axes[0].set_yticks(ticks)
+axes[0].set_yticklabels(ticks, fontsize=font_size)
+ticks = np.round(np.linspace(0.0, 1.0, 11), decimals=2)
+axes[1].set_yticks(ticks)
+axes[1].set_yticklabels(ticks, fontsize=font_size)
+ticks = np.round(np.linspace(0.0, 1.0, 21), decimals=2)
+axes[2].set_yticks(ticks)
+axes[2].set_yticklabels(ticks, fontsize=font_size)
 
 for i_metric in range(num_metrics):
     ax = axes[i_metric]

@@ -8,28 +8,20 @@ import numpy as np
 import os, pandas
 import utils.data as utils_data
 
+plt.rcParams["svg.fonttype"] = "none"
 # ------------------------------------------------------------------------------
-dataset_name, pixel_size = "SimuMix3D_128", 162.5  # nm
+# pixel_size = 162.5  # nm
+path_results_show = (
+    "SimuMix3D-128-31-0-0-1/traditional/kernel/ker_bp.tif",
+    "SimuMix3D-128-31-0-0-1/wiener-butterworth/kernel/ker_bp.tif",
+    "SimuMix3D-128-31-0-0-1/kernelnet/SimuMix3D-128-31-0-0-1/fp_knonw_bp_n80_r_1/kernel/kernel_bp.tif",
+    "SimuMix3D-128-31-05-1-03/kernelnet/SimuMix3D-128-31-05-1-03/fp_knonw_bp_n3_r1/kernel/kernel_bp.tif",
+)
+path_kernel_true = "SimuMix3D-128-31-05-1-03/kernelnet/SimuMix3D-128-31-05-1-03/fp_knonw_bp_n3_r1/kernel/kernel_true.tif"
+path_image_y = "SimuMix3D-128-31-05-1-03/kernelnet/SimuMix3D-128-31-05-1-03/fp_knonw_bp_n3_r1/10/y.tif"
 
-params_data_train = {
-    "noise-free": {
-        "std_gauss": 0,
-        "poisson": 0,
-        "ratio": 1,
-        "num_data": 80,
-        "id_repeat": 1,
-    },
-    "noisy": {
-        "std_gauss": 0.5,
-        "poisson": 1,
-        "ratio": 0.3,
-        "num_data": 3,
-        "id_repeat": 1,
-    },
-}
-
-path_prediction = os.path.join("outputs", "figures-v1", dataset_name)
-path_fig = os.path.join("outputs", "figures", dataset_name, "kernels")
+path_prediction = os.path.join("outputs", "predictions")
+path_fig = os.path.join("outputs", "figures")
 os.makedirs(path_fig, exist_ok=True)
 
 print("[INFO] load data from:", path_prediction)
@@ -40,43 +32,14 @@ print("[INFO] save figures to:", path_fig)
 # ------------------------------------------------------------------------------
 print("[INFO] load kernels ...")
 ker_BP = []
-# conventional backward kernels
-methods = ["traditional", "wiener_butterworth"]
-for meth in methods:
-    ptmp = params_data_train["noise-free"]
-    path_ker_bp = os.path.join(
-        path_prediction,
-        f"scale_1_gauss_{ptmp['std_gauss']}_poiss_{ptmp['poisson']}_ratio_{ptmp['ratio']}",
-        "sample_0",
-        meth,
-        "deconv_bp.tif",
-    )
-    ker_BP.append(io.imread(path_ker_bp))
-
-# learned backeard kernels
-noise_level = ["noise-free", "noisy"]
-for nl in noise_level:
-    ptmp = params_data_train[nl]
-    path_fig_data = os.path.join(
-        path_prediction,
-        f"scale_1_gauss_{ptmp['std_gauss']}_poiss_{ptmp['poisson']}_ratio_{ptmp['ratio']}",
-        f"kernels_bc_{ptmp['num_data']}_re_{ptmp['id_repeat']}",
-    )
-    ker_BP.append(io.imread(os.path.join(path_fig_data, "kernel_bp.tif")))
+for path in path_results_show:
+    ker_BP.append(io.imread(os.path.join(path_prediction, path)))
 
 # true forward kernel
-ker_true = io.imread(os.path.join(path_fig_data, "kernel_true.tif"))
+ker_true = io.imread(os.path.join(path_prediction, path_kernel_true))
 
 # ------------------------------------------------------------------------------
-y = io.imread(
-    os.path.join(
-        path_prediction,
-        f"scale_1_gauss_0_poiss_0_ratio_1",
-        f"sample_0",
-        "kernelnet",
-        "y.tif",
-    )
-)
+y = io.imread(os.path.join(path_prediction, path_image_y))
 
 s_fft = y.shape
 
@@ -124,7 +87,6 @@ axes[2, 0].text(s=r"$k_x$$k_y$", **dict_text_fre)
 axes[2, 1].text(s=r"$k_x$$k_z$", **dict_text_fre)
 
 plt.savefig(os.path.join(path_fig, "kernel_bp.png"))
-plt.rcParams["svg.fonttype"] = "none"
 plt.savefig(os.path.join(path_fig, "kernel_bp.svg"))
 
 # ------------------------------------------------------------------------------
@@ -244,5 +206,4 @@ for ax in axes.ravel():
     ax.spines[["right", "top"]].set_visible(False)
 
 plt.savefig(os.path.join(path_fig, "kernel_bp_fft"))
-plt.rcParams["svg.fonttype"] = "none"
 plt.savefig(os.path.join(path_fig, "kernel_bp_fft.svg"))

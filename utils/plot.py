@@ -3,6 +3,7 @@ import numpy as np
 from matplotlib.colors import ListedColormap
 import matplotlib.pyplot as plt
 from skimage.measure import profile_line
+import torch
 
 
 def render_color(img, vmax=None):
@@ -265,8 +266,41 @@ def colorize(image, vmin=0, vmax=1, color=(0, 255, 0)):
     return image_clip_3.astype(np.uint8)
 
 
-def normalization(img_gray, vmin, vmax):
-    """Normalize image to 0-1."""
+def interp_iso_z(x, ps_xy=25, ps_z=160):
+    """
+    Interpolate the image to the isotropic z-axis.
+    ### Parameters:
+    - `x`: numpy array, shape (D, H, W), the image to be interpolated.
+    - `ps_xy`: float, the pixel size in the xy-axis.
+    - `ps_z`: float, the pixel size in the z-axis.
+    ### Returns:
+    - `x`: numpy array, shape (D, H, W), the interpolated image.
+    """
+    assert x.ndim == 3, "The shape of x should be (D, H, W)"
+    z_scale = ps_z / ps_xy
+    x = torch.tensor(x)[None, None]
+    x = torch.nn.functional.interpolate(x, scale_factor=(z_scale, 1, 1), mode="nearest")
+    x = x.numpy()[0, 0]
+    return x
+
+
+def normalization_01(img_gray, vmin: tuple | list, vmax: tuple | list):
+    """
+    Normalize image to 0-1, the normalized image is clip to (0,1).
+
+    ### Parameters:
+    - `img_gray`: numpy array, shape (H, W, C), the image to be normalized.
+    - `vmin`: tuple, the minimum value of the image.
+    - `vmax`: tuple, the maximum value of the image.
+    ### Returns:
+    - `img_gray`: numpy array, shape (H, W, C), the normalized image.
+    """
+    assert img_gray.ndim == 3, "The shape of img_gray should be (H, W, C)"
+    assert len(vmin) == len(vmax), "The length of vmin and vmax should be the same"
+    assert img_gray.shape[-1] == len(
+        vmax
+    ), "The number of channels of img_gray should have the same length as vmax"
+
     vmin, vmax = np.array(vmin), np.array(vmax)
     img_norm = (img_gray - vmin) / (vmax - vmin)
     img_norm = np.clip(img_norm, 0, 1)
@@ -274,50 +308,104 @@ def normalization(img_gray, vmin, vmax):
 
 
 def look_up(img_gray, lut, rgb_type="rgb"):
-    """Apply LUT to numpy array."""
+    """
+    Apply LUT to gray scale image.
+
+    ### Parameters:
+    - `img_gray`: numpy array, shape (H, W), the gray scale image.
+    - `lut`: look up table.
+    - `rgb_type`: str, the type of the image. Default is 'rgb'.
+    ### Returns:
+    - `rgb`: numpy array, shape (H, W, 3), the RGB image.
+    """
     img_gray_flat = img_gray.reshape(-1)
-    rgb = lut(img_gray_flat)
-    rgb = rgb.reshape(img_gray.shape + (4,))
-    rgb = rgb[..., :-1]
+    img_color = lut(img_gray_flat)
+    img_color = img_color.reshape(img_gray.shape + (4,))
+    # remove the alpha channel, which control the transparency of the color
+    img_color = img_color[..., :-1]
     if rgb_type == "bgr":
-        rgb = np.flip(rgb, axis=-1)
-    return rgb
+        img_color = np.flip(img_color, axis=-1)
+    return img_color
 
 
 def merge(imgs):
-    assert imgs.__len__() > 1, "imgs shoud be an array with at least two images"
-    merged = 0
-    for img in imgs:
-        merged += img.astype(np.float64)
+    """
+    Merge colored image to a single image. The shape of the image should be (H, W, 3).
+    ### Parameters:
+    - `imgs`: list of numpy array, shape (H, W, 3), the colored image.
+    ### Returns:
+    - `img_merge`: numpy array, shape (H, W, 3), the merged image.
+    """
+    assert isinstance(imgs, list), "imgs should be a list of numpy array"
+    assert len(imgs) > 0, "imgs should not be empty"
+
+    if len(imgs) > 1:
+        merged = 0
+        for img in imgs:
+            merged += img.astype(np.float64)
+    else:
+        merged = imgs[0].astype(np.float64)
     merged = merged * 255.0
     merged[merged > 255] = 255
     return merged.astype(np.uint8)
 
 
-def render(img, cmaps=["gray"], vmin=None, vmax=None, rgb_type="rgb"):
-    """The last dimention should be the channel."""
+def create_cmap(color: tuple | list = (255, 255, 255)):
+    """
+    Create a colormap from a single color.
+    Start from black to the given color.
+    ### Parameters:
+    - `color`: tuple, the color to use for the colormap. Default is (255,255,255).
+    ### Returns:
+    - `cmap`: matplotlib.colors.ListedColormap, the colormap.
+    """
+    N = 256
+    vals = np.ones((N, 4))
+    vals[:, 0] = np.linspace(0, color[0] / N, N)
+    vals[:, 1] = np.linspace(0, color[1] / N, N)
+    vals[:, 2] = np.linspace(0, color[2] / N, N)
+    newcmp = ListedColormap(vals)
+    return newcmp
+
+
+def render(
+    img, cmaps, plow: tuple | list = None, phigh: tuple | list = None, rgb_type="rgb"
+):
+    """
+    Render image with color map.
+
+    ### Parameters:
+    - `img`: numpy array, shape (H, W, C), the image to be rendered.
+    - `cmaps`: list, the color map to be used. Default is ['gray'].
+    - `vmin`: tuple, the minimum value of the image. Default is None.
+    - `vmax`: tuple, the maximum value of the image. Default is None.
+    - `rgb_type`: str, the type of the RGB image. Default is 'rgb'.
+    ### Returns:
+    - `img`: numpy array, shape (H, W, C), the rendered image.
+    """
+    assert img.ndim == 3, "The shape of img should be (H, W, C)"
+    assert len(cmaps) == img.shape[-1], "The length of cmaps should be the same as C"
+
     num_channel = img.shape[-1]
-    assert num_channel == len(cmaps), "One cmap for each channel"
 
-    if vmax == None:
-        vmax = []
-        for i in range(num_channel):
-            vmax.append(np.percentile(img[..., i], 100))
-        vmax = np.array(vmax)
+    # if vmin and vmax is not given,
+    # use the minimum and maximum value of the image to normalize the image.
+    if plow is None:
+        plow = (0,) * num_channel
+    if phigh is None:
+        phigh = (100,) * num_channel
 
-    if vmin == None:
-        vmin = []
-        for i in range(num_channel):
-            vmin.append(np.percentile(img[..., i], 0))
-        vmin = np.array(vmin)
+    vmin, vmax = [], []
+    for i in range(num_channel):
+        vmin.append(np.percentile(img[..., i], plow[i]))
+        vmax.append(np.percentile(img[..., i], phigh[i]))
 
-    # Normalise images to defined value (0-255).
-    img_norm = normalization(img, vmin, vmax)
+    # Normalise image
+    img_norm = normalization_01(img, vmin, vmax)
 
     # Grayscale images converted to rgb with a LUT
     imgs = []
     for i in range(num_channel):
-        # img_sc = exposure.adjust_gamma(img_norm[...,i], gamma=2.0)
         img_sc = img_norm[..., i]
         imgs.append(look_up(img_sc, cmaps[i], rgb_type=rgb_type))
 

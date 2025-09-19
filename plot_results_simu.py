@@ -1,10 +1,15 @@
+"""
+Show specified sample in simulation datasets.
+"""
+
 import matplotlib.pyplot as plt
 import utils.evaluation as eva
 import utils.data as utils_data
+from utils.data import read_txt, win2linux
 import skimage.io as io
 import skimage.exposure as exposure
 import numpy as np
-import os
+import os, pandas
 from utils import evaluation as eva
 from skimage.measure import profile_line
 
@@ -48,88 +53,85 @@ def cal_ncc(x, y):
 
 
 # ------------------------------------------------------------------------------
-data_set_name_test = "SimuMix3D_128"
-# data_set_name_test = 'SimuMix3D_256'
-# data_set_name_test = 'SimuMix3D_382'
+#                    dataset name | (num_data, id_repeat) | id_sample
 # ------------------------------------------------------------------------------
-# std_gauss, poisson, ratio = 0.5, 1, 0.1
-# std_gauss, poisson, ratio = 0.5, 1, 0.3
-# std_gauss, poisson, ratio = 0.5, 1, 1
-std_gauss, poisson, ratio = 0, 0, 1
-
-id_sample = 0
-
-num_data = 1
-id_repeat = 1
+data_info = ("SimuMix3D-128-31-0-0-1", "fp_knonw_bp_n3_r1", 0)
 
 # methods_iter = [100, 100, 100, 30]
 # methods_iter = [30, 30, 30, 30]
 methods_iter = [2, 2, 2, 2]
 
 # ------------------------------------------------------------------------------
-scale_factor = 1
+dataset_name_test, id_experiment, id_sample = data_info
 name_net = "kernelnet"
 num_iter_train = 2
 eps = 0.000001
-# ------------------------------------------------------------------------------
-path_predictions = os.path.join("outputs", "figures", data_set_name_test)
-path_fig_data = os.path.join(
-    path_predictions,
-    f"scale_{scale_factor}_gauss_{std_gauss}_poiss_{poisson}_ratio_{ratio}",
+
+info_df = pandas.read_excel("datasets_test.xlsx")
+info = info_df[info_df["id"] == dataset_name_test].iloc[0]
+
+path_txt = win2linux(info["path_txt"])
+path_lr = win2linux(info["path_lr"])
+path_hr = win2linux(info["path_hr"])
+pixel_size = info["pixel_size"]
+
+filenames = read_txt(path_txt)
+
+path_predictions = os.path.join(
+    "outputs", "predictions", dataset_name_test, name_net, dataset_name_test
 )
-path_fig_ker = os.path.join(path_fig_data, "kernels", f"bc_{num_data}_re_{id_repeat}")
-path_fig_sample = os.path.join(path_fig_data, f"sample_{id_sample}")
+path_kernel = os.path.join(path_predictions, "kernel")
+path_sample = os.path.join(
+    path_predictions, id_experiment, filenames[id_sample].split(".")[0]
+)
 
 print("-" * 80)
-print("load results from :", path_fig_sample)
-print("load kernels from :", path_fig_ker)
+print("[INFO] load results from :", path_sample)
+print("[INFO] load kernels from :", path_kernel)
 
 # ------------------------------------------------------------------------------
 # load kernels and results of KLD
 # ------------------------------------------------------------------------------
 print("-" * 80)
-print("load kernels ...")
-ker_init = io.imread(os.path.join(path_fig_ker, "kernel_init.tif"))
-ker_true = io.imread(os.path.join(path_fig_ker, "kernel_true.tif"))
-ker_FP = io.imread(os.path.join(path_fig_ker, "kernel_fp.tif"))
-ker_BP = io.imread(os.path.join(path_fig_ker, "kernel_bp.tif"))
+print("[INFO] load kernels ...")
+ker_init = io.imread(os.path.join(path_kernel, "kernel_init.tif"))
+ker_true = io.imread(os.path.join(path_kernel, "kernel_true.tif"))
+ker_FP = io.imread(os.path.join(path_kernel, "kernel_fp.tif"))
+ker_BP = io.imread(os.path.join(path_kernel, "kernel_bp.tif"))
 
-print("load results of KLD ...")
-y = io.imread(os.path.join(path_fig_sample, name_net, "y.tif"))
-x = io.imread(os.path.join(path_fig_sample, name_net, "x.tif"))
-x0 = io.imread(os.path.join(path_fig_sample, name_net, "x0.tif"))
-y_fp = io.imread(os.path.join(path_fig_sample, name_net, "y_fp.tif"))
-x0_fp = io.imread(os.path.join(path_fig_sample, name_net, "x0_fp.tif"))
-bp = io.imread(os.path.join(path_fig_sample, name_net, "bp.tif"))
-
-y_pred_all = io.imread(os.path.join(path_fig_sample, name_net, "y_pred_all.tif"))
-num_iter_train = 2
+print("[INFO] load results of KLD ...")
+img_y = io.imread(os.path.join(path_sample, "y.tif"))
+img_x = io.imread(os.path.join(path_sample, "x.tif"))
+img_x0 = io.imread(os.path.join(path_sample, "x0.tif"))
+img_y_fp = io.imread(os.path.join(path_sample, "y_fp.tif"))
+img_x0_fp = io.imread(os.path.join(path_sample, "x0_fp.tif"))
+img_bp = io.imread(os.path.join(path_sample, "bp.tif"))
+y_pred_all = io.imread(os.path.join(path_sample, "y_pred_all.tif"))
+# ------------------------------------------------------------------------------
 y_pred = y_pred_all[num_iter_train]
 
-# ------------------------------------------------------------------------------
 Nz_kt, Ny_kt, Nx_kt = ker_true.shape
 Nz_kf, Ny_kf, Nx_kf = ker_FP.shape
 Nz_kb, Ny_kb, Nx_kb = ker_BP.shape
-Nz, Ny, Nx = y.shape
+Nz, Ny, Nx = img_y.shape
 
 # ------------------------------------------------------------------------------
-vmax_psf, color_map_psf = ker_true.max(), "hot"
-vmax_img, color_map_img = y.max(), "gray"
-vmax_diff = vmax_img
+vmax_ker, color_map_ker = ker_true.max(), "hot"
+vmax_img, color_map_img = img_y.max(), "gray"
+vamx_img_diff = vmax_img
 
-dict_ker = {"cmap": color_map_psf, "vmin": 0.0, "vmax": vmax_psf}
+dict_ker = {"cmap": color_map_ker, "vmin": 0.0, "vmax": vmax_ker}
 dict_ker_profile = {"linewidth": 0.5}
 dict_img = {"cmap": color_map_img, "vmin": 0.0, "vmax": vmax_img}
-dict_img_diff = {"cmap": "gray", "vmin": 0.0, "vmax": vmax_diff}
+dict_img_diff = {"cmap": "gray", "vmin": 0.0, "vmax": vamx_img_diff}
+dict_fig = {"dpi": 300, "constrained_layout": True}
 
 # ------------------------------------------------------------------------------
 # Show forward kernel image
 # ------------------------------------------------------------------------------
-print("plot forward kernel ...")
+print("[INFO] plot forward kernel ...")
 nr, nc = 2, 3
-fig, axes = plt.subplots(
-    nrows=nr, ncols=nc, dpi=300, figsize=(3 * nc, 3 * nr), constrained_layout=True
-)
+fig, axes = plt.subplots(nrows=nr, ncols=nc, figsize=(3 * nc, 3 * nr), **dict_fig)
 for ax in axes[0:2, 0:2].ravel():
     ax.set_axis_off()
 
@@ -172,9 +174,9 @@ axes[0, 2].set_xlim([0, None]), axes[0, 2].set_ylim([0, None])
 axes[1, 2].set_xlim([0, None]), axes[1, 2].set_ylim([0, None])
 axes[0, 2].legend()
 
-plt.savefig(os.path.join(path_fig_ker, "img_fp"))
+plt.savefig(os.path.join(path_kernel, "img_fp"))
 plt.rcParams["svg.fonttype"] = "none"
-plt.savefig(os.path.join(path_fig_ker, "img_fp.svg"))
+plt.savefig(os.path.join(path_kernel, "img_fp.svg"))
 
 # ------------------------------------------------------------------------------
 # show forward intermediate results
@@ -186,23 +188,23 @@ fig, axes = plt.subplots(
 )
 [ax.set_axis_off() for ax in axes.ravel()]
 
-axes[0, 0].imshow(y[Nz // 2], **dict_img)
-axes[1, 0].imshow(x[Nz // 2], **dict_img)
-axes[2, 0].imshow(y[:, Ny // 2, :], **dict_img)
-axes[3, 0].imshow(x[:, Ny // 2, :], **dict_img)
+axes[0, 0].imshow(img_y[Nz // 2], **dict_img)
+axes[1, 0].imshow(img_x[Nz // 2], **dict_img)
+axes[2, 0].imshow(img_y[:, Ny // 2, :], **dict_img)
+axes[3, 0].imshow(img_x[:, Ny // 2, :], **dict_img)
 
 axes[0, 0].set_title("HR (xy)")
 axes[1, 0].set_title("LR (xy)")
 axes[2, 0].set_title("HR (xz)")
 axes[3, 0].set_title("LR (xz)")
 
-diff_x0_y = np.abs(x0 - y)
-axes[0, 1].imshow(x0[Nz // 2], **dict_img)
+diff_x0_y = np.abs(img_x0 - img_y)
+axes[0, 1].imshow(img_x0[Nz // 2], **dict_img)
 axes[1, 1].imshow(diff_x0_y[Nz // 2], **dict_img_diff)
-axes[2, 1].imshow(x0[:, Ny // 2, :], **dict_img)
+axes[2, 1].imshow(img_x0[:, Ny // 2, :], **dict_img)
 axes[3, 1].imshow(diff_x0_y[:, Ny // 2, :], **dict_img_diff)
 
-axes[0, 1].set_title("x0 ({:.2f})".format(cal_psnr(x0, y)))
+axes[0, 1].set_title("x0 ({:.2f})".format(cal_psnr(img_x0, img_y)))
 axes[1, 1].set_title("|x0-HR|")
 axes[2, 1].set_title("x0")
 axes[3, 1].set_title("|x0-HR|")
@@ -217,30 +219,30 @@ axes[1, 2].set_title("PSF (true) [" + str(np.round(ker_true.sum(), 4)) + "]")
 axes[2, 2].set_title(f"PSF ({name_net})")
 axes[3, 2].set_title("PSF (true)")
 
-axes[0, 3].imshow(x0_fp[Nz // 2], **dict_img)
-axes[2, 3].imshow(x0_fp[:, Ny // 2, :], **dict_img)
+axes[0, 3].imshow(img_x0_fp[Nz // 2], **dict_img)
+axes[2, 3].imshow(img_x0_fp[:, Ny // 2, :], **dict_img)
 axes[0, 3].set_title("FP(x0)")
 axes[0, 3].set_title("FP(x0)")
 
-diff_yfp_x = np.abs(y_fp - x)
+diff_yfp_x = np.abs(img_y_fp - img_x)
 
-axes[0, 4].imshow(y_fp[Nz // 2], **dict_img)
+axes[0, 4].imshow(img_y_fp[Nz // 2], **dict_img)
 axes[1, 4].imshow(diff_yfp_x[Nz // 2], **dict_img_diff)
-axes[2, 4].imshow(y_fp[:, Ny // 2, :], **dict_img)
+axes[2, 4].imshow(img_y_fp[:, Ny // 2, :], **dict_img)
 axes[3, 4].imshow(diff_yfp_x[:, Ny // 2, :], **dict_img_diff)
 
 axes[0, 4].set_title("FP(HR)")
-axes[1, 4].set_title("|FP(HR)-LR| ({:.2f})".format(cal_psnr(y_fp, x)))
+axes[1, 4].set_title("|FP(HR)-LR| ({:.2f})".format(cal_psnr(img_y_fp, img_x)))
 axes[2, 4].set_title("FP(HR)")
 axes[3, 4].set_title("|FP(HR)-LR|")
 
-plt.savefig(os.path.join(path_fig_sample, "img_fp_inter"))
+plt.savefig(os.path.join(path_sample, "img_fp_inter"))
 
 # ------------------------------------------------------------------------------
 # show FFT of the forward kernel
 # ------------------------------------------------------------------------------
 print("plot fft of forward kernel ...")
-s_fft = y.shape
+s_fft = img_y.shape
 ker_true_fft = utils_data.fft_n(ker_true, s=s_fft)
 ker_FP_fft = utils_data.fft_n(ker_FP, s=s_fft)
 
@@ -290,7 +292,7 @@ axes[1, 2].plot(
 )
 axes[0, 2].legend()
 
-plt.savefig(os.path.join(path_fig_ker, "img_fp_fft"))
+plt.savefig(os.path.join(path_kernel, "img_fp_fft"))
 
 # ------------------------------------------------------------------------------
 # show backward intermediate results
@@ -302,21 +304,23 @@ fig, axes = plt.subplots(
 )
 [ax.set_axis_off() for ax in axes.ravel()]
 
-axes[0, 0].imshow(y[Nz // 2], **dict_img)
-axes[1, 0].imshow(x[Nz // 2], **dict_img)
-axes[2, 0].imshow(y[:, Ny // 2, :], **dict_img)
-axes[3, 0].imshow(x[:, Ny // 2, :], **dict_img)
+axes[0, 0].imshow(img_y[Nz // 2], **dict_img)
+axes[1, 0].imshow(img_x[Nz // 2], **dict_img)
+axes[2, 0].imshow(img_y[:, Ny // 2, :], **dict_img)
+axes[3, 0].imshow(img_x[:, Ny // 2, :], **dict_img)
 
 axes[0, 0].set_title("HR (xy)")
-axes[1, 0].set_title("LR (xy) ({:.2f}, {:.4f})".format(cal_psnr(x, y), cal_ssim(x, y)))
+axes[1, 0].set_title(
+    "LR (xy) ({:.2f}, {:.4f})".format(cal_psnr(img_x, img_y), cal_ssim(img_x, img_y))
+)
 axes[2, 0].set_title("HR (xz)")
 axes[3, 0].set_title("LR (xz)")
 
-diff_x0_y = np.abs(x0 - y)
+diff_x0_y = np.abs(img_x0 - img_y)
 
-axes[0, 1].imshow(x0_fp[Nz // 2], **dict_img)
+axes[0, 1].imshow(img_x0_fp[Nz // 2], **dict_img)
 axes[1, 1].imshow(diff_x0_y[Nz // 2], **dict_img_diff)
-axes[2, 1].imshow(x0_fp[:, Ny // 2, :], **dict_img)
+axes[2, 1].imshow(img_x0_fp[:, Ny // 2, :], **dict_img)
 axes[3, 1].imshow(diff_x0_y[:, Ny // 2, :], **dict_img_diff)
 
 axes[0, 1].set_title("FP(x0)")
@@ -324,8 +328,8 @@ axes[1, 1].set_title("|x0-HR|")
 axes[2, 1].set_title("FP(x0)")
 axes[3, 1].set_title("|x0-HR|")
 
-diff_yfp_x = np.abs(y_fp - x)
-div_x_x0_fp = x / (x0_fp + eps)
+diff_yfp_x = np.abs(img_y_fp - img_x)
+div_x_x0_fp = img_x / (img_x0_fp + eps)
 
 dict_dv = {"cmap": "seismic", "vmin": 0.5, "vmax": 1.5}
 
@@ -341,7 +345,7 @@ axes[3, 2].set_title("|FP(HR)-LR|")
 
 fig.colorbar(dvax, ax=axes[0, 2], location="bottom")
 
-dict_kb = {"cmap": color_map_psf, "vmin": 0.0, "vmax": np.max(ker_BP)}
+dict_kb = {"cmap": color_map_ker, "vmin": 0.0, "vmax": np.max(ker_BP)}
 
 axes[0, 3].imshow(ker_BP[Nz_kb // 2], **dict_kb)
 axes[2, 3].imshow(ker_BP[:, Ny_kb // 2, :], **dict_kb)
@@ -350,26 +354,26 @@ axes[2, 3].set_title("BP kernel")
 
 dict_bp = {"cmap": "seismic", "vmin": 0.0, "vmax": 2.0}
 
-axes[0, 4].imshow(bp[Nz // 2], **dict_bp)
-axes[2, 4].imshow(bp[:, Ny // 2, :], **dict_bp)
+axes[0, 4].imshow(img_bp[Nz // 2], **dict_bp)
+axes[2, 4].imshow(img_bp[:, Ny // 2, :], **dict_bp)
 axes[0, 4].set_title("BP(LR/FP(x0))")
 axes[2, 4].set_title("BP(LR/FP(x0))")
 
-diff_ypred_y = np.abs(y_pred - y)
+diff_ypred_y = np.abs(y_pred - img_y)
 
 axes[0, 5].imshow(y_pred[Nz // 2], **dict_img)
 axes[1, 5].imshow(diff_ypred_y[Nz // 2], **dict_img_diff)
 axes[2, 5].imshow(y_pred[:, Ny // 2, :], **dict_img)
 axes[3, 5].imshow(diff_ypred_y[:, Ny // 2, :], **dict_img_diff)
 
-axes[0, 5].set_title("xk ({:.4f})".format(cal_ssim(y_pred, y)))
-axes[1, 5].set_title("|xk-HR| ({:.2f})".format(cal_psnr(y_pred, y)))
+axes[0, 5].set_title("xk ({:.4f})".format(cal_ssim(y_pred, img_y)))
+axes[1, 5].set_title("|xk-HR| ({:.2f})".format(cal_psnr(y_pred, img_y)))
 axes[2, 5].set_title("xk")
 axes[3, 5].set_title("|xk-HR|")
 
-plt.savefig(os.path.join(path_fig_sample, "img_bp_inter"))
+plt.savefig(os.path.join(path_sample, "img_bp_inter"))
 plt.rcParams["svg.fonttype"] = "none"
-plt.savefig(os.path.join(path_fig_sample, "img_bp_inter.svg"))
+plt.savefig(os.path.join(path_sample, "img_bp_inter.svg"))
 
 # os._exit(0)
 # ------------------------------------------------------------------------------
@@ -389,10 +393,10 @@ def load_result(path, name, iter):
 
 
 # load results from conventional methods
-out_trad = load_result(path_fig_sample, methods_name[0], methods_iter[0])
-out_gaus = load_result(path_fig_sample, methods_name[1], methods_iter[1])
-out_butt = load_result(path_fig_sample, methods_name[2], methods_iter[2])
-out_wien = load_result(path_fig_sample, methods_name[3], methods_iter[3])
+out_trad = load_result(path_sample, methods_name[0], methods_iter[0])
+out_gaus = load_result(path_sample, methods_name[1], methods_iter[1])
+out_butt = load_result(path_sample, methods_name[2], methods_iter[2])
+out_wien = load_result(path_sample, methods_name[3], methods_iter[3])
 
 # ------------------------------------------------------------------------------
 # show backward kernel image
@@ -440,7 +444,7 @@ print("sum of kf: ", ker_FP.sum())
 print("sum of kb: ", ker_BP.sum())
 print("-" * 80)
 
-plt.savefig(os.path.join(path_fig_ker, "img_bp.png"))
+plt.savefig(os.path.join(path_kernel, "img_bp.png"))
 
 # ------------------------------------------------------------------------------
 # plot FFT of backward kernels
@@ -527,7 +531,7 @@ for ax in axes[:, 1:].ravel():
     ax.set_xlim([0, None]), ax.set_ylim([0, None])
     ax.set_xlabel("Frequency"), ax.set_ylabel("Normalized value")
 
-plt.savefig(os.path.join(path_fig_ker, "profile_bp_fft"))
+plt.savefig(os.path.join(path_kernel, "profile_bp_fft"))
 
 # ------------------------------------------------------------------------------
 # show the restored images
@@ -548,12 +552,14 @@ fig, axes = plt.subplots(
 dict_text = {"color": "white", "fontsize": "x-large"}
 dict_line = {"color": "white", "linewidth": 1}
 dict_image = {"cmap": "gray", "vmin": 0, "vmax": vmax_img}
-dict_image_diff = {"cmap": "gray", "vmin": 0, "vmax": vmax_diff}
+dict_image_diff = {"cmap": "gray", "vmin": 0, "vmax": vamx_img_diff}
 
 axes[0, 0].text(
     pos_text_x,
     pos_text_y,
-    "RAW (xy) ({:>.2f}, {:>.4f})".format(cal_psnr(x, y), cal_ssim(x, y)),
+    "RAW (xy) ({:>.2f}, {:>.4f})".format(
+        cal_psnr(img_x, img_y), cal_ssim(img_x, img_y)
+    ),
     **dict_text,
 )
 axes[0, 6].text(pos_text_x, pos_text_y, "GT (xy)", **dict_text)
@@ -561,23 +567,23 @@ axes[2, 0].text(pos_text_x, pos_text_y, "RAW (xz)", **dict_text)
 axes[2, 6].text(pos_text_x, pos_text_y, "GT (xz)", **dict_text)
 
 # RAW
-axes[0, 0].imshow(x[id_slice], **dict_image)
-axes[2, 0].imshow(x[:, Ny // 2, :], **dict_image)
+axes[0, 0].imshow(img_x[id_slice], **dict_image)
+axes[2, 0].imshow(img_x[:, Ny // 2, :], **dict_image)
 axes[0, 0].plot(
     (line_start_xy[0], line_end_xy[0]), (line_start_xy[1], line_end_xy[1]), **dict_line
 )
 axes[2, 0].plot(
     (line_start_xz[0], line_end_xz[0]), (line_start_xz[1], line_end_xz[1]), **dict_line
 )
-print("RAW", "PSNR:", cal_psnr(x, y))
+print("RAW", "PSNR:", cal_psnr(img_x, img_y))
 
-axes[0, 6].imshow(y[id_slice], **dict_image)
-axes[2, 6].imshow(y[:, Ny // 2, :], **dict_image)
+axes[0, 6].imshow(img_y[id_slice], **dict_image)
+axes[2, 6].imshow(img_y[:, Ny // 2, :], **dict_image)
 
 
 # Traditional, Gaussian, Butterworth, WB
 def show_result(out, axes, name):
-    diff = np.abs(out[0] - y)
+    diff = np.abs(out[0] - img_y)
     num_iter = out[-1].shape[0] - 1
     axes[0].text(
         pos_text_x, pos_text_y, "{} {:d} it".format(name, num_iter), **dict_text
@@ -592,7 +598,7 @@ def show_result(out, axes, name):
     axes[1].imshow(diff[id_slice], **dict_image_diff)
     axes[2].imshow(out[0][:, Ny // 2, :], **dict_image)
     axes[3].imshow(diff[:, Ny // 2, :], **dict_image_diff)
-    print(name, "PSNR:", cal_psnr(out[0], y))
+    print(name, "PSNR:", cal_psnr(out[0], img_y))
 
 
 show_result(out_trad, axes[0:4, 1], name="Traditional")
@@ -608,29 +614,29 @@ axes[0, 5].imshow(y_pred[id_slice], **dict_image)
 axes[1, 5].text(
     pos_text_x,
     pos_text_y,
-    "({:>.2f}, {:>.4f})".format(cal_psnr(y_pred, y), cal_ssim(y_pred, y)),
+    "({:>.2f}, {:>.4f})".format(cal_psnr(y_pred, img_y), cal_ssim(y_pred, img_y)),
     **dict_text,
 )
-axes[1, 5].imshow(np.abs(y_pred - y)[id_slice], **dict_image_diff)
-diff_ypred_y = np.abs(y_pred - y)
+axes[1, 5].imshow(np.abs(y_pred - img_y)[id_slice], **dict_image_diff)
+diff_ypred_y = np.abs(y_pred - img_y)
 axes[2, 5].imshow(y_pred[:, Ny // 2, :], **dict_image)
 axes[3, 5].imshow(diff_ypred_y[:, Ny // 2, :], **dict_image_diff)
-print("KLD", "PSNR:", cal_psnr(y_pred, y))
+print("KLD", "PSNR:", cal_psnr(y_pred, img_y))
 
 io.imsave(
-    fname=os.path.join(path_fig_sample, "xz.tif"),
+    fname=os.path.join(path_sample, "xz.tif"),
     arr=y_pred[:, Ny // 2, :],
     check_contrast=False,
 )
 io.imsave(
-    fname=os.path.join(path_fig_sample, "xy.tif"),
+    fname=os.path.join(path_sample, "xy.tif"),
     arr=y_pred[id_slice],
     check_contrast=False,
 )
 
-plt.savefig(os.path.join(path_fig_sample, "img_restored.png"))
+plt.savefig(os.path.join(path_sample, "img_restored.png"))
 plt.rcParams["svg.fonttype"] = "none"
-plt.savefig(os.path.join(path_fig_sample, "img_restored.svg"))
+plt.savefig(os.path.join(path_sample, "img_restored.svg"))
 print("-" * 80)
 
 # ------------------------------------------------------------------------------
@@ -658,7 +664,7 @@ for i, ax in enumerate(axes.ravel()):
         line_start = (line_start_xy[1], line_start_xy[0])
         line_end = (line_end_xy[1], line_end_xy[0])
         # RAW
-        profile = profile_line(x[id_slice], line_start, line_end, linewidth=1)
+        profile = profile_line(img_x[id_slice], line_start, line_end, linewidth=1)
         ax.plot(profile, label="RAW", color="#2A629A", **dict_profile)
         profiles_xy.append(profile.tolist())
         # Traditional, Gaussian, Butterworth, WB
@@ -673,7 +679,7 @@ for i, ax in enumerate(axes.ravel()):
         ax.plot(profile, label="KLD", color="red", **dict_profile)
         profiles_xy.append(profile.tolist())
         # GT
-        profile = profile_line(y[id_slice], line_start, line_end, linewidth=1)
+        profile = profile_line(img_y[id_slice], line_start, line_end, linewidth=1)
         ax.plot(profile, label="GT", color="black", linestyle="--", **dict_profile)
         profiles_xy.append(profile.tolist())
 
@@ -682,7 +688,7 @@ for i, ax in enumerate(axes.ravel()):
         line_start = (line_start_xz[1], line_start_xz[0])
         line_end = (line_end_xz[1], line_end_xz[0])
         # RAW
-        profile = profile_line(x[:, Ny // 2, :], line_start, line_end, linewidth=1)
+        profile = profile_line(img_x[:, Ny // 2, :], line_start, line_end, linewidth=1)
         ax.plot(profile, label="RAW", color="#2A629A", **dict_profile)
         profiles_xz.append(profile.tolist())
         # Traditional, Gaussian, Butterworth, WB
@@ -699,7 +705,7 @@ for i, ax in enumerate(axes.ravel()):
         ax.plot(profile, label="KLD", color="red", **dict_profile)
         profiles_xz.append(profile.tolist())
         # GT
-        profile = profile_line(y[:, Ny // 2, :], line_start, line_end, linewidth=1)
+        profile = profile_line(img_y[:, Ny // 2, :], line_start, line_end, linewidth=1)
         ax.plot(profile, label="GT", color="black", linestyle="--", **dict_profile)
         profiles_xz.append(profile.tolist())
 
@@ -721,9 +727,9 @@ print(tabulate(profiles_xz))
 print("-" * 80)
 
 plt.legend(fontsize="xx-small")
-plt.savefig(os.path.join(path_fig_sample, "img_restored_profile.png"))
+plt.savefig(os.path.join(path_sample, "img_restored_profile.png"))
 plt.rcParams["svg.fonttype"] = "none"
-plt.savefig(os.path.join(path_fig_sample, "img_restored_profile.svg"))
+plt.savefig(os.path.join(path_sample, "img_restored_profile.svg"))
 
 # ------------------------------------------------------------------------------
 # show metrics curve
@@ -732,9 +738,9 @@ print("plot metrics ...")
 psnrs, ssims, nccs = [], [], []
 
 for i in range(len(y_pred_all)):
-    psnrs.append(cal_psnr(y_pred_all[i], y))
-    ssims.append(cal_ssim(y_pred_all[i], y))
-    nccs.append(cal_ncc(y_pred_all[i], y))
+    psnrs.append(cal_psnr(y_pred_all[i], img_y))
+    ssims.append(cal_ssim(y_pred_all[i], img_y))
+    nccs.append(cal_ncc(y_pred_all[i], img_y))
 mtrics_kld = np.stack([psnrs, ssims, nccs]).transpose()
 # ------------------------------------------------------------------------------
 nr, nc = 1, 3
@@ -804,7 +810,7 @@ axes[0].set_ylabel("PSNR")
 axes[1].set_ylabel("SSIM")
 axes[2].set_ylabel("NCC")
 
-plt.savefig(os.path.join(path_fig_sample, "curve_metrics.png"))
+plt.savefig(os.path.join(path_sample, "curve_metrics.png"))
 plt.rcParams["svg.fonttype"] = "none"
-plt.savefig(os.path.join(path_fig_sample, "curve_metrics.svg"))
+plt.savefig(os.path.join(path_sample, "curve_metrics.svg"))
 # ------------------------------------------------------------------------------
