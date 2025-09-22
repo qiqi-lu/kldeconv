@@ -242,6 +242,10 @@ checkpoints_v1 = {
         },
         "rln": {
             "n1_r1": "checkpoints/SimuMix3D-128-31-05-1-01/rln/rln_mae_bs_1_lr_0.01_id_0_1/epoch_29999_iter_29999.pt",
+            "n2_r1": "checkpoints/SimuMix3D-128-31-05-1-01/rln/rln_mae_bs_1_lr_0.01_id_0_2/epoch_14999_iter_29999.pt",
+            "n3_r1": "checkpoints/SimuMix3D-128-31-05-1-01/rln/rln_mae_bs_1_lr_0.01_id_0_3/epoch_9999_iter_29999.pt",
+            "n4_r1": "checkpoints/SimuMix3D-128-31-05-1-01/rln/rln_mae_bs_1_lr_0.01_id_0_4/epoch_7500_iter_30000.pt",
+            "n80_r1": "checkpoints/SimuMix3D-128-31-05-1-01/rln/rln_mae_bs_1_lr_0.01_id_0_80/epoch_375_iter_30000.pt",
         },
     },
     "SimuMix3D-256-31-0-0-1": {

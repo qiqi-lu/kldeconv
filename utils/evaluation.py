@@ -378,17 +378,87 @@ def NRMSE(img_true, img_test):
     return nrmse
 
 
-def MSSSIM(img_true, img_test, data_range=255):
-    img_true = torch.Tensor(img_true)
-    img_test = torch.Tensor(img_test)
-    if len(img_true.shape) == 3:
-        img_true = img_true[None]
-    if len(img_test.shape) == 3:
-        img_test = img_test[None]
-    img_true = torch.transpose(img_true, dim0=-1, dim1=1)
-    img_test = torch.transpose(img_test, dim0=-1, dim1=1)
-    msssim = ms_ssim(img_true, img_test, data_range=data_range, size_average=False)
-    return msssim
+# def MSSSIM(img_true, img_test, data_range=255):
+#     img_true = torch.Tensor(img_true)
+#     img_test = torch.Tensor(img_test)
+#     if len(img_true.shape) == 3:
+#         img_true = img_true[None]
+#     if len(img_test.shape) == 3:
+#         img_test = img_test[None]
+#     img_true = torch.transpose(img_true, dim0=-1, dim1=1)
+#     img_test = torch.transpose(img_test, dim0=-1, dim1=1)
+#     msssim = ms_ssim(img_true, img_test, data_range=data_range, size_average=False)
+#     return msssim
+
+
+def MSSSIM(img_true, img_test, data_range=None, ndim=2, win_size=11, interp_sf=1):
+    """
+    Multi-scale structural similarity index.
+
+    ### Parameters:
+    - `img_true`: ground truth image. [D, H, W] or [H, W]
+    - `img_test`: test image. [D, H, W] or [H, W]
+    - `data_range`: the dynamic range of the images. default is None.
+
+    ### Returns:
+    - `msssim`: (numpy array) multi-scale structural similarity index.
+    """
+    ndim_in = img_true.ndim
+    if ndim == 2:
+        if ndim_in == 2:
+            img_true = img_true[None, None]
+            img_test = img_test[None, None]
+        elif ndim_in == 3:
+            img_true = img_true[None]
+            img_test = img_test[None]
+        elif ndim_in == 4:
+            pass
+        else:
+            raise ValueError("Invalid input shape.")
+    elif ndim == 3:
+        if ndim_in == 3:
+            img_true = img_true[None, None]
+            img_test = img_test[None, None]
+        elif ndim_in == 4:
+            img_true = img_true[None]
+            img_test = img_test[None]
+        elif ndim_in == 5:
+            pass
+        else:
+            raise ValueError("Invalid input shape.")
+    else:
+        raise ValueError("Unsupported dimension.")
+
+    if data_range == None:
+        data_range = img_true.max() - img_true.min()
+    if data_range == 0:
+        data_range = 1
+
+    # convert to pytorch tensor
+    img_true = torch.from_numpy(img_true).float()
+    img_test = torch.from_numpy(img_test).float()
+
+    if interp_sf > 1:
+        # interpolate the img with a scale factor `interp_sf` using nearest neighbor.
+        dict_interp = dict(scale_factor=interp_sf, mode="nearest")
+        img_true = torch.nn.functional.interpolate(img_true, **dict_interp)
+        img_test = torch.nn.functional.interpolate(img_test, **dict_interp)
+
+    dict_msssim = dict(data_range=data_range, win_size=win_size)
+    if ndim == 2:
+        msssim = ms_ssim(img_true, img_test, **dict_msssim)
+    if ndim == 3:
+        n_slice = img_true.shape[2]
+        if n_slice < 11:
+            msssim_each_slice = []
+            for i in range(n_slice):
+                msssim_each_slice.append(
+                    ms_ssim(img_true[:, :, i], img_test[:, :, i], **dict_msssim)
+                )
+            msssim = np.mean(msssim_each_slice)
+        else:
+            msssim = ms_ssim(img_true, img_test, **dict_msssim)
+    return msssim.numpy()
 
 
 def measure(img_true, img_test, data_range=255):

@@ -99,7 +99,7 @@ dataset_names = ("SimuMix3D-128-31-05-1-01", "SimuMix3D-128-31-05-1-01")
 # dataset_names = ("ER-1", "F-actin-1")
 # ------------------------------------------------------------------------------
 
-num_data, id_repeat = 1, 1
+num_data, id_repeat = 80, 1
 dataset_name_test, dataset_name_train = dataset_names
 
 print("-" * 80)

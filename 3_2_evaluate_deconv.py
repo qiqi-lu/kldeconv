@@ -21,10 +21,10 @@ device_id = "cuda:0"
 # ------------------------------------------------------------------------------
 #                 test datasets name | train dataset name | experiment name
 # ------------------------------------------------------------------------------
-# dataset_info = ("simu3d", "SimuMix3D-128-31-05-1-01", "", "")
+dataset_info = ("simu3d", "SimuMix3D-128-31-05-1-01", "", "")
 # dataset_info = ("simu3d","SimuMix3D-128-31-05-1-03", "", "")
 # dataset_info = ("simu3d","SimuMix3D-128-31-05-1-1", "", "")
-dataset_info = ("simu3d", "SimuMix3D-128-31-0-0-1", "", "")
+# dataset_info = ("simu3d", "SimuMix3D-128-31-0-0-1", "", "")
 # ------------------------------------------------------------------------------
 # dataset_info = ('real2d',"F-actin-nonlinear-9", "F-actin-nonlinear-9", "fp_n1_r1_bp_n1_r1")
 # dataset_info = ('real2d',"Microtubules2-9", "Microtubules2-9", "fp_n1_r1_bp_n1_r1")
@@ -69,6 +69,7 @@ bp_type = "traditional"
 # id_sample = [0, 346, 609, 700, 770, 901]
 # id_sample = list(range(1, 500, 10))
 # id_sample = range(0, 1000, 4)
+# id_sample = [0]
 id_sample = []
 
 # ------------------------------------------------------------------------------
@@ -152,7 +153,8 @@ elif data_type == "simu3d":
             "bp_type": "traditional",
             "init": "measured",
             "padding_mode": "reflect",
-            "num_iter": 2,
+            # "num_iter": 2,
+            "num_iter": 30,
             # "num_iter": 100,
         },
         "gaussian": {
@@ -274,7 +276,7 @@ with open(path_params, "w") as f:
     json.dump(params, f, indent=4)
 
 
-pbar = tqdm.tqdm(total=num_samples_test, desc="Deconvolution", ncols=80)
+pbar = tqdm.tqdm(total=num_samples_test, desc=f"Deconvolution ({domain})", ncols=80)
 for i, id in enumerate(id_sample):
     # img_gt = io.imread(os.path.join(path_data_gt, filenames[id])).astype(np.float32)
     img_raw = io.imread(os.path.join(path_data_raw, filenames[id])).astype(np.float32)

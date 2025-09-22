@@ -32,7 +32,7 @@ percent = (
     ((0, 0), (99.5, 99.5)),  # WB
     ((0, 0), (99.5, 99.5)),  # KLD
 )
-enable_generate_video = True
+enable_generate_video = False
 
 # ------------------------------------------------------------------------------
 info_df = pandas.read_excel("datasets_test.xlsx")

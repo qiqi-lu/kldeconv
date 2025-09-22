@@ -23,7 +23,7 @@ today_date = datetime.date.today()
 # ------------------------------------------------------------------------------
 params = {
     # device
-    "device": "cuda:1",
+    "device": "cuda:0",
     "random_seed": 7,
     "data_shuffle": True,
     "num_workers": 8,
@@ -47,9 +47,9 @@ params = {
     # "batch_size": 4,  # 3D
     # "num_epochs": 700,
     # 3D simu ------------------------------------------------------------------
-    "lr": 0.001,
+    "lr": 0.01,
     "batch_size": 1,  # 3D
-    "num_epochs": 30000,
+    "num_epochs": 380,
     # --------------------------------------------------------------------------
     "warm_up": 0,
     "lr_decay_every_iter": 10000,
@@ -117,7 +117,7 @@ params = {
         # "SimuMix3D-128-31-05-1-03",
         "SimuMix3D-128-31-05-1-01",
     ],
-    "sample_range": (0, 1),
+    "sample_range": (0, 80),
     "scale_factor": 1,
     "normalization": (False, False),
     "normalization_eva": (0.03, 0.995),
@@ -167,13 +167,14 @@ if "Simu" not in params["datasets_id"][0]:
         ".txt", f"_patch_{params['sample_range'][0]}_{params['sample_range'][1]}.txt"
     )
 else:
-    path_dataset_lr = win2linux(info["path_lr"])
-    path_dataset_hr = win2linux(info["path_hr"])
+    path_dataset_lr = win2linux(info["path_lr"]) + "_norm"
+    path_dataset_hr = win2linux(info["path_hr"]) + "_norm"
     path_index_file = win2linux(info["path_txt"]).replace(
         ".txt", f"_{params['sample_range'][0]}_{params['sample_range'][1]}.txt"
     )
 
-ratio = info["ratio"]
+# ratio = info["ratio"]
+ratio = 1.0
 
 for path in [path_dataset_lr, path_dataset_hr, path_index_file]:
     assert os.path.exists(path), f"[ERROR] {path} does not exist."
@@ -442,6 +443,7 @@ try:
                                 data_val["lr"],
                                 data_val["hr"] * params["ratio"],
                             )
+
                             imgs_lr_val = imgs_lr_val.to(device)
                             imgs_hr_val = imgs_hr_val.to(device)
 
