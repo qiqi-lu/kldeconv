@@ -1,5 +1,6 @@
 """
-Plot the profile of the backward kernel and its fft.
+DIsplay the backward kernels of different methods.
+Display the profile of the backward kernel and its fft.
 """
 
 import matplotlib.pyplot as plt
@@ -26,6 +27,10 @@ os.makedirs(path_fig, exist_ok=True)
 
 print("[INFO] load data from:", path_prediction)
 print("[INFO] save figures to:", path_fig)
+
+info_df = pandas.read_excel("datasets_test.xlsx")
+info = info_df[info_df["id"] == "SimuMix3D-128-31-05-1-03"].iloc[0]
+pixel_size = info["pixel_size"]
 
 # ------------------------------------------------------------------------------
 # load kernels

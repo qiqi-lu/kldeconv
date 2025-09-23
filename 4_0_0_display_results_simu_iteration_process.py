@@ -1,16 +1,12 @@
 """
-Show the iteration process of a specified sample in simulation datasets.
+Display the iteration process of a specified sample in simulation datasets.
 """
 
 import matplotlib.pyplot as plt
-import utils.evaluation as eva
-import utils.data as utils_data
 from utils.data import read_txt, win2linux
 import skimage.io as io
-import skimage.exposure as exposure
 import numpy as np
 import os, pandas
-from utils import evaluation as eva
 
 plt.rcParams["svg.fonttype"] = "none"
 

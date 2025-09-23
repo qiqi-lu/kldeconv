@@ -1,3 +1,7 @@
+"""
+Evaluate the trained conventional network.
+"""
+
 import torch, os, pandas, tqdm, json
 import numpy as np
 from skimage import io

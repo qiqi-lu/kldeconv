@@ -1,3 +1,9 @@
+"""
+Only for ZeroshotDeconvNet dataset.
+Display the restored image at differen time points.
+Generate the video of the restored image.
+"""
+
 import matplotlib.pyplot as plt
 import skimage.io as io
 import numpy as np

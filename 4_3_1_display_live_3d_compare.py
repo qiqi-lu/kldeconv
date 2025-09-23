@@ -1,8 +1,11 @@
+"""
+Dispaly the restored image of live 3D dataset from different methods.
+"""
+
 import matplotlib.pyplot as plt
 import skimage.io as io
 import numpy as np
 import os, pandas
-import utils.plot as utils_plot
 import matplotlib as mpl
 import matplotlib.patches as patches
 from utils.data import win2linux, read_txt, interp

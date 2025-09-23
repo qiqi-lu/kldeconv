@@ -1,3 +1,7 @@
+"""
+Evaluate the trained KernelNet model.
+"""
+
 import torch, os, pandas, tqdm, json
 import numpy as np
 import skimage.io as io

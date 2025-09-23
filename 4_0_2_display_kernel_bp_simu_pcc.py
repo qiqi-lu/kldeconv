@@ -1,3 +1,8 @@
+"""
+Display the PCC of the backward kernels learned from different numbers of
+training samples.
+"""
+
 import matplotlib.pyplot as plt
 import skimage.io as io
 import numpy as np

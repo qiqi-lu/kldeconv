@@ -1,5 +1,6 @@
 """
-Show specified sample in simulation datasets.
+Display the restored images and profile lines.
+Display the metrics of restored images in each test datastes.
 """
 
 import matplotlib.pyplot as plt

@@ -1,20 +1,18 @@
 """
-KLDeconv training.
+Train kernelnet (forward + backward) model for deconvolution.
 """
 
-import torch, os, time, pandas, tqdm, datetime, json
-from torch.utils.data import DataLoader
-from torch.utils.tensorboard import SummaryWriter
+import torch, os, time, pandas, tqdm, datetime, json, statistics
 import numpy as np
 import skimage.io as io
+import utils.evaluation as utils_eva
 from fft_conv_pytorch import fft_conv
+from torch.utils.data import DataLoader
+from torch.utils.tensorboard import SummaryWriter
 from utils.data import win2linux, SRDataset, text2tuple, NormalizePercentile
 from utils.optimize import step_lr_schedule
-import utils.evaluation as utils_eva
-from models import kernelnet
-from torchinfo import summary
-import statistics
 from checkpoint_list import checkpoints_v1 as checkpoints_list
+from models import kernelnet
 
 today_date = datetime.date.today()
 torch.manual_seed(7)

@@ -5,7 +5,6 @@ Display the image restored by different methods. (2D / 3D)
 import matplotlib.pyplot as plt
 import utils.evaluation as eva
 import skimage.io as io
-from skimage.measure import profile_line
 import numpy as np
 import os, pandas, tqdm
 from utils import evaluation as eva
