@@ -19,12 +19,12 @@ torch.manual_seed(7)
 # ------------------------------------------------------------------------------
 #                                   Paramsters
 # ------------------------------------------------------------------------------
-# model_name = "kernet_fp"
-model_name = "kernet"
+model_name = "kernet_fp"
+# model_name = "kernet"
 
 # ------------------------------------------------------------------------------
 params = {
-    "device_id": "cuda:0",
+    "device_id": "cuda:1",
     "num_workers": 6,
     # --------------------------------------------------------------------------
     "dataset_name": (
@@ -44,48 +44,55 @@ params = {
         # "Microtubules2-2",
         # "CCPs-2",
         # "ER-2",
-        "F-actin-2",
+        # "F-actin-2",
         # ----------------------------------------------------------------------
         # "SimuBeads3D-128-31-0-0-1",
         # "SimuBeads3D-128-31-05-1-1",
         # "SimuBeads3D-128-31-05-1-03",
         # "SimuBeads3D-128-31-05-1-01",
+        # ----------------------------------------------------------------------
         # "SimuMix3D-128-31-0-0-1",
         # "SimuMix3D-128-31-05-1-1",
         # "SimuMix3D-128-31-05-1-03",
         # "SimuMix3D-128-31-05-1-01",
+        # ----------------------------------------------------------------------
         # "SimuMix3D-256-31-0-0-1",
         # "SimuMix3D-256-31-05-1-1",
         # "SimuMix3D-256-31-05-1-03",
         # "SimuMix3D-256-31-05-1-01",
+        # ----------------------------------------------------------------------
         # "SimuMix3D-382-101-05-1-1-560",
         # "SimuMix3D-382-101-05-1-1-642",
+        # ----------------------------------------------------------------------
         # "Microtubule-3d-128-0",
         # "Microtubule-3d-1024",
         # "Microtubule2-3d-512",
         # "Microtubule2-3d-1024",
+        # ----------------------------------------------------------------------
         # "Nuclear-pore-complex-128-0",
         # "Nuclear-pore-complex-1024",
         # "Nuclear-pore-complex2-512",
         # "Nuclear-pore-complex2-1024",
+        # ----------------------------------------------------------------------
+        "SirDNA-1024",
+        # ----------------------------------------------------------------------
         # "ZeroShotDeconvNet-642",
         # "ZeroShotDeconvNet-560",
     ),
     "batch_size": 1,
     "normalization": (False, False),
     "in_channels": 1,
-    "input_normalization": 0,
     "data_clip_eva": (0, 2.5),
     # --------------------------------------------------------------------------
-    "FP_type": "pre-trained",
-    # "FP_type": 'known',
+    "FP_type": "pre-trained",  # real 2d or 3d data
+    # "FP_type": "known",  # simulated data
     "BP_type": None,
     "conv_mode": "fft",
     "padding_mode": "reflect",
     "kernel_init": "gauss",
     "interpolation": True,
-    "kernel_norm_fp": False,
-    # "kernel_norm_fp": True,
+    # "kernel_norm_fp": False,  # default
+    "kernel_norm_fp": True,
     "kernel_norm_bp": True,
     "over_sampling": 2,
     # --------------------------------------------------------------------------
@@ -106,21 +113,21 @@ params = {
     "sample_range_val": (10, 20),
     # --------------------------------------------------------------------------
     "normalization_eva": (0.03, 0.995),
-    "path_checkpoint_save": os.path.join("checkpoints", "v2"),
+    "path_checkpoint_save": os.path.join("checkpoints"),
 }
 
 # ------------------------------------------------------------------------------
 assert len(params["dataset_name"]) == 1, "[ERROR] Only one dataset can be selected."
-dataset_id = params["dataset_name"][0]
-
-info_df = pandas.read_excel(os.path.join("datasets_train.xlsx"))
-info = info_df[info_df["id"] == dataset_id].iloc[0]
-
 assert model_name in (
     "kernet_fp",
     "kernet",
 ), f"[ERROR] Unsupported model name: {model_name}"
+
+dataset_id = params["dataset_name"][0]
 model_part = "forward" if model_name == "kernet_fp" else "backward"
+
+info_df = pandas.read_excel(os.path.join("datasets_train.xlsx"))
+info = info_df[info_df["id"] == dataset_id].iloc[0]
 
 try:
     path_fp = checkpoints_list[dataset_id]["forward"][params["experiment"]]
@@ -156,28 +163,27 @@ ker_size_bp = params["kernel_size_bp"][-1]
 if model_name == "kernet_fp":
     norm_tag = "norm" if params["kernel_norm_fp"] else "normx"
 
-    suffix = f"_ker_{ker_size_fp}_{params['loss_function']}_over{params['over_sampling']}_inter_{norm_tag}_{params['conv_mode']}_ts_{params['sample_range'][0]}_{params['sample_range'][1]}_s100"
+    suffix = f"_ker_{ker_size_fp}_{params['loss_function']}_over{params['over_sampling']}_inter_{norm_tag}_{params['conv_mode']}_ts_{params['sample_range'][0]}_{params['sample_range'][1]}_s100_v2"
 
     params.update(
         {
             "multi_out": False,
             "self_supervised": False,
-            "optimizer_type": "adam",
+            "optimizer_type": "adam",  # real data
             # 'optimizer_type': 'lbfgs',
             "save_every_iter": 100,
             "plot_every_iter": 2,
-            "val_every_iter": 1000,
+            "val_every_iter": 100,
             "print_every_iter": 1000,
         }
     )
     # start_learning_rate = 1
-    # start_learning_rate = 0.01
-    start_learning_rate = 0.001  # F-actin-nonlinear-9,
+    start_learning_rate = 0.01  # 3d real
+    # start_learning_rate = 0.001  # 2d real
     # start_learning_rate = 0.0001
     # start_learning_rate = 0.00001
     epochs = params["epoch_fp"]
-
-if model_name == "kernet":
+elif model_name == "kernet":
     params.update(
         {
             "num_iter": 2,
@@ -197,13 +203,15 @@ if model_name == "kernet":
     ss_marker = "_ss" if params["self_supervised"] else ""
     norm_tag = "fp_norm" if params["kernel_norm_fp"] else "fp_normx"
     norm_tag += "_bp_norm" if params["kernel_norm_bp"] else "_bp_normx"
-    suffix = f"_iter_{params['num_iter']}_ker_{ker_size_bp}_{params['loss_function']}_over{params['over_sampling']}_inter_{norm_tag}_{params['conv_mode']}_ts_{params['sample_range'][0]}_{params['sample_range'][1]}{ss_marker}"
+    suffix = f"_iter_{params['num_iter']}_ker_{ker_size_bp}_{params['loss_function']}_over{params['over_sampling']}_inter_{norm_tag}_{params['conv_mode']}_ts_{params['sample_range'][0]}_{params['sample_range'][1]}{ss_marker}_v2"
 
     # start_learning_rate = 0.001
-    start_learning_rate = 0.0001  # 2D real
-    # start_learning_rate = 0.00001
+    # start_learning_rate = 0.0001  # 2D real
+    start_learning_rate = 0.00001  # 3D real
     # start_learning_rate = 0.000001
     epochs = params["epoch_bp"]
+else:
+    raise ValueError(f"[ERROR] Unknown model name: {model_name}")
 
 params["scheduler_cus"]["lr"] = start_learning_rate
 
@@ -396,6 +404,8 @@ with open(path_params_json, "w") as f:
 # loass function
 if params["loss_function"] == "mse":
     loss_main = torch.nn.MSELoss()
+elif params["loss_function"] == "mae":
+    loss_main = torch.nn.L1Loss()
 
 # optimizer --------------------------------------------------------------------
 if params["optimizer_type"] == "adam":

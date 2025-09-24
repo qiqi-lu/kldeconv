@@ -328,6 +328,14 @@ checkpoints_v1 = {
             "n1_r1": "checkpoints/Nuclear-pore-complex2-1024/rln/rln_mae_bs_4_lr_0.01_id_0_1/epoch_699_iter_31499.pt"
         },
     },
+    "SirDNA-1024": {
+        "forward": {
+            "n1_r1": "checkpoints/SirDNA-1024/kernelnet/forward/kernet_fp_bs_1_lr_0.01_ker_31_mse_over2_inter_normx_fft_ts_0_1_s100_v2/epoch_499_499.pt"
+        },
+        "backward": {
+            "n1_r1": "checkpoints/SirDNA-1024/kernelnet/backward/kernet_bs_1_lr_1e-05_iter_2_ker_31_mse_over2_inter_fp_normx_bp_norm_fft_ts_0_1_v2/epoch_7000_7000.pt",
+        },
+    },
     "ZeroShotDeconvNet-simutrain-642": {
         "forward": {},
         "backward": {

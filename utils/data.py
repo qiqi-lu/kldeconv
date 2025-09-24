@@ -37,15 +37,31 @@ class NormalizePercentile(object):
             vmax = np.percentile(a=image, q=self.p_high * 100, **dict_perc)
 
         if isinstance(image, torch.Tensor):
-            dict_perc = {"dim": -1, "keepdim": True}
             if self.ndim == 2:
                 image_flat = image.flatten(start_dim=-2)
             elif self.ndim == 3:
                 image_flat = image.flatten(start_dim=-3)
             else:
                 raise ValueError(f"[ERROR] ndim should be 2 or 3, but got {self.ndim}")
-            vmin = torch.quantile(input=image_flat, q=self.p_low, **dict_perc)
-            vmax = torch.quantile(input=image_flat, q=self.p_high, **dict_perc)
+            # if the number of element is larger than 16M, use np.qualtile
+            if image_flat.shape[-1] > 16 * 1024 * 1024:
+                dict_perc = {"axis": -1, "keepdims": True}
+                vmin = np.quantile(
+                    a=image_flat.cpu().numpy(), q=self.p_low, **dict_perc
+                )
+                vmax = np.quantile(
+                    a=image_flat.cpu().numpy(), q=self.p_high, **dict_perc
+                )
+                vmin = torch.tensor(
+                    vmin, dtype=image_flat.dtype, device=image_flat.device
+                )
+                vmax = torch.tensor(
+                    vmax, dtype=image_flat.dtype, device=image_flat.device
+                )
+            else:
+                dict_perc = {"dim": -1, "keepdim": True}
+                vmin = torch.quantile(input=image_flat, q=self.p_low, **dict_perc)
+                vmax = torch.quantile(input=image_flat, q=self.p_high, **dict_perc)
 
             # restore the dimension
             vmin = vmin.view(*vmin.shape[:-1], *([1] * self.ndim))

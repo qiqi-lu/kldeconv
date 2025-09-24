@@ -1,5 +1,6 @@
 """
-Pathcing the image for network training.
+Pathcing the image for deep learning network training.
+- use normalization.
 """
 
 import os, tqdm, pandas, json

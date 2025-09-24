@@ -21,14 +21,14 @@ id_device = "cuda:0"
 output_inter = True  # output intermediate results
 # output_inter = False  # not to output intermediate results
 
-FP_type, BP_type = "known", "learned"  # simulation data
+# FP_type, BP_type = "known", "learned"  # simulation data
 # FP_type, BP_type = 'known', 'known'
-# FP_type, BP_type = "pre-trained", "learned" # 2D and 3D real data
+FP_type, BP_type = "pre-trained", "learned"  # 2D and 3D real data
 # FP_type, BP_type = 'pre-trained', 'known'
 
 num_data_fp, id_repeat_fp = 1, 1
-# num_data_bp, id_repeat_bp = 1, 1
-num_data_bp, id_repeat_bp = 3, 1
+num_data_bp, id_repeat_bp = 1, 1
+# num_data_bp, id_repeat_bp = 3, 1
 num_iter_test = 2
 
 # id_sample = [0, 346, 609, 700, 770, 901]
@@ -47,12 +47,14 @@ id_sample = []
 # dataset_names = ("SimuMix3D-128-31-0-0-1", "SimuMix3D-128-31-0-0-1")
 # dataset_names = ("SimuMix3D-128-31-05-1-01", "SimuMix3D-128-31-05-1-01")
 # dataset_names = ("SimuMix3D-128-31-05-1-03", "SimuMix3D-128-31-05-1-03")
-dataset_names = ("SimuMix3D-128-31-05-1-1", "SimuMix3D-128-31-05-1-1")
+# dataset_names = ("SimuMix3D-128-31-05-1-1", "SimuMix3D-128-31-05-1-1")
 # ------------------------------------------------------------------------------
 # dataset_names = ("Microtubule2-3d-1024", "Microtubule2-3d-1024")
 # dataset_names = ("Microtubule2-3d-1024", "Nuclear-pore-complex2-1024")
 # dataset_names = ("Nuclear-pore-complex2-1024", "Nuclear-pore-complex2-1024")
 # dataset_names = ("Nuclear-pore-complex2-1024", "Microtubule2-3d-1024")
+# ------------------------------------------------------------------------------
+dataset_names = ("SirDNA-1024", "SirDNA-1024")
 # ------------------------------------------------------------------------------
 # dataset_names = ("F-actin-nonlinear-9", "F-actin-nonlinear-9")
 # dataset_names = ("F-actin-nonlinear-9", "Microtubules2-9")

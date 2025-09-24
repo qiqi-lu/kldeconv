@@ -1,6 +1,6 @@
 """
 Generate synthetic data.
-blur and noise.
+- blur and noise.
 """
 
 import os, tqdm
@@ -15,11 +15,7 @@ path_root = "i:\Datasets\RLN"
 # ------------------------------------------------------------------------------
 # dataset_name = 'SimuBeads3D_128'
 # dataset_name = 'SimuMix3D_128'
-# dataset_name = 'SimuMix3D_128_2'
-# dataset_name = 'SimuMix3D_128_3'
 dataset_name = "SimuMix3D_256"
-# dataset_name = 'SimuMix3D_256_2'
-# dataset_name = 'SimuMix3D_256s'
 # dataset_name = 'SimuMix3D_382'
 
 lamb = None
@@ -32,10 +28,6 @@ if dataset_name in ["SimuBeads3D_128", "SimuMix3D_128"]:
     s_crop = 127
     # s_crop = 63
     size = (s_crop, 127, 127)
-
-if dataset_name in ["SimuMix3D_128_3", "SimuMix3D_256_2", "SimuMix3D_256s"]:
-    s_crop = 63
-    size = (s_crop, 31, 31)
 
 if dataset_name in ["SimuMix3D_256"]:
     s_crop = 31
