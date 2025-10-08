@@ -18,18 +18,22 @@ from checkpoint_list import checkpoints_v1 as checkpoints_list
 # ------------------------------------------------------------------------------
 # id_device = "cpu"
 id_device = "cuda:0"
-output_inter = True  # output intermediate results
-# output_inter = False  # not to output intermediate results
+# output_inter = True  # output intermediate results
+output_inter = False  # not to output intermediate results
 
-# FP_type, BP_type = "known", "learned"  # simulation data
+FP_type, BP_type = "known", "learned"  # simulation data
 # FP_type, BP_type = 'known', 'known'
-FP_type, BP_type = "pre-trained", "learned"  # 2D and 3D real data
+# FP_type, BP_type = "pre-trained", "learned"  # 2D and 3D real data
 # FP_type, BP_type = 'pre-trained', 'known'
 
 num_data_fp, id_repeat_fp = 1, 1
 num_data_bp, id_repeat_bp = 1, 1
 # num_data_bp, id_repeat_bp = 3, 1
-num_iter_test = 2
+
+num_iter_train = 3
+
+# num_iter_test = 2
+num_iter_test = num_iter_train
 
 # id_sample = [0, 346, 609, 700, 770, 901]
 # id_sample = [0, 1, 2, 3, 4, 5]
@@ -45,7 +49,7 @@ id_sample = []
 #                  test dataset | train dataset
 # ------------------------------------------------------------------------------
 # dataset_names = ("SimuMix3D-128-31-0-0-1", "SimuMix3D-128-31-0-0-1")
-# dataset_names = ("SimuMix3D-128-31-05-1-01", "SimuMix3D-128-31-05-1-01")
+dataset_names = ("SimuMix3D-128-31-05-1-01", "SimuMix3D-128-31-05-1-01")
 # dataset_names = ("SimuMix3D-128-31-05-1-03", "SimuMix3D-128-31-05-1-03")
 # dataset_names = ("SimuMix3D-128-31-05-1-1", "SimuMix3D-128-31-05-1-1")
 # ------------------------------------------------------------------------------
@@ -54,7 +58,10 @@ id_sample = []
 # dataset_names = ("Nuclear-pore-complex2-1024", "Nuclear-pore-complex2-1024")
 # dataset_names = ("Nuclear-pore-complex2-1024", "Microtubule2-3d-1024")
 # ------------------------------------------------------------------------------
-dataset_names = ("SirDNA-1024", "SirDNA-1024")
+# dataset_names = ("SirDNA-1024", "SirDNA-1024")
+# dataset_names = ("SirDNA-1024-train", "SirDNA-1024")
+# dataset_names = ("SirDNA-1024-live-cell-1", "SirDNA-1024")
+# dataset_names = ("SirDNA-1024-live-cell-2", "SirDNA-1024")
 # ------------------------------------------------------------------------------
 # dataset_names = ("F-actin-nonlinear-9", "F-actin-nonlinear-9")
 # dataset_names = ("F-actin-nonlinear-9", "Microtubules2-9")
@@ -189,7 +196,8 @@ params_dict = dict(
     eps=0.000001,
     scale_factor=int(info["scale_factor"]),
     interpolation=True,
-    kernel_norm_fp=False,
+    kernel_norm_fp=False,  # default
+    # kernel_norm_fp=True,
     kernel_norm_bp=True,
     over_sampling=2,
     padding_mode="reflect",
@@ -489,7 +497,9 @@ for i in id_sample:
     pbar.update(1)
 
     # Save results -------------------------------------------------------------
-    path_sample = os.path.join(path_prediction, filenames[i].split(".")[0])
+    path_sample = os.path.join(
+        path_prediction, f"train_iter_{num_iter_train}", filenames[i].split(".")[0]
+    )
     os.makedirs(path_sample, exist_ok=True)
 
     save_image = lambda fname, arr: io.imsave(

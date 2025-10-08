@@ -18,10 +18,11 @@ plt.rcParams["svg.fonttype"] = "none"
 # ------------------------------------------------------------------------------
 #                    dataset name | (num_data, id_repeat) | id_sample
 # ------------------------------------------------------------------------------
-# data_info = ("SimuMix3D-128-31-0-0-1", "fp_knonw_bp_n3_r1", 0)
+num_iter_kld = 3
 data_info = (
     "SimuMix3D-128-31-05-1-01",
-    "fp_knonw_bp_n3_r1",
+    # "fp_knonw_bp_n3_r1",
+    f"fp_knonw_bp_n1_r1/train_iter_{num_iter_kld}",
     0,
     64,  # id_slice_xy
     64,  # id_slice_xz
@@ -30,14 +31,15 @@ data_info = (
 )
 
 methods_name = (
-    ("raw", "RAW", 2, "#1B3E22"),
-    ("traditional", "Traditional@2", 2, "#2F67AC"),
-    ("traditional", "Traditional@30", 30, "#3C6DA8"),
+    ("raw", "RAW", 2, "#647086"),
+    ("traditional", "Traditional@3", 3, "#2F67AC"),
+    ("traditional", "Traditional@30", 30, "#D2E6F0"),
     # ("gaussian", "Gaussian", 2, "#D2E6F0"),
     # ("butterworth", "Butterworth", 2, "#FADCC8"),
-    ("wiener-butterworth", "WB@2", 2, "#EC8860"),
-    ("rln", "RLN", 2, "#FADCC8"),
-    ("kernelnet", "KLD@2", 2, "#B21F2B"),
+    # ("wiener-butterworth", "WB@2", 2, "#EC8860"),
+    ("wiener-butterworth", "WB@3", 3, "#42B4B5"),
+    ("rln", "RLN", 2, "#EC8860"),
+    ("kernelnet", f"KLD@{num_iter_kld}", num_iter_kld, "#B21F2B"),
     # ("kernelnet_ss", "KLD-ss", 2, "#F3B95F"),
     ("gt", "GT", 2, "#212C3E"),
 )

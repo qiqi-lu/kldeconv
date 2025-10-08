@@ -7,11 +7,12 @@ import matplotlib.pyplot as plt
 import skimage.io as io
 import os, tqdm
 from utils.data import read_txt, win2linux
+from scipy.ndimage import gaussian_filter
 
 # ------------------------------------------------------------------------------
-# dataset_name = "Microtubule2"
-# dataset_name = 'Nuclear_Pore_complex2'
-dataset_name = "SirDNA"
+# dataset_name,filtering_raw = "Microtubule2",False
+# dataset_name,filtering_raw = 'Nuclear_Pore_complex2',False
+dataset_name, filtering_raw = "SirDNA", True
 
 # ------------------------------------------------------------------------------
 path_dataset = os.path.join("I:\Datasets\RCAN3D\Confocal_2_STED", dataset_name)
@@ -36,6 +37,10 @@ else:
     path_save_to_gt = os.path.join(path_dataset, "gt_1024x1024")
     path_save_to_raw = os.path.join(path_dataset, "raw_1024x1024")
 
+
+if filtering_raw:
+    path_save_to_raw += "_filter"
+
 for path in [path_save_to_raw, path_save_to_gt]:
     os.makedirs(path, exist_ok=True)
 
@@ -51,6 +56,10 @@ print(f"[INFO] save data to : {path_save_to_raw}")
 def preprocess(path, name_gt, name_raw):
     data_gt = io.imread(os.path.join(path, "gt", name_gt)).astype(np.float32)
     data_raw = io.imread(os.path.join(path, "raw", name_raw)).astype(np.float32)
+
+    # gaussian filtering the raw image
+    if filtering_raw:
+        data_raw = gaussian_filter(data_raw, sigma=1.0)
 
     # pad the image into a shape of (1024, 1024) -------------------------------
     n_pad = 1024
@@ -88,26 +97,27 @@ data_gt, data_raw = preprocess(
 
 Nz, Ny, Nx = data_gt.shape
 # ------------------------------------------------------------------------------
-nr, nc = 2, 3
+nr, nc = 1, 3
 fig, axes = plt.subplots(
     nrows=nr, ncols=nc, dpi=300, figsize=(3 * nc, 3 * nr), constrained_layout=True
 )
-[ax.set_axis_off() for ax in axes[0:2, 0:2].ravel()]
+[ax.set_axis_off() for ax in axes[0:2].ravel()]
 
 dict_img = {"cmap": "gray", "vmax": data_gt.max() * 0.6, "vmin": 0}
 
-axes[0, 0].set_title("GT (max={:.2f})".format(data_gt.max()))
-axes[0, 1].set_title("RAW (max={:.2f})".format(data_raw.max()))
+axes[0].set_title("GT (max={:.2f})".format(data_gt.max()))
+axes[1].set_title("RAW (max={:.2f})".format(data_raw.max()))
 
-axes[0, 0].imshow(data_gt[Nz // 2], **dict_img)
-axes[0, 1].imshow(data_raw[Nz // 2], **dict_img)
-axes[0, 2].plot(data_gt[Nz // 2, 100, 50:500], "red")
-axes[0, 2].plot(data_raw[Nz // 2, 100, 50:500], "green")
+xy_plane_gt = data_gt[Nz // 2]
+xy_plane_raw = data_raw[Nz // 2]
+# get the index of the maximum value in the xy_plane
+idx_y, idx_x = np.unravel_index(xy_plane_gt.argmax(), xy_plane_gt.shape)
+x_range = slice(idx_x - 50, idx_x + 50)
 
-axes[1, 0].imshow(data_gt[Nz // 2 + 1], **dict_img)
-axes[1, 1].imshow(data_raw[Nz // 2 + 1], **dict_img)
-axes[1, 2].plot(data_gt[Nz // 2 + 1, 100, 50:500], "red")
-axes[1, 2].plot(data_raw[Nz // 2 + 1, 100, 50:500], "green")
+axes[0].imshow(xy_plane_gt, **dict_img)
+axes[1].imshow(xy_plane_raw, **dict_img)
+axes[2].plot(xy_plane_gt[idx_y, x_range], "red")
+axes[2].plot(xy_plane_raw[idx_y, x_range], "green")
 plt.savefig(os.path.join(path_fig, "data_check.png"))
 
 # ------------------------------------------------------------------------------
@@ -121,6 +131,7 @@ if patch_enable == False:
             filenames_gt[i],
             filenames_raw[i],
         )
+
         io.imsave(
             os.path.join(path_save_to_gt, filenames_gt[i]),
             arr=data_gt,

@@ -13,7 +13,8 @@ plt.rcParams["svg.fonttype"] = "none"
 # ------------------------------------------------------------------------------
 #                    dataset name | (num_data, id_repeat) | id_sample
 # ------------------------------------------------------------------------------
-data_info = ("SimuMix3D-128-31-0-0-1", "fp_knonw_bp_n3_r1", 6)
+# data_info = ("SimuMix3D-128-31-0-0-1", "fp_knonw_bp_n3_r1", 6)
+data_info = ("SirDNA-1024", "fp_n1_r1_bp_n1_r1", 0)
 
 # ------------------------------------------------------------------------------
 dataset_name_test, id_experiment, id_sample = data_info
@@ -118,3 +119,34 @@ axes[1, 0].text(pos_x, pos_y, "xz", **dict_text)
 # save
 plt.savefig(os.path.join(path_fig, "iteration_process.png"))
 plt.savefig(os.path.join(path_fig, "iteration_process.svg"))
+
+# ------------------------------------------------------------------------------
+# compare the x0 and y_fp
+# ------------------------------------------------------------------------------
+print("[INFO] plot compare the x0 and y_fp...")
+i_slice = Nz // 2
+nr, nc = 2, 2
+fig, axes = plt.subplots(nrows=nr, ncols=nc, figsize=(3 * nc, 3 * nr), **dict_fig)
+
+axes[0, 0].imshow(img_x0[i_slice], **dict_img)
+axes[0, 1].imshow(img_y_fp[i_slice], **dict_img)
+axes[1, 0].imshow(img_y[i_slice], **dict_img)
+
+# get the position of max value in the image[i_slice]
+y_idx, x_idx = np.unravel_index(img_y_fp[i_slice].argmax(), img_x0[i_slice].shape)
+x_range = slice(x_idx - 50, x_idx + 150)
+
+axes[1, 1].plot(img_x0[i_slice, y_idx, x_range], "black", label="x0")
+axes[1, 1].plot(img_y[i_slice, y_idx, x_range], "red", label="y")
+axes[1, 1].plot(img_y_fp[i_slice, y_idx, x_range], "green", label="y_fp")
+axes[1, 1].legend()
+
+# plot the line in the image
+axes[0, 0].plot([x_range.start, x_range.stop], [y_idx, y_idx], "red", linewidth=1)
+axes[0, 1].plot([x_range.start, x_range.stop], [y_idx, y_idx], "red", linewidth=1)
+axes[1, 0].plot([x_range.start, x_range.stop], [y_idx, y_idx], "red", linewidth=1)
+axes[0, 0].set_title("x0")
+axes[0, 1].set_title("y_fp")
+axes[1, 0].set_title("y")
+# save
+plt.savefig(os.path.join(path_fig, "compare_x0_y_fp.png"))

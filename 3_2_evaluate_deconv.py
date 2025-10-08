@@ -154,7 +154,8 @@ elif data_type == "simu3d":
             "init": "measured",
             "padding_mode": "reflect",
             # "num_iter": 2,
-            "num_iter": 30,
+            "num_iter": 3,
+            # "num_iter": 30,
             # "num_iter": 100,
         },
         "gaussian": {
@@ -179,6 +180,7 @@ elif data_type == "simu3d":
             "n": 10,
             "res_flag": 1,
             "num_iter": 2,
+            # "num_iter": 3,
             # "num_iter": 30,
             "init": "measured",
         },

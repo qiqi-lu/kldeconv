@@ -230,7 +230,13 @@ checkpoints_v1 = {
             "n1_r1": "checkpoints/SimuMix3D-128-31-05-1-01/kernelnet/forward/kernet_fp_bs_1_lr_1_ker_31_gauss_0.5_poiss_1_sf_1_mse_over2_inter_normx_fft_ratio_0.1_ts_0_1_s100/epoch_20.pt",
         },
         "backward": {
-            "n1_r1": "checkpoints/SimuMix3D-128-31-05-1-01/kernelnet/backward/kernet_bs_1_lr_1e-06_iter_2_ker_31_gauss_0.5_poiss_1_sf_1_lam_0.0_mse_over2_inter_norm_fft_ratio_0.1_ts_0_1/epoch_10000.pt",
+            # "n1_r1": "checkpoints/SimuMix3D-128-31-05-1-01/kernelnet/backward/kernet_bs_1_lr_1e-06_iter_2_ker_31_gauss_0.5_poiss_1_sf_1_lam_0.0_mse_over2_inter_norm_fft_ratio_0.1_ts_0_1/epoch_10000.pt",
+            # "n1_r1": "checkpoints/SimuMix3D-128-31-05-1-01/kernelnet/backward/kernet_bs_1_lr_1e-05_iter_2_ker_25_mse_over2_inter_fp_normx_bp_norm_fft_ts_0_1_v2/epoch_9999_9999.pt",
+            "n1_r1": "checkpoints/SimuMix3D-128-31-05-1-01/kernelnet/backward/kernet_bs_1_lr_1e-05_iter_3_ker_25_mse_over2_inter_fp_normx_bp_norm_fft_ts_0_1_v2/epoch_9999_9999.pt",
+            # "n1_r1": "checkpoints/SimuMix3D-128-31-05-1-01/kernelnet/backward/kernet_bs_1_lr_1e-06_iter_2_ker_25_mse_over2_inter_fp_normx_bp_norm_fft_ts_0_1_v2/epoch_9999_9999.pt",
+            # "n1_r1": "checkpoints/SimuMix3D-128-31-05-1-01/kernelnet/backward/kernet_bs_1_lr_1e-06_iter_3_ker_25_mse_over2_inter_fp_normx_bp_norm_fft_ts_0_1_v2/epoch_9999_9999.pt",
+            # "n1_r1": "checkpoints/SimuMix3D-128-31-05-1-01/kernelnet/backward/kernet_bs_1_lr_1e-06_iter_4_ker_25_mse_over2_inter_fp_normx_bp_norm_fft_ts_0_1_v2/epoch_9999_9999.pt",
+            # "n1_r1": "checkpoints/SimuMix3D-128-31-05-1-01/kernelnet/backward/kernet_bs_1_lr_1e-06_iter_5_ker_25_mse_over2_inter_fp_normx_bp_norm_fft_ts_0_1_v2/epoch_9999_9999.pt",
             "n1_r2": "checkpoints/SimuMix3D-128-31-05-1-01/kernelnet/backward/kernet_bs_1_lr_1e-06_iter_2_ker_31_gauss_0.5_poiss_1_sf_1_lam_0.0_mse_over2_inter_norm_fft_ratio_0.1_ts_1_2/epoch_10000.pt",
             "n1_r3": "checkpoints/SimuMix3D-128-31-05-1-01/kernelnet/backward/kernet_bs_1_lr_1e-06_iter_2_ker_31_gauss_0.5_poiss_1_sf_1_lam_0.0_mse_over2_inter_norm_fft_ratio_0.1_ts_2_3/epoch_10000.pt",
             "n2_r1": "checkpoints/SimuMix3D-128-31-05-1-01/kernelnet/backward/kernet_bs_2_lr_1e-06_iter_2_ker_31_gauss_0.5_poiss_1_sf_1_lam_0.0_mse_over2_inter_norm_fft_ratio_0.1_ts_0_2/epoch_10000.pt",
@@ -331,9 +337,12 @@ checkpoints_v1 = {
     "SirDNA-1024": {
         "forward": {
             "n1_r1": "checkpoints/SirDNA-1024/kernelnet/forward/kernet_fp_bs_1_lr_0.01_ker_31_mse_over2_inter_normx_fft_ts_0_1_s100_v2/epoch_499_499.pt"
+            # "n1_r1": "checkpoints/SirDNA-1024/kernelnet/forward/kernet_fp_bs_1_lr_0.01_ker_31_mse_over2_inter_norm_fft_ts_0_1_s100_v2/epoch_499_499.pt"
         },
         "backward": {
-            "n1_r1": "checkpoints/SirDNA-1024/kernelnet/backward/kernet_bs_1_lr_1e-05_iter_2_ker_31_mse_over2_inter_fp_normx_bp_norm_fft_ts_0_1_v2/epoch_7000_7000.pt",
+            # "n1_r1": "checkpoints/SirDNA-1024/kernelnet/backward/kernet_bs_1_lr_1e-05_iter_2_ker_31_mse_over2_inter_fp_normx_bp_norm_fft_ts_0_1_v2/epoch_9999_9999.pt",
+            "n1_r1": "checkpoints/SirDNA-1024/kernelnet/backward/kernet_bs_1_lr_0.0001_iter_2_ker_31_mse_over2_inter_fp_normx_bp_norm_fft_ts_0_1_v2/epoch_9999_9999.pt",
+            # "n1_r1": "checkpoints/SirDNA-1024/kernelnet/backward/kernet_bs_1_lr_0.0001_iter_2_ker_31_mse_over2_inter_fp_norm_bp_norm_fft_ts_0_1_v2/epoch_9999_9999.pt",
         },
     },
     "ZeroShotDeconvNet-simutrain-642": {

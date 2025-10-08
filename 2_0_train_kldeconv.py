@@ -19,12 +19,12 @@ torch.manual_seed(7)
 # ------------------------------------------------------------------------------
 #                                   Paramsters
 # ------------------------------------------------------------------------------
-model_name = "kernet_fp"
-# model_name = "kernet"
+# model_name = "kernet_fp"
+model_name = "kernet"
 
 # ------------------------------------------------------------------------------
 params = {
-    "device_id": "cuda:1",
+    "device_id": "cuda:0",
     "num_workers": 6,
     # --------------------------------------------------------------------------
     "dataset_name": (
@@ -54,7 +54,7 @@ params = {
         # "SimuMix3D-128-31-0-0-1",
         # "SimuMix3D-128-31-05-1-1",
         # "SimuMix3D-128-31-05-1-03",
-        # "SimuMix3D-128-31-05-1-01",
+        "SimuMix3D-128-31-05-1-01",
         # ----------------------------------------------------------------------
         # "SimuMix3D-256-31-0-0-1",
         # "SimuMix3D-256-31-05-1-1",
@@ -74,7 +74,7 @@ params = {
         # "Nuclear-pore-complex2-512",
         # "Nuclear-pore-complex2-1024",
         # ----------------------------------------------------------------------
-        "SirDNA-1024",
+        # "SirDNA-1024",
         # ----------------------------------------------------------------------
         # "ZeroShotDeconvNet-642",
         # "ZeroShotDeconvNet-560",
@@ -91,8 +91,8 @@ params = {
     "padding_mode": "reflect",
     "kernel_init": "gauss",
     "interpolation": True,
-    # "kernel_norm_fp": False,  # default
-    "kernel_norm_fp": True,
+    "kernel_norm_fp": False,  # default
+    # "kernel_norm_fp": True,
     "kernel_norm_bp": True,
     "over_sampling": 2,
     # --------------------------------------------------------------------------
@@ -186,7 +186,10 @@ if model_name == "kernet_fp":
 elif model_name == "kernet":
     params.update(
         {
-            "num_iter": 2,
+            # "num_iter": 2,  # default
+            # "num_iter": 3,
+            "num_iter": 4,
+            # "num_iter": 5,
             "lam": 0.0,  # lambda for prior
             "multi_out": False,
             "shared_bp": True,
@@ -206,9 +209,9 @@ elif model_name == "kernet":
     suffix = f"_iter_{params['num_iter']}_ker_{ker_size_bp}_{params['loss_function']}_over{params['over_sampling']}_inter_{norm_tag}_{params['conv_mode']}_ts_{params['sample_range'][0]}_{params['sample_range'][1]}{ss_marker}_v2"
 
     # start_learning_rate = 0.001
-    # start_learning_rate = 0.0001  # 2D real
-    start_learning_rate = 0.00001  # 3D real
-    # start_learning_rate = 0.000001
+    start_learning_rate = 0.0001  # 2D real
+    # start_learning_rate = 0.00001  # 3D real
+    # start_learning_rate = 0.000001  # simumix
     epochs = params["epoch_bp"]
 else:
     raise ValueError(f"[ERROR] Unknown model name: {model_name}")
