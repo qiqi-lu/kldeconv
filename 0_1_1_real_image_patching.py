@@ -70,7 +70,13 @@ datasets_name = (
     # "ER-2",
     # "ER-1",
     # "Microtubule2-3d-1024",
-    "Nuclear-pore-complex2-1024",
+    # "Nuclear-pore-complex2-1024",
+    # "biotisr-ccps-1",
+    # "biotisr-ccps-2",
+    # "biotisr-ccps-3",
+    "biotisr-factin-1",
+    "biotisr-factin-2",
+    "biotisr-factin-3",
 )
 
 params = dict(
