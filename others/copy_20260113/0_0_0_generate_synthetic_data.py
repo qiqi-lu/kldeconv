@@ -37,15 +37,6 @@ if dataset_name in ["SimuMix3D_382"]:
     s_crop = 101
     size = (101, s_crop, s_crop)
 
-dataset_info = {
-    "SimuMix3D_382": {
-        "lamb": 560,
-        # "lamb": 642,
-        "s_crop": 101,
-        "size": (101, s_crop, s_crop),
-    },
-}
-
 std_gauss, poisson, ratio = 0.5, 1, 0.1
 # std_gauss, poisson, ratio = 0.5, 1, 0.3
 # std_gauss, poisson, ratio = 0.5, 1, 1
@@ -56,12 +47,15 @@ scale_factor = 1
 # path and file names
 path_dataset = utils_data.win2linux(os.path.join(path_root, dataset_name))
 path_gt = os.path.join(path_dataset, "gt")
+print(f"[INFO] dataset from: {path_dataset}")
+
+# load filenames from txt, each line is a filename
 path_filenames = os.path.join(path_dataset, "all.txt")
-
-filenames = utils_data.read_txt(path_filenames)
+with open(path_filenames, "r") as f:
+    filenames = f.read().splitlines()
+    if filenames[-1] == "":
+        filenames.pop()
 num_samples = len(filenames)
-
-print(f"[INFO] Load dataset from: {path_dataset}")
 print(f"[INFO] Number of samples: {num_samples}")
 
 # ------------------------------------------------------------------------------
