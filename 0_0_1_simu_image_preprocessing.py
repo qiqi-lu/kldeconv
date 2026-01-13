@@ -7,7 +7,7 @@ import skimage.io as io
 import os, tqdm
 from utils.data import win2linux, read_txt, NormalizePercentile
 
-path_root = win2linux("I:\Datasets\RLN\SimuMix3D_128")
+path_root = "I:\Datasets\RLN\SimuMix3D_128"
 folder_names = (
     "raw_psf_31_gauss_0.5_poiss_1_sf_1_ratio_0.1",
     "raw_psf_31_gauss_0.5_poiss_1_sf_1_ratio_0.3",
@@ -16,6 +16,7 @@ folder_names = (
     "gt",
 )
 
+path_root = win2linux(path_root)
 path_txt = os.path.join(path_root, "all.txt")
 filenames = read_txt(path_txt)
 
