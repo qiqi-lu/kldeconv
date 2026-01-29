@@ -1,5 +1,5 @@
 # Kernel Learning Deconvolution (KLDeconv)
-KLDeconv is an algorithm for fluorescence microscopic image deconvolution.
+**KLDeconv** is an algorithm for fluorescence microscopic image deconvolution.
 It enhances the deconvolution performance and speed through learning the forward kernel and backward kernel in conventional Richardson-Lucy Deconvolution (RLD) algorithm.
 
 KLDeconv only requires one training sample and two iterations to achieve superior deconvolution perfromance and speed compared to traditional RLD and its variants (which using an unmatched backeard kernel, such as Gaussian, Butterworth, and Wiener-Butterworth (WB) backward kernels).
@@ -80,21 +80,25 @@ $ pip install -r requirements.txt
 **Please always pay attention to the path setting in the code, and modifiy the to your own working path.**
 **Specific parameters can be modified according to you needs.**
 
-## Datasets
+## Data Preprocessing
 ### Simulation datasets
 We use `MATLAB` code in [Richardson-Lucy-Net](https://github.com/MeatyPlus/Richardson-Lucy-Net/tree/main/Phantom_generate) to generate simulated phantoms with bead structures or mixed structures. The modified codes are save in `methods\phantom_generate` folder.
 
 - `generate_synthetic_data.py`: generate the simulated datasets with different Poisson/Gaussin noise level.
+- `image_preprocessing_simu_net.py` : preprocess the simulated images for training networks.
 
 ### Real datasets
-For the images in BioSR and Confocal/STED volume data set, the images should be preprocessing before training. 
-We use `real_data_preprocessing.py` to preprocess the real biology images in Confocal/STED volume data set.
-The preprocessing file `preprocess.py` save in `data/BioSR` is used to proprocess the data of BioSR. 
+The images should be preprocessing before training. 
+
+- `real_image_patching.py`: patching the images in the real datasets for training networks.
+- `image_preprocessing_real.py`: preprocess the real biological images. (2D/3D images)
 
 ## Model training
-We use `main_kernelnet.py` to train a new model. (please modify the `root_path` to the path saved data sets) The training parameters can be modified directly in the source code.
+- `train_kldeconv.py`: learn the froward kernel and backward kernel in KLDeconv.
 
 The model weights will be saved in `./checkpoints` folder.
+The training parameters can be modified directly in the source code.
+
 
 ## Model evaluation
 To test a well-trained model, we use `evaluate_model.py`, the output results will be save in `./outputs/figures`.

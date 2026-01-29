@@ -4,6 +4,67 @@ import matplotlib.pyplot as plt
 from torch.utils.data import Dataset, DataLoader
 from skimage import io, transform
 from torchvision import transforms
+from skimage.filters import threshold_otsu
+from skimage.morphology import remove_small_objects, binary_opening, disk
+
+# from nanopyx.core.transform.error_map import ErrorMap
+
+
+# def registration(img, img_ref):
+#     """
+#     Registration of super-resolution reconstructions against the reference image.
+#     Use the method in SQUIRREL algorithm.
+#     """
+#     img = np.squeeze(img)
+#     img_ref = np.squeeze(img_ref)
+#     ndim_img = img.ndim
+#     ndim_img_ref = img_ref.ndim
+#     assert ndim_img == 2 and ndim_img_ref == 2, "[ERROR] Only support 2D image."
+
+#     emc = ErrorMap()
+#     emc.optimize(img_ref, img)
+
+
+def bkg_estimation_const(img, min_obj_size=32, open_radius=2):
+    """
+    Estimate the background noise level of an image.
+    ### Parameters:
+    - `img` (numpy.ndarray): Input image with a shape of `(Ny, Nx)` or `(Nz, Ny, Nx)`.
+    - `min_obj_size` (int): Minimum object size.
+    - `open_radius` (int): Radius of the disk structuring element for opening.
+    """
+    img = np.array(img, dtype=np.float32)
+    img = np.squeeze(img)
+    ndim = img.ndim
+    assert ndim in [2, 3], "[ERROR] Only support 2D or 3D image."
+
+    # detect the object
+    thr = threshold_otsu(img)
+    obj = img > thr
+    obj = remove_small_objects(obj, min_size=min_obj_size)
+    obj = binary_opening(obj, disk(open_radius))
+    bkg = ~obj
+
+    if bkg.sum() < 100:
+        bkg_constant = np.percentile(img, 2)
+    else:
+        bkg_constant = np.median(img[bkg])
+
+    return bkg_constant
+
+
+def normalization(image, p_low, p_high):
+    vmin = np.percentile(a=image, q=p_low * 100)
+    vmax = np.percentile(a=image, q=p_high * 100)
+    if vmax == 0:
+        image *= 0.0
+    else:
+        amp = vmax - vmin
+        if amp == 0:
+            amp = 1
+        image = (image - vmin) / amp
+
+    return image, vmin, vmax
 
 
 class NormalizePercentile(object):

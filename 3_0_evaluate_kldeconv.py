@@ -1,18 +1,17 @@
 """
-Evaluate the trained KernelNet model.
+Inference using KLDeconv algorithm.
 """
 
-import torch, os, pandas, tqdm, json
+import torch, os, pandas, tqdm, json, time
 import numpy as np
 import skimage.io as io
 import methods.deconvolution as dcv
 from models import kernelnet
 from fft_conv_pytorch import fft_conv
-
-# from
 from utils.data import text2tuple, win2linux, SRDataset, padding_kernel, read_txt
 from checkpoint_list import checkpoints_v1 as checkpoints_list
 
+enable_prediction = False
 # ------------------------------------------------------------------------------
 #                             Parameter setting
 # ------------------------------------------------------------------------------
@@ -26,11 +25,13 @@ FP_type, BP_type = "known", "learned"  # simulation data
 # FP_type, BP_type = "pre-trained", "learned"  # 2D and 3D real data
 # FP_type, BP_type = 'pre-trained', 'known'
 
+# ------------------------------------------------------------------------------
 num_data_fp, id_repeat_fp = 1, 1
 num_data_bp, id_repeat_bp = 1, 1
 # num_data_bp, id_repeat_bp = 3, 1
 
-num_iter_train = 3
+num_iter_train = 2
+# num_iter_train = 3
 
 # num_iter_test = 2
 num_iter_test = num_iter_train
@@ -42,7 +43,7 @@ num_iter_test = num_iter_train
 # id_sample = [7, 8, 9, 10, 11, 12, 13, 14, 15, 16]
 # id_sample = [0, 1, 2, 3, 4, 5, 6]
 # id_sample = [0]
-id_sample = []
+id_sample = []  # use all the samples
 # id_sample = None # will only save the kernels
 
 # ------------------------------------------------------------------------------
@@ -62,6 +63,23 @@ dataset_names = ("SimuMix3D-128-31-05-1-01", "SimuMix3D-128-31-05-1-01")
 # dataset_names = ("SirDNA-1024-train", "SirDNA-1024")
 # dataset_names = ("SirDNA-1024-live-cell-1", "SirDNA-1024")
 # dataset_names = ("SirDNA-1024-live-cell-2", "SirDNA-1024")
+# ------------------------------------------------------------------------------
+# dataset_names = ("deepbacs-ecoli", "deepbacs-ecoli")
+# dataset_names = ("deepbacs-ecoli-ave2", "deepbacs-ecoli-ave2")
+# dataset_names = ("deepbacs-saureus", "deepbacs-saureus")
+# dataset_names = ("deepbacs-saureus-ave2", "deepbacs-saureus-ave2")
+# ------------------------------------------------------------------------------
+# dataset_names = ("biotisr-mt-1", "biotisr-mt-1")
+# dataset_names = ("biotisr-mt-2", "biotisr-mt-2")
+# dataset_names = ("biotisr-mt-3", "biotisr-mt-3")
+# dataset_names = ("biotisr-lysosomes-3", "biotisr-lysosomes-3")
+# dataset_names = ("w2s-0-sim-ave", "w2s-0-sim-ave")
+# dataset_names = ("w2s-1-sim-ave", "w2s-1-sim-ave")
+# dataset_names = ("w2s-2-sim-ave", "w2s-2-sim-ave")
+# dataset_names = ("biotisr-3d-mito-2", "biotisr-3d-mito-2")
+# dataset_names = ("biotisr-3d-mito-2-k5", "biotisr-3d-mito-2-k5")
+# dataset_names = ("biotisr-3d-mt-2", "biotisr-3d-mt-2")
+
 # ------------------------------------------------------------------------------
 # dataset_names = ("F-actin-nonlinear-9", "F-actin-nonlinear-9")
 # dataset_names = ("F-actin-nonlinear-9", "Microtubules2-9")
@@ -169,6 +187,7 @@ dataset_name_test, dataset_name_train = dataset_names
 path_prediction = os.path.join(
     "outputs", "predictions", dataset_name_test, "kernelnet", dataset_name_train
 )
+# ------------------------------------------------------------------------------
 
 if FP_type == "known" and BP_type == "learned":
     folder = f"fp_knonw_bp_n{num_data_bp}_r{id_repeat_bp}"
@@ -218,7 +237,9 @@ params_dict = dict(
 # ------------------------------------------------------------------------------
 device = torch.device(id_device)
 suffix_net = "_ss" if params_dict["train_mode"] == "ss" else ""
+
 params_dict["conv_mode"] = "direct" if params_dict["dim"] == 2 else "fft"
+# params_dict["conv_mode"] = "fft"
 
 print("-" * 80)
 print(f"[INFO] Dataset: {dataset_name_test}")
@@ -403,7 +424,7 @@ if FP_type == "pre-trained":
 # ------------------------------------------------------------------------------
 # Save kernels
 # ------------------------------------------------------------------------------
-path_save_kernel = os.path.join(path_prediction, "kernel")
+path_save_kernel = os.path.join(path_prediction, f"kernel_iter_{num_iter_train}")
 save_kernel = lambda fname, arr: io.imsave(
     fname=os.path.join(path_save_kernel, fname), arr=arr, check_contrast=False
 )
@@ -423,9 +444,13 @@ save_kernel("kernel_init.tif", ker_fp_init)
 save_kernel("kernel_fp.tif", ker_FP)
 save_kernel(f"kernel_bp{suffix_net}.tif", ker_BP)
 
+
 # ------------------------------------------------------------------------------
 #                                   Prediction
 # ------------------------------------------------------------------------------
+if not enable_prediction:
+    exit()
+
 print("-" * 80)
 print("[INFO] Prediciton ...")
 
@@ -458,6 +483,7 @@ t2n = lambda x: x.cpu().detach().numpy()[0, 0]  # tensor to numpy
 clamp = lambda x: torch.clamp(x, min=0.0, max=3.0)  # clamp the value to [0, 3]
 
 pbar = tqdm.tqdm(total=len(id_sample), desc="Prediction", ncols=80)
+print_time_each_sample = True
 for i in id_sample:
     if i >= dataset_test.__len__():
         print(f"[ERROR] Sample {i} is out of range, exit.")
@@ -492,7 +518,14 @@ for i in id_sample:
             bp = t2n(bp)
 
     # final results ------------------------------------------------------------
+    # measure the time used for prediction
+    torch.cuda.synchronize(device=device)
+    tic = time.time()
     y_pred_all = model(x).cpu().detach().numpy()[:, 0, 0]
+    torch.cuda.synchronize(device=device)
+    toc = time.time()
+    if print_time_each_sample:
+        print(f"[INFO] Sample {i}: {toc - tic:.4f} s")
     y, x = t2n(y), t2n(x)
     pbar.update(1)
 

@@ -13,29 +13,30 @@ from utils.data import win2linux
 plt.rcParams["svg.fonttype"] = "none"
 
 # ------------------------------------------------------------------------------
-data_info = [
+data_info = (
+    # (dataset_name, (id_num_data, id_repeat))
     ("SimuMix3D-256-31-0-0-1", (1, 1)),
     ("SimuMix3D-256-31-05-1-1", (1, 1)),
     ("SimuMix3D-256-31-05-1-03", (1, 1)),
     ("SimuMix3D-256-31-05-1-01", (1, 1)),
-]
+)
+noise_level = ["NF", "20", "15", "10"]
 
+# ------------------------------------------------------------------------------
 datasets_name = [info[0] for info in data_info]
 
 info_df = pandas.read_excel("datasets_test.xlsx")
 info = info_df[info_df["id"] == datasets_name[0]].iloc[0]
-
 path_psf = win2linux(info["path_psf"])
-print(f"[INFO] PSF path : {path_psf}")
-kf_true = io.imread(path_psf).astype(np.float32)
-print(f"[INFO] PSF shape : {kf_true.shape}")
-
+pixel_size = info["pixel_size"] / 1000  # um
 
 path_prediction = os.path.join("outputs", "predictions")
-path_fig = os.path.join("outputs", "figures")
+path_fig = os.path.join("outputs", "figures", "analysis_kernel")
 os.makedirs(path_fig, exist_ok=True)
 
-dict_fig = {"dpi": 300, "constrained_layout": True}
+kf_true = io.imread(path_psf).astype(np.float32)
+print(f"[INFO] PSF path : {path_psf}")
+print(f"[INFO] PSF shape : {kf_true.shape}")
 
 # ------------------------------------------------------------------------------
 # load estimated kernels
@@ -44,8 +45,6 @@ num_data = [1, 2, 3]
 id_repeat = [1, 2, 3]
 
 kf_est = []  # backward kernels
-noise_level = ["NF", "20", "15", "10"]
-
 for dataset in datasets_name:
     path_kernel = os.path.join(path_prediction, dataset, "kernelnet", dataset)
     tmp = []
@@ -68,44 +67,65 @@ print(f"[INFO] (N_noise_level, N_data_num, N_repeat) : {kf_est.shape}")
 # ------------------------------------------------------------------------------
 # display forward kernels
 # ------------------------------------------------------------------------------
+dict_fig = {"dpi": 600, "constrained_layout": True}
+
+# ------------------------------------------------------------------------------
 num_noise_level = len(noise_level)
-nr, nc = num_noise_level + 1, 2
 
 Nz, Ny, Nx = kf_true.shape
 
 dict_kernel = {"cmap": "hot", "vmin": 0, "vmax": kf_true.max()}
-dict_text_nl = {"color": "white", "fontsize": 24, "ha": "left", "va": "top"}
-dict_text_plane = {"color": "white", "fontsize": 24, "ha": "left", "va": "bottom"}
-dict_text_ker_tag = {"color": "white", "fontsize": 24, "ha": "right", "va": "bottom"}
+dict_text_lt = {
+    "color": "white",
+    "fontsize": 24,
+    "ha": "left",
+    "va": "top",
+    "x": 0.05,
+    "y": 0.95,
+}
+dict_text_lb = {
+    "color": "white",
+    "fontsize": 24,
+    "ha": "left",
+    "va": "bottom",
+    "x": 0.05,
+    "y": 0.05,
+}
+dict_text_rb = {
+    "color": "white",
+    "fontsize": 24,
+    "ha": "right",
+    "va": "bottom",
+    "x": 0.95,
+    "y": 0.05,
+}
 
 id_slice_xy = Nz // 2
 id_slice_zx = Ny // 2
 
-pos_text_nl = (Nx * 0.04, Ny * 0.04)
-pos_text_plane = (Nx * 0.04, Ny * 0.96)
-pos_text_ker_tag = (Nx * 0.96, Ny * 0.96)
-
+# ------------------------------------------------------------------------------
+nr, nc = num_noise_level + 1, 2
 fig, axes = plt.subplots(nrows=nr, ncols=nc, figsize=(3 * nc, 3 * nr), **dict_fig)
 [ax.set_axis_off() for ax in axes.ravel()]
 
 axes[0, 0].imshow(kf_true[id_slice_xy], **dict_kernel)
 axes[0, 1].imshow(kf_true[:, id_slice_zx, :], **dict_kernel)
 
-axes[0, 0].text(x=pos_text_nl[0], y=pos_text_nl[1], s="GT", **dict_text_nl)
-axes[0, 0].text(x=pos_text_plane[0], y=pos_text_plane[1], s="xy", **dict_text_plane)
-axes[0, 0].text(
-    x=pos_text_ker_tag[0], y=pos_text_ker_tag[1], s="$k_f$", **dict_text_ker_tag
-)
-axes[0, 1].text(x=pos_text_plane[0], y=pos_text_plane[1], s="zx", **dict_text_plane)
+axes[0, 0].text(s="GT", transform=axes[0, 0].transAxes, **dict_text_lt)
+axes[0, 0].text(s="xy", transform=axes[0, 0].transAxes, **dict_text_lb)
+axes[0, 0].text(s="k$_f$", transform=axes[0, 0].transAxes, **dict_text_rb)
+axes[0, 1].text(s="zx", transform=axes[0, 1].transAxes, **dict_text_lb)
 
-for i in range(num_noise_level):
-    id_num_data, id_repeat = data_info[i][1]
-    ker = kf_est[i, id_num_data, id_repeat]
-    axes[i + 1, 0].imshow(ker[id_slice_xy], **dict_kernel)
-    axes[i + 1, 1].imshow(ker[:, id_slice_zx, :], **dict_kernel)
+for i_nl in range(num_noise_level):
+    id_num_data, id_repeat = data_info[i_nl][1]
+    ker = kf_est[i_nl, id_num_data, id_repeat]
+    axes[i_nl + 1, 0].imshow(ker[id_slice_xy], **dict_kernel)
+    axes[i_nl + 1, 1].imshow(ker[:, id_slice_zx, :], **dict_kernel)
 
-    text = noise_level[i] if i == 0 else (noise_level[i] + " dB")
-    axes[i + 1, 0].text(x=pos_text_nl[0], y=pos_text_nl[1], s=text, **dict_text_nl)
+    text = noise_level[i_nl] if i_nl == 0 else (noise_level[i_nl] + " dB")
+    axes[i_nl + 1, 0].text(
+        s=text, transform=axes[i_nl + 1, 0].transAxes, **dict_text_lt
+    )
 
 plt.savefig(os.path.join(path_fig, "kf_noise_level.png"))
 plt.savefig(os.path.join(path_fig, "kf_noise_level.svg"))
@@ -129,6 +149,7 @@ rmse_std = rmse.std(axis=-1)
 # ------------------------------------------------------------------------------
 dict_line = {"linewidth": 0.5, "capsize": 2, "elinewidth": 0.5, "capthick": 0.5}
 
+# ------------------------------------------------------------------------------
 nr, nc = 1, 1
 fig, axes = plt.subplots(nrows=nr, ncols=nc, figsize=(3 * nc, 3 * nr), **dict_fig)
 
@@ -148,10 +169,10 @@ for i in range(N_nl):
         ".",
         color=colors[i],
         label="SNR=" + noise_level[i],
+        zorder=10,
     )
-axes.legend(edgecolor="white", fontsize="x-small")
-axes.set_ylabel("RMSE")
-# axes.set_ylim([0.94, 1])
+axes.legend(fontsize="xx-small", frameon=False, loc="best")
+axes.set_ylabel("RMSE (%)")
 axes.set_box_aspect(1)
 axes.set_xticks(ticks=num_data, labels=num_data)
 axes.set_xlabel("Number of samples")
@@ -160,7 +181,7 @@ plt.savefig(os.path.join(path_fig, "kf_rmse.png"))
 plt.savefig(os.path.join(path_fig, "kf_rmse.svg"))
 
 # ------------------------------------------------------------------------------
-# save rmse value into excel
+# save source data
 excel_file = os.path.join(path_fig, "kf_rmse.xlsx")
 if os.path.exists(excel_file):
     os.remove(excel_file)
@@ -168,3 +189,4 @@ with pandas.ExcelWriter(excel_file, mode="w") as writer:
     for i in range(N_nl):
         df = pandas.DataFrame(rmse[i], columns=num_data)
         df.to_excel(writer, sheet_name=noise_level[i])
+# ------------------------------------------------------------------------------

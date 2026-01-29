@@ -19,6 +19,15 @@ data_info = (
     ("F-actin", "F-actin-9", 0, 0, "fp_n1_r1_bp_n1_r1", 2),
     ("MT-3D", "Microtubule2-3d-1024", 0, 0, "fp_n1_r1_bp_n1_r1", 2),
     ("NPC-3D", "Nuclear-pore-complex2-1024", 0, 0, "fp_n1_r1_bp_n1_r1", 2),
+    ("MT", "biotisr-mt-3", 0, 0, "fp_n1_r1_bp_n1_r1", 2),
+    ("Lysosomes", "biotisr-lysosomes-3", 1, 0, "fp_n1_r1_bp_n1_r1", 2),
+    ("E.coli", "deepbacs-ecoli-ave2", 0, 0, "fp_n1_r1_bp_n1_r1", 2),
+    ("S.aureus", "deepbacs-saureus-ave2", 0, 0, "fp_n1_r1_bp_n1_r1", 2),
+    ("Mito", "w2s-0-sim-ave", 0, 0, "fp_n1_r1_bp_n1_r1", 2),
+    ("lysosome", "w2s-1-sim-ave", 0, 0, "fp_n1_r1_bp_n1_r1", 2),
+    ("F-actin", "w2s-2-sim-ave", 0, 0, "fp_n1_r1_bp_n1_r1", 2),
+    ("Mito-3D", "biotisr-3d-mito-2", 0, 1, "fp_n1_r1_bp_n1_r1", 2),
+    ("MT-3D", "biotisr-3d-mt-2", 0, 1, "fp_n1_r1_bp_n1_r1", 2),
 )
 
 method_id = "kernelnet"
@@ -71,6 +80,7 @@ for i_data in range(num_data):
         method_id,
         dataset_id,
         repeat_id,
+        "train_iter_2",
         filename.split(".")[0],
         "y_pred_all.tif",
     )

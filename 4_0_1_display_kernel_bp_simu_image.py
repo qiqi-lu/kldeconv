@@ -21,16 +21,19 @@ path_results_show = (
 path_kernel_true = "SimuMix3D-128-31-05-1-03/kernelnet/SimuMix3D-128-31-05-1-03/fp_knonw_bp_n3_r1/kernel/kernel_true.tif"
 path_image_y = "SimuMix3D-128-31-05-1-03/kernelnet/SimuMix3D-128-31-05-1-03/fp_knonw_bp_n3_r1/10/y.tif"
 
+# ------------------------------------------------------------------------------
 path_prediction = os.path.join("outputs", "predictions")
-path_fig = os.path.join("outputs", "figures")
+path_fig = os.path.join("outputs", "figures", "analysis_kernel")
 os.makedirs(path_fig, exist_ok=True)
-
-print("[INFO] load data from:", path_prediction)
-print("[INFO] save figures to:", path_fig)
 
 info_df = pandas.read_excel("datasets_test.xlsx")
 info = info_df[info_df["id"] == "SimuMix3D-128-31-05-1-03"].iloc[0]
 pixel_size = info["pixel_size"]
+pixel_size_um = pixel_size / 1000
+
+print("[INFO] load data from:", path_prediction)
+print("[INFO] save figures to:", path_fig)
+print(f"[INFO] pixel size: {pixel_size_um} um")
 
 # ------------------------------------------------------------------------------
 # load kernels
@@ -44,14 +47,14 @@ for path in path_results_show:
 ker_true = io.imread(os.path.join(path_prediction, path_kernel_true))
 
 # ------------------------------------------------------------------------------
-y = io.imread(os.path.join(path_prediction, path_image_y))
-
-s_fft = y.shape
-
-dict_fig = {"dpi": 300, "constrained_layout": True}
 
 # ------------------------------------------------------------------------------
 # show backward kernel planes
+# ------------------------------------------------------------------------------
+y = io.imread(os.path.join(path_prediction, path_image_y))
+s_fft = y.shape
+dict_fig = {"dpi": 300, "constrained_layout": True}
+
 # ------------------------------------------------------------------------------
 print("[INFO] plot backward kernels (plane) ...")
 nr, nc = 3, 8
@@ -84,12 +87,12 @@ show(ker_true, ker_BP[3], axes=axes[:, 6:], s=s_fft, title="KLD (N)")
 
 dict_text_spa = {"x": 1, "y": ker_true.shape[-1] - 2, "color": "white", "fontsize": 24}
 dict_text_fre = {"x": 8, "y": s_fft[-1] - 10, "color": "white", "fontsize": 24}
-axes[0, 0].text(s=r"$xy$", **dict_text_spa)
-axes[0, 1].text(s=r"$xz$", **dict_text_spa)
-axes[1, 0].text(s=r"$k_x$$k_y$", **dict_text_fre)
-axes[1, 1].text(s=r"$k_x$$k_z$", **dict_text_fre)
-axes[2, 0].text(s=r"$k_x$$k_y$", **dict_text_fre)
-axes[2, 1].text(s=r"$k_x$$k_z$", **dict_text_fre)
+axes[0, 0].text(s="$xy$", **dict_text_spa)
+axes[0, 1].text(s="$xz$", **dict_text_spa)
+axes[1, 0].text(s="$k_x$$k_y$", **dict_text_fre)
+axes[1, 1].text(s="$k_x$$k_z$", **dict_text_fre)
+axes[2, 0].text(s="$k_x$$k_y$", **dict_text_fre)
+axes[2, 1].text(s="$k_x$$k_z$", **dict_text_fre)
 
 plt.savefig(os.path.join(path_fig, "kernel_bp.png"))
 plt.savefig(os.path.join(path_fig, "kernel_bp.svg"))
@@ -97,6 +100,7 @@ plt.savefig(os.path.join(path_fig, "kernel_bp.svg"))
 # ------------------------------------------------------------------------------
 # plot FFT of backward kernels
 # ------------------------------------------------------------------------------
+print("-" * 80)
 print("[INFO] plot profile of the fft of backward kernels ...")
 nr, nc = 2, 3
 fig, axes = plt.subplots(nrows=nr, ncols=nc, figsize=(3 * nc, 3 * nr), **dict_fig)
@@ -132,13 +136,13 @@ def plot_profile(axes, ker_fp, ker_bp, s=None, color=None, label=None):
     return lines
 
 
-axes[0, 0].axhline(y=0.0, color="gray", lw=1.0)
-axes[1, 0].axhline(y=0.0, color="gray", lw=1.0)
+axes[0, 0].axhline(y=0.0, color="gray", lw=1.0, linestyle="--")
+axes[1, 0].axhline(y=0.0, color="gray", lw=1.0, linestyle="--")
 
 methods_color = ["black", "#6895D2", "#D04848", "#F3B95F"]
 methods_name = ["Traditional", "WB", "KLD (NF)", "KLD (N)"]
 
-all_lines = []
+all_lines = []  # collect the value of all lines
 for i in range(len(methods_name)):
     lines = plot_profile(
         axes,
@@ -150,27 +154,10 @@ for i in range(len(methods_name)):
     )
     all_lines.append(lines)
 
-# save lines into excel --------------------------------------------------------
-excel_file = os.path.join(path_fig, "kernel_bp_fft.xlsx")
-if os.path.exists(excel_file):
-    os.remove(excel_file)
-with pandas.ExcelWriter(excel_file, mode="w") as writer:
-    for i, sh in enumerate(
-        ["pixel_x", "k_x", "k_x (mul)", "pixel_z", "k_z", "k_z (mul)"]
-    ):
-        tmp = []
-        for j in range(len(all_lines)):
-            tmp.append(all_lines[j][i])
-        tmp = np.array(tmp)
-        df = pandas.DataFrame(tmp)
-        # add index column
-        df.index = methods_name
-        df.to_excel(writer, sheet_name=sh, header=False)
 # ------------------------------------------------------------------------------
-
-axes[0, 0].legend(edgecolor="white", fontsize="x-small")
-axes[0, 0].set_xlabel(r"Pixel$_x$")
-axes[1, 0].set_xlabel(r"Pixel$_z$")
+axes[0, 0].legend(frameon=False, fontsize="x-small")
+axes[0, 0].set_xlabel("Pixel$_x$")
+axes[1, 0].set_xlabel("Pixel$_z$")
 
 ticks = [0.0, 0.05, 0.1, 0.15]
 for ax in axes[:, 0].ravel():
@@ -178,8 +165,8 @@ for ax in axes[:, 0].ravel():
     ax.set_yticklabels(ticks)
     ax.set_ylabel("value")
 
-ticks = [0, 1, 2, 3, 4, 5, 6]
-for ax in axes[:, 1:].ravel():
+ticks = [0, 2, 4, 6]
+for ax in axes[:, 1].ravel():
     ax.set_xlim([0, None])
     ax.set_ylim([0, 6.5])
     ax.set_xlabel("Frequency (k$_x$, nm$^{-1}$)")
@@ -188,13 +175,14 @@ for ax in axes[:, 1:].ravel():
 
 axes[0, 2].set_ylim([0, 1.55])
 axes[1, 2].set_ylim([0, 1.75])
-ticks = [0.0, 0.25, 0.5, 0.75, 1.0, 1.25, 1.5]
+ticks = [0.0, 0.5, 1.0, 1.5]
 for ax in axes[:, 2].ravel():
     ax.set_xlim([0, None])
     ax.set_xlabel("Frequency (k$_z$, nm$^{-1}$)")
     ax.set_yticks(ticks)
     ax.set_yticklabels(ticks)
 
+# add frequency labels
 ticks = [0, 20, 40, 60]
 ticklables = [0]
 for tick in ticks[1:]:
@@ -212,3 +200,20 @@ for ax in axes.ravel():
 
 plt.savefig(os.path.join(path_fig, "kernel_bp_fft"))
 plt.savefig(os.path.join(path_fig, "kernel_bp_fft.svg"))
+
+# save source data -------------------------------------------------------------
+excel_file = os.path.join(path_fig, "kernel_bp_fft.xlsx")
+if os.path.exists(excel_file):
+    os.remove(excel_file)
+with pandas.ExcelWriter(excel_file, mode="w") as writer:
+    for i, sh in enumerate(
+        ["pixel_x", "k_x", "k_x (mul)", "pixel_z", "k_z", "k_z (mul)"]
+    ):
+        tmp = []
+        for j in range(len(all_lines)):
+            tmp.append(all_lines[j][i])
+        tmp = np.array(tmp)
+        df = pandas.DataFrame(tmp)
+        # add index column
+        df.index = methods_name
+        df.to_excel(writer, sheet_name=sh, header=False)

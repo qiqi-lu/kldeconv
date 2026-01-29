@@ -9,13 +9,20 @@ import skimage.io as io
 import os, pandas
 from utils.data import win2linux, read_txt, NormalizePercentile
 
-dataset_id = "Nuclear-pore-complex2-1024"
+# dataset_id = "Nuclear-pore-complex2-1024"
 # dataset_id = "Microtubule2-3d-1024"
 # dataset_id = "F-actin-nonlinear-1"
 # dataset_id = "F-actin-nonlinear-3"
 # dataset_id = "F-actin-nonlinear-9"
 # dataset_id = "SirDNA-1024"
-id_image_show = 1
+# dataset_id = "biotisr-3d-factin-1"
+# dataset_id = "biotisr-3d-factin-2"
+# dataset_id = "biotisr-3d-mt-1"
+# dataset_id = "biotisr-3d-mt-2"
+# dataset_id = "biotisr-3d-mito-1"
+dataset_id = "biotisr-3d-mito-2"
+
+id_image_show = 0
 
 # ------------------------------------------------------------------------------
 info_df = pandas.read_excel("datasets_train.xlsx")
@@ -29,18 +36,21 @@ ndim = info["ndim"]
 
 filename = filenames[id_image_show]
 
-path_figures = os.path.join("outputs", "figures", dataset_id)
+path_figures = os.path.join("outputs", "figures", dataset_id, "examples")
 os.makedirs(path_figures, exist_ok=True)
 
 img_gt = io.imread(os.path.join(path_gt, filename)).astype(np.float32)
 img_raw = io.imread(os.path.join(path_raw, filename)).astype(np.float32)
 
+print("-" * 80)
+print(f"[INFO] {dataset_id}: {filename}")
 print(f"[INFO] GT: {img_gt.shape}, RAW: {img_raw.shape}")
 
 # ------------------------------------------------------------------------------
-if ndim == 2:
-    img_raw = img_raw[None]
-    img_gt = img_gt[None]
+if img_gt.ndim == 2:
+    img_gt = img_gt[np.newaxis, ...]
+if img_raw.ndim == 2:
+    img_raw = img_raw[np.newaxis, ...]
 
 Nz, Ny, Nx = img_gt.shape
 
@@ -55,20 +65,23 @@ Nz, Ny, Nx = img_gt.shape
 # img_gt = normalizer(img_gt)
 
 # ------------------------------------------------------------------------------
+# show the image and profile
+# ------------------------------------------------------------------------------
 nr, nc = 2, 3
 dict_fig = dict(dpi=300, constrained_layout=True)
-dict_img = dict(cmap="gray", vmin=0, vmax=img_gt.max() * 0.6)
+dict_img = dict(cmap="gray", vmin=0, vmax=img_gt.max() * 0.5)
+x_range = slice(50, 150)
 
+# ------------------------------------------------------------------------------
 fig, axes = plt.subplots(nrows=nr, ncols=nc, figsize=(3 * nc, 3 * nr), **dict_fig)
 # [ax.set_axis_off() for ax in axes[0:2,0:2].ravel()]
 
-z_idx = Nz // 2
+z_idx = Nz // 2  # center slice
 
 # get the position of max value in the image[z_idx]
 y_idx, x_idx = np.unravel_index(img_gt[z_idx].argmax(), img_gt[z_idx].shape)
-# y_idx = 250
-x_range = slice(50, 150)
 
+# for 2D image
 axes[0, 0].imshow(img_gt[z_idx], **dict_img)
 axes[0, 1].imshow(img_raw[z_idx], **dict_img)
 
@@ -94,6 +107,13 @@ if ndim == 3:
     axes[1, 0].set_title(f"GT (mean={img_gt.mean():.2f}) (slice={z_idx+1})")
     axes[1, 1].set_title(f"RAW (mean={img_raw.mean():.2f})")
 
-path_save_to = os.path.join(path_figures, "examples")
-os.makedirs(path_save_to, exist_ok=True)
-plt.savefig(os.path.join(path_save_to, f"{filename.split('.')[0]}.png"))
+plt.savefig(os.path.join(path_figures, f"{filename.split('.')[0]}.png"))
+
+# ------------------------------------------------------------------------------
+# print information of each image in the dataset
+# ------------------------------------------------------------------------------
+print("-" * 80)
+for filename in filenames:
+    img_gt = io.imread(os.path.join(path_gt, filename)).astype(np.float32)
+    img_raw = io.imread(os.path.join(path_raw, filename)).astype(np.float32)
+    print(f"[INFO] {filename}: GT: {img_gt.shape}, RAW: {img_raw.shape}")

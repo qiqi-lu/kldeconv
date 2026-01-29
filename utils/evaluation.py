@@ -241,8 +241,14 @@ def MSE(img_true, img_test):
 
 def RMSE(x, y):
     """
-    - y: groud truth
+    Root mean square error.
+    ### Parameters:
+    - `x`: prediction.
+    - `y`: groud truth.
+    ### Returns:
+    - `rmse`: root mean square error. (%)
     """
+    assert x.shape == y.shape, "[ERROR] The shape of x and y must be the same."
     rmse = np.mean(np.square(y - x)) / np.mean(np.square(y)) * 100
     return rmse
 
@@ -275,6 +281,7 @@ def PSNR(img_true, img_test, data_range=None, convert_to_255=False):
     mse = np.mean((img_true - img_test) ** 2)
     if mse == 0:
         psnr = float("inf")
+        print(f"[WARNING] The MSE is zero. PSNR is set to {psnr}.")
     else:
         psnr = skim.peak_signal_noise_ratio(
             image_true=img_true, image_test=img_test, data_range=data_range
@@ -403,6 +410,10 @@ def MSSSIM(img_true, img_test, data_range=None, ndim=2, win_size=11, interp_sf=1
     ### Returns:
     - `msssim`: (numpy array) multi-scale structural similarity index.
     """
+    # input check
+    img_true = array_input_check(img_true)
+    img_test = array_input_check(img_test)
+
     ndim_in = img_true.ndim
     if ndim == 2:
         if ndim_in == 2:
@@ -439,6 +450,7 @@ def MSSSIM(img_true, img_test, data_range=None, ndim=2, win_size=11, interp_sf=1
     img_test = torch.from_numpy(img_test).float()
 
     if interp_sf > 1:
+        # some image may be too small to use MS-SSIM.
         # interpolate the img with a scale factor `interp_sf` using nearest neighbor.
         dict_interp = dict(scale_factor=interp_sf, mode="nearest")
         img_true = torch.nn.functional.interpolate(img_true, **dict_interp)

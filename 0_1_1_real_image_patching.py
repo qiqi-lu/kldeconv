@@ -6,23 +6,9 @@ Pathcing the image for deep learning network training.
 import os, tqdm, pandas, json
 import numpy as np
 import skimage.io as io
-from utils.data import win2linux, read_txt
+from utils.data import win2linux, read_txt, normalization
 
-
-def normalization(image, p_low, p_high):
-    vmin = np.percentile(a=image, q=p_low * 100)
-    vmax = np.percentile(a=image, q=p_high * 100)
-    if vmax == 0:
-        image *= 0.0
-    else:
-        amp = vmax - vmin
-        if amp == 0:
-            amp = 1
-        image = (image - vmin) / amp
-
-    return image, vmin, vmax
-
-
+# ------------------------------------------------------------------------------
 datasets_name = (
     # "F-actin-nonlinear-9",
     # "F-actin-nonlinear-8",

@@ -1,8 +1,13 @@
 """
-Train kernelnet (forward + backward) model for deconvolution.
+Train `kernelnet` (forward + backward) model for deconvolution.
+1.  Select the forward or backward model to train. (`model_name`). You should
+    first learn the forward projector before learning the backward projector.
+2.  Select the dataset to train. (`dataset_name`)
+3.  Set the training parameters (the learning rate may need to be adjusted
+    according to the dataset)
 """
 
-import torch, os, time, pandas, tqdm, datetime, json, statistics
+import torch, os, time, pandas, tqdm, json, statistics
 import numpy as np
 import skimage.io as io
 import utils.evaluation as utils_eva
@@ -14,10 +19,9 @@ from utils.optimize import step_lr_schedule
 from checkpoint_list import checkpoints_v1 as checkpoints_list
 from models import kernelnet
 
-today_date = datetime.date.today()
 torch.manual_seed(7)
 # ------------------------------------------------------------------------------
-#                                   Paramsters
+#                                Paramsters
 # ------------------------------------------------------------------------------
 # model_name = "kernet_fp"
 model_name = "kernet"
@@ -55,6 +59,7 @@ params = {
         # "SimuMix3D-128-31-05-1-1",
         # "SimuMix3D-128-31-05-1-03",
         "SimuMix3D-128-31-05-1-01",
+        # "SimuMix3D-128-31-05-1-01-31x31",
         # ----------------------------------------------------------------------
         # "SimuMix3D-256-31-0-0-1",
         # "SimuMix3D-256-31-05-1-1",
@@ -75,17 +80,56 @@ params = {
         # "Nuclear-pore-complex2-1024",
         # ----------------------------------------------------------------------
         # "SirDNA-1024",
+        # "biotisr-3d-factin-1",
+        # "biotisr-3d-factin-2",
+        # "biotisr-3d-mt-1",
+        # "biotisr-3d-mt-2",
+        # "biotisr-3d-mito-1",
+        # "biotisr-3d-mito-2",
+        # "biotisr-3d-mito-2-k5",
         # ----------------------------------------------------------------------
         # "ZeroShotDeconvNet-642",
         # "ZeroShotDeconvNet-560",
+        # ----------------------------------------------------------------------
+        # "deepbacs-ecoli",
+        # "deepbacs-ecoli-ave2",
+        # "deepbacs-saureus",
+        # "deepbacs-saureus-ave2",
+        # ----------------------------------------------------------------------
+        # "biotisr-ccps-1",
+        # "biotisr-ccps-2",
+        # "biotisr-ccps-3",
+        # "biotisr-factin-1",
+        # "biotisr-factin-2",
+        # "biotisr-factin-3",
+        # "biotisr-factin-nonlinear-1",
+        # "biotisr-factin-nonlinear-2",
+        # "biotisr-factin-nonlinear-3",
+        # "biotisr-lysosomes-1",
+        # "biotisr-lysosomes-2",
+        # "biotisr-lysosomes-3",
+        # "biotisr-mt-1",
+        # "biotisr-mt-2",
+        # "biotisr-mt-3",
+        # "biotisr-mito-1",
+        # "biotisr-mito-2",
+        # "biotisr-mito-3",
+        # ----------------------------------------------------------------------
+        # "w2s-0-sim-ave",
+        # "w2s-0-wf-ave-400",
+        # "w2s-1-sim-ave",
+        # "w2s-1-wf-ave-400",
+        # "w2s-2-sim-ave",
+        # "w2s-2-wf-ave-400",
+        # ----------------------------------------------------------------------
     ),
     "batch_size": 1,
     "normalization": (False, False),
     "in_channels": 1,
     "data_clip_eva": (0, 2.5),
     # --------------------------------------------------------------------------
-    "FP_type": "pre-trained",  # real 2d or 3d data
-    # "FP_type": "known",  # simulated data
+    # "FP_type": "pre-trained",  # real 2d or 3d data
+    "FP_type": "known",  # simulated data
     "BP_type": None,
     "conv_mode": "fft",
     "padding_mode": "reflect",
@@ -99,6 +143,7 @@ params = {
     "experiment": "n1_r1",
     "sample_range": (0, 1),
     "loss_function": "mse",
+    # "loss_function": "mae",
     "use_lr_schedule": True,
     "scheduler_cus": {
         "lr": 0.00001,
@@ -113,27 +158,32 @@ params = {
     "sample_range_val": (10, 20),
     # --------------------------------------------------------------------------
     "normalization_eva": (0.03, 0.995),
-    "path_checkpoint_save": os.path.join("checkpoints"),
+    "path_checkpoint_save": "checkpoints",
+    "saved_checkpoint": "checkpoints/SimuMix3D-128-31-05-1-01/kernelnet/backward/kernet_bs_1_lr_5e-06_iter_1_ker_31_mse_over2_inter_fp_normx_bp_norm_fft_ts_0_1_v3/epoch_9999_9999.pt",
+    # "saved_checkpoint": None,
 }
 
 # ------------------------------------------------------------------------------
+# parameters check
 assert len(params["dataset_name"]) == 1, "[ERROR] Only one dataset can be selected."
 assert model_name in (
     "kernet_fp",
     "kernet",
 ), f"[ERROR] Unsupported model name: {model_name}"
 
+# ------------------------------------------------------------------------------
 dataset_id = params["dataset_name"][0]
 model_part = "forward" if model_name == "kernet_fp" else "backward"
 
 info_df = pandas.read_excel(os.path.join("datasets_train.xlsx"))
 info = info_df[info_df["id"] == dataset_id].iloc[0]
 
-try:
-    path_fp = checkpoints_list[dataset_id]["forward"][params["experiment"]]
-except:
-    print("[WARNNING] No pre-trained forward model available.")
-    path_fp = None
+path_fp = None
+if model_part == "backward":
+    try:
+        path_fp = checkpoints_list[dataset_id]["forward"][params["experiment"]]
+    except:
+        print("[WARNNING] No pre-trained forward model available.")
 
 params.update(
     {
@@ -151,6 +201,7 @@ params.update(
         "std_init": text2tuple(info["ker_std_init"]),
         "epoch_fp": int(info["epoch_fp"]),
         "epoch_bp": int(info["epoch_bp"]),
+        "sample_range_val": eval(info["id_sample_val"]),
     }
 )
 
@@ -177,18 +228,20 @@ if model_name == "kernet_fp":
             "print_every_iter": 1000,
         }
     )
-    # start_learning_rate = 1
-    start_learning_rate = 0.01  # 3d real
+    start_learning_rate = 1  # simumix
+    # start_learning_rate = 0.01  # 3d real
     # start_learning_rate = 0.001  # 2d real
     # start_learning_rate = 0.0001
     # start_learning_rate = 0.00001
     epochs = params["epoch_fp"]
+# ------------------------------------------------------------------------------
 elif model_name == "kernet":
     params.update(
         {
-            # "num_iter": 2,  # default
+            # "num_iter": 1,
+            "num_iter": 2,  # default
             # "num_iter": 3,
-            "num_iter": 4,
+            # "num_iter": 4,
             # "num_iter": 5,
             "lam": 0.0,  # lambda for prior
             "multi_out": False,
@@ -206,18 +259,25 @@ elif model_name == "kernet":
     ss_marker = "_ss" if params["self_supervised"] else ""
     norm_tag = "fp_norm" if params["kernel_norm_fp"] else "fp_normx"
     norm_tag += "_bp_norm" if params["kernel_norm_bp"] else "_bp_normx"
-    suffix = f"_iter_{params['num_iter']}_ker_{ker_size_bp}_{params['loss_function']}_over{params['over_sampling']}_inter_{norm_tag}_{params['conv_mode']}_ts_{params['sample_range'][0]}_{params['sample_range'][1]}{ss_marker}_v2"
+    suffix = f"_iter_{params['num_iter']}_ker_{ker_size_bp}_{params['loss_function']}_over{params['over_sampling']}_inter_{norm_tag}_{params['conv_mode']}_ts_{params['sample_range'][0]}_{params['sample_range'][1]}{ss_marker}_v3"
 
+    if params["multi_out"]:
+        suffix += "_multiout"
+    if params["saved_checkpoint"] is not None:
+        suffix += "_continue"
     # start_learning_rate = 0.001
-    start_learning_rate = 0.0001  # 2D real
+    # start_learning_rate = 0.0001  # 2D real
     # start_learning_rate = 0.00001  # 3D real
     # start_learning_rate = 0.000001  # simumix
+    # start_learning_rate = 0.000002  # simumix
+    start_learning_rate = 0.000005  # simumix
     epochs = params["epoch_bp"]
 else:
     raise ValueError(f"[ERROR] Unknown model name: {model_name}")
 
 params["scheduler_cus"]["lr"] = start_learning_rate
 
+# ------------------------------------------------------------------------------
 # print params dict
 print("-" * 80)
 for key, value in params.items():
@@ -266,12 +326,12 @@ dict_model = dict(
 
 # KernelNet (forward + backward) -----------------------------------------------
 if model_name == "kernet":
-    print("[INFO] Use KernelNet (forward + backward)")
+    print("[INFO] Backward Kernel Learning ...)")
     FP, BP = None, None
 
     # pre-trained forward projector --------------------------------------------
     if params["FP_type"] == "pre-trained":
-        print("[INFO] Load pre-trained PSF")
+        print("[INFO] Load pre-trained PSF ...")
 
         assert params["FP_path"] is not None, "[ERROR] FP path is not provided."
         assert os.path.exists(params["FP_path"]), "[ERROR] FP path does not exist."
@@ -296,20 +356,23 @@ if model_name == "kernet":
 
     # known FP (i.e., PSF) -----------------------------------------------------
     elif params["FP_type"] == "known":
-        print("[INFO] Use known PSF")
+        print("[INFO] Load known PSF ...")
 
-        if params["ndim"] == 3:  # only 3d data has PSF in our dataset
+        if params["ndim"] == 3:  # only 3d data has PSF in our study
             psf_path = params["PSF_path"]
-            print("[INFO] Load from: ", psf_path)
 
             assert psf_path is not None, "[ERROR] PSF path is not provided."
             assert os.path.exists(psf_path), "[ERROR] PSF path does not exist."
             assert psf_path.endswith(".tif"), "[ERROR] PSF path should be a tif file."
 
+            print("[INFO] Load from: ", psf_path)
+
             PSF_true = io.imread(psf_path)[None, None].astype(np.float32)
             PSF_true = torch.tensor(PSF_true).to(device=device)  # [1, 1, Nz, Ny, Nx]
             PSF_true = torch.round(PSF_true, decimals=16)
             ks = PSF_true.shape
+
+            # pad input image with a half kernel size
             padd_fp = lambda x: torch.nn.functional.pad(
                 input=x,
                 pad=(
@@ -361,6 +424,16 @@ if model_name == "kernet":
         self_supervised=params["self_supervised"],
         **dict_model,
     )
+
+    # load pre-trained model ---------------------------------------------------
+    if params["saved_checkpoint"] is not None:
+        print(f"[INFO] Load exist checkpoint from: {params['saved_checkpoint']}")
+        model.load_state_dict(
+            torch.load(
+                win2linux(params["saved_checkpoint"]),
+                map_location=device,
+            )["model_state_dict"]
+        )
 
 # Only the Forward pojector ----------------------------------------------------
 elif model_name == "kernet_fp":
@@ -426,6 +499,7 @@ else:
 num_batches = len(train_dataloader)
 num_batches_val = len(valid_dataloader) if params["validation_enable"] == True else 0
 
+print("-" * 80)
 print("[INFO] Start training ... ")
 print(f"[INFO] Start time: {time.asctime(time.localtime(time.time()))}")
 print(f"[INFO] Num of batches: (train | valid) {num_batches} | {num_batches_val}")
@@ -454,7 +528,7 @@ print(f"[INFO] Epoch: {epochs} | Batch size: {params['batch_size']}")
 print("-" * 80)
 
 # ------------------------------------------------------------------------------
-normalizer = NormalizePercentile(
+normalizer_eva = NormalizePercentile(
     params["normalization_eva"][0],
     params["normalization_eva"][1],
     ndim=params["ndim"],
@@ -530,8 +604,8 @@ for i_epoch in range(epochs):
 
         if params["eva_during_train"]:
             # plot loss and metrics
-            out = torch.clamp(normalizer(out), **dict_clip)
-            gt = torch.clamp(normalizer(gt), **dict_clip)
+            out = torch.clamp(normalizer_eva(out), **dict_clip)
+            gt = torch.clamp(normalizer_eva(gt), **dict_clip)
 
             dict_eva = dict(img_true=gt, img_test=out, data_range=data_range)
             ave_psnr = utils_eva.PSNR_tb(**dict_eva)
@@ -558,7 +632,7 @@ for i_epoch in range(epochs):
 
         # ----------------------------------------------------------------------
         # validation
-        if (i_iter % params["val_every_iter"] == 0) and (
+        if (i_iter == 0 or (i_iter + 1) % params["val_every_iter"] == 0) and (
             params["validation_enable"] == True
         ):
             loss_val_list, ssim_val_list, psnr_val_list = [], [], []
@@ -578,8 +652,8 @@ for i_epoch in range(epochs):
 
                     out_val = pred_val[-1] if params["multi_out"] == True else pred_val
 
-                    out_val = torch.clamp(normalizer(out_val), **dict_clip)
-                    gt_val = torch.clamp(normalizer(gt_val), **dict_clip)
+                    out_val = torch.clamp(normalizer_eva(out_val), **dict_clip)
+                    gt_val = torch.clamp(normalizer_eva(gt_val), **dict_clip)
                     dict_eva_val = dict(
                         img_true=gt_val, img_test=out_val, data_range=data_range
                     )
@@ -611,4 +685,4 @@ torch.save(
 
 writer.flush()
 writer.close()
-print("Training done!")
+print("[INFO] Training done!")

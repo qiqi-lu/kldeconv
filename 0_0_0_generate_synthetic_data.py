@@ -10,7 +10,7 @@ import methods.deconvolution as dcv
 import utils.evaluation as utils_eva
 import utils.data as utils_data
 
-path_root = "E:\qiqilu\datasets-2\RLN\\unzip\kldeconv"
+path_root = "E:\qiqilu\datasets_2\RLN\\unzip\kldeconv"
 
 # ------------------------------------------------------------------------------
 # PARAMETER SETTING

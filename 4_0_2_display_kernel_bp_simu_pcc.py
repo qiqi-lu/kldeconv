@@ -20,18 +20,20 @@ datasets_name = [
     "SimuMix3D-128-31-05-1-01",
 ]
 
+noise_level = ["NF", "20", "15", "10"]
 
+# ------------------------------------------------------------------------------
 path_prediction = os.path.join("outputs", "predictions")
-path_fig = os.path.join("outputs", "figures")
+path_fig = os.path.join("outputs", "figures", "analysis_kernel")
 os.makedirs(path_fig, exist_ok=True)
 
 # ------------------------------------------------------------------------------
-# rubost to training sample
+# load backward kernels
+# ------------------------------------------------------------------------------
 num_data = [1, 2, 3]
 id_repeat = [1, 2, 3]
 
 kb = []  # backward kernels
-noise_level = ["NF", "20", "15", "10"]
 
 for dataset in datasets_name:
     path_kernel = os.path.join(path_prediction, dataset, "kernelnet", dataset)
@@ -46,8 +48,10 @@ for dataset in datasets_name:
         tmp.append(tmpp)
     kb.append(tmp)
 kb = np.array(kb)
+
 # ------------------------------------------------------------------------------
 # calculate metric value
+# ------------------------------------------------------------------------------
 N_nl, N_data, N_rep = kb.shape[0:3]
 print(
     f"[INFO] (N_noise_level, N_data_num, N_repeat) : {kb.shape}"
@@ -68,9 +72,11 @@ pearson_std = pearson.std(axis=-1)
 
 # ------------------------------------------------------------------------------
 # display PCC between backward kernels
+# ------------------------------------------------------------------------------
 dict_fig = {"dpi": 300, "constrained_layout": True}
 dict_line = {"linewidth": 0.5, "capsize": 2, "elinewidth": 0.5, "capthick": 0.5}
 
+# ------------------------------------------------------------------------------
 nr, nc = 1, 1
 fig, axes = plt.subplots(nrows=nr, ncols=nc, figsize=(3 * nc, 3 * nr), **dict_fig)
 
@@ -81,9 +87,14 @@ for i in range(N_nl):
         x=num_data, y=pearson_mean[i], yerr=pearson_std[i], color=colors[0], **dict_line
     )
     axes.plot(
-        num_data, pearson_mean[i], ".", color=colors[i], label="SNR=" + noise_level[i]
+        num_data,
+        pearson_mean[i],
+        ".",
+        color=colors[i],
+        label="SNR=" + noise_level[i],
+        zorder=10,
     )
-axes.legend(edgecolor="white", fontsize="x-small")
+axes.legend(fontsize="small", frameon=False, loc="best")
 axes.set_ylabel("PCC")
 axes.set_ylim([0.94, 1])
 axes.set_box_aspect(1)
@@ -94,7 +105,7 @@ plt.savefig(os.path.join(path_fig, "kb_pcc.png"))
 plt.savefig(os.path.join(path_fig, "kb_pcc.svg"))
 
 # ------------------------------------------------------------------------------
-# save pearson value into excel
+# save source data
 excel_file = os.path.join(path_fig, "kb_pcc.xlsx")
 if os.path.exists(excel_file):
     os.remove(excel_file)
