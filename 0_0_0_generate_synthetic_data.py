@@ -17,9 +17,11 @@ path_root = "E:\qiqilu\datasets_2\RLN\\unzip\kldeconv"
 # ------------------------------------------------------------------------------
 # dataset_name = 'SimuBeads3D_128'
 # dataset_name = 'SimuMix3D_128'
-dataset_name = "SimuMix3D_256"
+# dataset_name = "SimuMix3D_256"
 # dataset_name = 'SimuMix3D_560_382'
 # dataset_name = 'SimuMix3D_642_382'
+# dataset_name = "SimuMix3D_1024"
+dataset_name = "SimuMix3D_512"
 
 std_gauss, poisson, ratio = 0.5, 1, 0.1
 # std_gauss, poisson, ratio = 0.5, 1, 0.3
@@ -50,6 +52,14 @@ dataset_info = {
     "SimuBeads3D_128": {
         "s_crop": 127,
         "size": (127, 127, 127),
+    },
+    "SimuMix3D_1024": {
+        "s_crop": 31,
+        "size": (31, 31, 31),
+    },
+    "SimuMix3D_512": {
+        "s_crop": 31,
+        "size": (31, 31, 31),
     },
 }
 
@@ -114,7 +124,7 @@ for fn in filenames:
     # scale to control SNR -------------------------------------------------
     img_gt = img_gt * ratio
     # blur -----------------------------------------------------------------
-    img_blur = dcv.Convolution(img_gt, PSF_crop, padding_mode="reflect", domain="fft")
+    img_blur = dcv.convolution(img_gt, PSF_crop, padding_mode="reflect", domain="fft")
     # add noise ------------------------------------------------------------
     img_blur_n = utils_data.add_mix_noise(
         img_blur, poisson=poisson, sigma_gauss=std_gauss, scale_factor=scale_factor

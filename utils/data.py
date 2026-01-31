@@ -484,6 +484,20 @@ def percentile_norm(x, p_low=0, p_high=100):
 
 
 def linear_transform(x, y):
+    """
+    Linear transformation between two images.
+    ### Parameters:
+    - `x` (numpy.ndarray): Input image with a shape of `(Ny, Nx)` or `(Nz, Ny, Nx)`.
+    - `y` (numpy.ndarray): Target image with a shape of `(Ny, Nx)` or `(Nz, Ny, Nx)`.
+    ### Returns:
+    - `x` (numpy.ndarray): Transformed image.
+    """
+    assert (
+        x.shape == y.shape
+    ), f"[ERROR] The shape of x and y should be the same, but got {x.shape} and {y.shape}"
+    # check x and y whether have same value
+    if np.all(x == y):
+        return x
     n = np.size(x)
     m_x = np.mean(x)
     m_y = np.mean(y)

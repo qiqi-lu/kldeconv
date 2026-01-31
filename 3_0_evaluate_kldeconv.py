@@ -2,21 +2,26 @@
 Inference using KLDeconv algorithm.
 """
 
-import torch, os, pandas, tqdm, json, time
+import torch, os, pandas, tqdm, json, time, cupy
+from cupyx.scipy.ndimage import median_filter
 import numpy as np
 import skimage.io as io
 import methods.deconvolution as dcv
 from models import kernelnet
-from fft_conv_pytorch import fft_conv
+
+# from fft_conv_pytorch import fft_conv
+
+from methods.deconvolution import fftn_conv_real as fft_conv
 from utils.data import text2tuple, win2linux, SRDataset, padding_kernel, read_txt
 from checkpoint_list import checkpoints_v1 as checkpoints_list
 
 enable_prediction = False
+enable_prediction = True
 # ------------------------------------------------------------------------------
 #                             Parameter setting
 # ------------------------------------------------------------------------------
 # id_device = "cpu"
-id_device = "cuda:0"
+id_device = "cuda:1"
 # output_inter = True  # output intermediate results
 output_inter = False  # not to output intermediate results
 
@@ -27,11 +32,19 @@ FP_type, BP_type = "known", "learned"  # simulation data
 
 # ------------------------------------------------------------------------------
 num_data_fp, id_repeat_fp = 1, 1
+# ------------------------------------------------------------------------------
 num_data_bp, id_repeat_bp = 1, 1
+# num_data_bp, id_repeat_bp = 2, 1
 # num_data_bp, id_repeat_bp = 3, 1
+# num_data_bp, id_repeat_bp = 4, 1
+# num_data_bp, id_repeat_bp = 5, 1
 
+# ------------------------------------------------------------------------------
+# num_iter_train = 1
 num_iter_train = 2
 # num_iter_train = 3
+# num_iter_train = 4
+# num_iter_train = 5
 
 # num_iter_test = 2
 num_iter_test = num_iter_train
@@ -50,7 +63,9 @@ id_sample = []  # use all the samples
 #                  test dataset | train dataset
 # ------------------------------------------------------------------------------
 # dataset_names = ("SimuMix3D-128-31-0-0-1", "SimuMix3D-128-31-0-0-1")
-dataset_names = ("SimuMix3D-128-31-05-1-01", "SimuMix3D-128-31-05-1-01")
+# dataset_names = ("SimuMix3D-128-31-05-1-01", "SimuMix3D-128-31-05-1-01")
+dataset_names = ("SimuMix3D-512-31-05-1-01", "SimuMix3D-128-31-05-1-01")
+# dataset_names = ("SimuMix3D-1024-31-05-1-01", "SimuMix3D-128-31-05-1-01")
 # dataset_names = ("SimuMix3D-128-31-05-1-03", "SimuMix3D-128-31-05-1-03")
 # dataset_names = ("SimuMix3D-128-31-05-1-1", "SimuMix3D-128-31-05-1-1")
 # ------------------------------------------------------------------------------
@@ -345,11 +360,12 @@ if FP_type == "known":
             signal=padd_fp(x), kernel=weight, groups=params_dict["in_channels"]
         )
     # forward projection
-    FP = lambda x: torch.nn.functional.avg_pool3d(
-        conv_fp(x),
-        kernel_size=params_dict["scale_factor"],
-        stride=params_dict["scale_factor"],
-    )
+    # FP = lambda x: torch.nn.functional.avg_pool3d(
+    #     conv_fp(x),
+    #     kernel_size=params_dict["scale_factor"],
+    #     stride=params_dict["scale_factor"],
+    # )
+    FP = lambda x: conv_fp(x)
 
     ker_FP = weight.cpu().numpy()[0, 0]
     # The PSF now is known, setting the initial PSF as all zeros.
@@ -484,6 +500,7 @@ clamp = lambda x: torch.clamp(x, min=0.0, max=3.0)  # clamp the value to [0, 3]
 
 pbar = tqdm.tqdm(total=len(id_sample), desc="Prediction", ncols=80)
 print_time_each_sample = True
+time_list = []
 for i in id_sample:
     if i >= dataset_test.__len__():
         print(f"[ERROR] Sample {i} is out of range, exit.")
@@ -491,7 +508,11 @@ for i in id_sample:
 
     data = dataset_test[i]  # load one sample
 
-    x = torch.unsqueeze(data["lr"], 0).to(device)
+    # median filter to remove the noise
+    x = torch.unsqueeze(data["lr"], 0)
+    x = cupy.asarray(x)
+    x = median_filter(x, size=3)
+    x = torch.as_tensor(x, device=device)
     y = torch.unsqueeze(data["hr"], 0).to(device) * params_dict["ratio"]
 
     # intermedia results -------------------------------------------------------
@@ -521,11 +542,14 @@ for i in id_sample:
     # measure the time used for prediction
     torch.cuda.synchronize(device=device)
     tic = time.time()
-    y_pred_all = model(x).cpu().detach().numpy()[:, 0, 0]
+    y_pred_all = model(x)
     torch.cuda.synchronize(device=device)
     toc = time.time()
+    used_time = toc - tic
+    time_list.append(used_time)
     if print_time_each_sample:
-        print(f"[INFO] Sample {i}: {toc - tic:.4f} s")
+        print(f"[INFO] Sample {i}: {used_time:.4f} s")
+    y_pred_all = y_pred_all.cpu().detach().numpy()[:, 0, 0]
     y, x = t2n(y), t2n(x)
     pbar.update(1)
 
@@ -554,3 +578,11 @@ for i in id_sample:
     else:
         save_image("y_pred_all.tif", y_pred_all.astype(np.float32))
 pbar.close()
+
+# save the time used for prediction into excel
+df = pandas.DataFrame(columns=["time (s)"])
+df["time (s)"] = time_list
+df.to_excel(
+    os.path.join(path_prediction, f"train_iter_{num_iter_train}", "time.xlsx"),
+    index=True,
+)

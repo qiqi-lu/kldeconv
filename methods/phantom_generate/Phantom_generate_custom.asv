@@ -4,7 +4,7 @@ clear all
 % pathMain1= 'data\RLN\SimuMix3D_128\gt\';
 % pathMain1= 'data\RLN\SimuMix3D_256\gt\';
 % pathMain1= 'data\RLN\SimuMix3D_382\gt\';
-pathMain1= 'E:\qiqilu\datasets_2\RLN\unzip\kldeconv\SimuMix3D_512\gt\';
+pathMain1= 'E:\qiqilu\datasets_2\RLN\unzip\kldeconv\SimuMix3D_1280\gt\';
 mkdir(pathMain1)
 
 % How many simulation to generate
@@ -44,11 +44,10 @@ GaussM = GaussM/sum(GaussM(:));
 for tt=1:number_of_simulation
     disp(tt)
 
-    % A=zeros(256,256,256);
+    A=zeros(256,256,256);
     % A=zeros(512,512,128);
     % A=zeros(128,128,128);
     % A=zeros(382,382,151);
-    A=zeros(512,512,128);
     [Sx, Sy, Sz] = size(A);
     
     rrange = fix(Rsphere/2);

@@ -226,7 +226,7 @@ class Convolution(torch.nn.Module):
         - `fft` : FFT convolution. `FT(x) * FT(PSF) = FT(x * PSF)`.
     """
 
-    def __init__(self, PSF, padding_mode="reflect", domain="direct", **kwargs):
+    def __init__(self, PSF, padding_mode="reflect", domain="fft", **kwargs):
         super().__init__()
         self.domain = domain
         self.padding_mode = padding_mode

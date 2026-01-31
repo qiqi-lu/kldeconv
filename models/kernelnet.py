@@ -1,6 +1,9 @@
 import torch, time
 import torch.nn as nn
-from fft_conv_pytorch import fft_conv
+
+# from fft_conv_pytorch import fft_conv
+
+from methods.deconvolution import fftn_conv_real as fft_conv
 import sys
 
 sys.path.append("E:\\Project\\2023 cytoSR")

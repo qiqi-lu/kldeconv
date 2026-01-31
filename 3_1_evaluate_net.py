@@ -2,7 +2,7 @@
 Evaluate the trained conventional network.
 """
 
-import torch, os, pandas, tqdm, json
+import torch, os, pandas, tqdm, json, time
 import numpy as np
 from skimage import io
 from models.dfcan_2d import DFCAN
@@ -15,7 +15,7 @@ from utils.optimize import on_load_checkpoint
 # ------------------------------------------------------------------------------
 #                             Paramsters
 # ------------------------------------------------------------------------------
-id_device = "cuda:0"
+id_device = "cuda:1"
 # model_name = "dfcan"
 model_name = "rln"
 
@@ -26,7 +26,9 @@ id_sample = []
 
 # ------------------------------------------------------------------------------
 # dataset_names = ("SimuMix3D-128-31-0-0-1", "SimuMix3D-128-31-0-0-1")
-dataset_names = ("SimuMix3D-128-31-05-1-01", "SimuMix3D-128-31-05-1-01")
+# dataset_names = ("SimuMix3D-128-31-05-1-01", "SimuMix3D-128-31-05-1-01")
+dataset_names = ("SimuMix3D-512-31-05-1-01", "SimuMix3D-128-31-05-1-01")
+# dataset_names = ("SimuMix3D-1024-31-05-1-01", "SimuMix3D-128-31-05-1-01")
 # ------------------------------------------------------------------------------
 # dataset_names = ("Microtubule2-3d-1024", "Microtubule2-3d-1024")
 # dataset_names = ("Microtubule2-3d-1024", "Nuclear-pore-complex2-1024")
@@ -103,7 +105,8 @@ dataset_names = ("SimuMix3D-128-31-05-1-01", "SimuMix3D-128-31-05-1-01")
 # dataset_names = ("ER-1", "F-actin-1")
 # ------------------------------------------------------------------------------
 
-num_data, id_repeat = 80, 1
+# num_data, id_repeat = 80, 1
+num_data, id_repeat = 1, 1
 dataset_name_test, dataset_name_train = dataset_names
 
 print("-" * 80)
@@ -245,6 +248,7 @@ normalizer = NormalizePercentile(
 )
 
 # ------------------------------------------------------------------------------
+time_list = []
 pbar = tqdm.tqdm(total=len(params["id_sample"]), desc="Evaluating", ncols=80)
 for id in params["id_sample"]:
     data = dataset_test[id]
@@ -252,7 +256,14 @@ for id in params["id_sample"]:
     x = normalizer(x).to(device)[None]
 
     with torch.no_grad():
+        torch.cuda.synchronize(device=device)
+        tic = time.time()
         y_pred = model(x)
+        torch.cuda.synchronize(device=device)
+        toc = time.time()
+        used_time = toc - tic
+        time_list.append(used_time)
+        print(f"[INFO] Sample {id}: {used_time:.4f}s")
 
     # save results -------------------------------------------------------------
     path_sample = os.path.join(path_prediction, filenames[id].split(".")[0])
@@ -271,3 +282,8 @@ for id in params["id_sample"]:
     pbar.update(1)
 pbar.close()
 print("-" * 80)
+
+# save the itme used for prediction into excel
+df = pandas.DataFrame(columns=["time (s)"])
+df["time (s)"] = time_list
+df.to_excel(os.path.join(path_prediction, "time.xlsx"), index=False)

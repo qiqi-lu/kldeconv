@@ -7,11 +7,14 @@ Train `kernelnet` (forward + backward) model for deconvolution.
     according to the dataset)
 """
 
-import torch, os, time, pandas, tqdm, json, statistics
+import torch, os, time, pandas, tqdm, json, statistics, cupy
+from cupyx.scipy.ndimage import median_filter
 import numpy as np
 import skimage.io as io
 import utils.evaluation as utils_eva
-from fft_conv_pytorch import fft_conv
+
+# from fft_conv_pytorch import fft_conv
+from methods.deconvolution import fftn_conv_real as fft_conv
 from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
 from utils.data import win2linux, SRDataset, text2tuple, NormalizePercentile
@@ -25,10 +28,11 @@ torch.manual_seed(7)
 # ------------------------------------------------------------------------------
 # model_name = "kernet_fp"
 model_name = "kernet"
+enable_median_filter = True
 
 # ------------------------------------------------------------------------------
 params = {
-    "device_id": "cuda:0",
+    "device_id": "cuda:1",
     "num_workers": 6,
     # --------------------------------------------------------------------------
     "dataset_name": (
@@ -142,6 +146,10 @@ params = {
     # --------------------------------------------------------------------------
     "experiment": "n1_r1",
     "sample_range": (0, 1),
+    # "sample_range": (0, 2),
+    # "sample_range": (0, 3),
+    # "sample_range": (0, 4),
+    # "sample_range": (0, 5),
     "loss_function": "mse",
     # "loss_function": "mae",
     "use_lr_schedule": True,
@@ -159,7 +167,11 @@ params = {
     # --------------------------------------------------------------------------
     "normalization_eva": (0.03, 0.995),
     "path_checkpoint_save": "checkpoints",
-    "saved_checkpoint": "checkpoints/SimuMix3D-128-31-05-1-01/kernelnet/backward/kernet_bs_1_lr_5e-06_iter_1_ker_31_mse_over2_inter_fp_normx_bp_norm_fft_ts_0_1_v3/epoch_9999_9999.pt",
+    "saved_checkpoint": "checkpoints/SimuMix3D-128-31-05-1-01/kernelnet/backward/kernet_bs_1_lr_1e-06_iter_1_ker_31_mse_over2_inter_fp_normx_bp_norm_fft_ts_0_1_v3_median_in/epoch_9999_9999.pt",
+    # "saved_checkpoint": "checkpoints/SimuMix3D-128-31-05-1-01/kernelnet/backward/kernet_bs_1_lr_1e-06_iter_1_ker_31_mse_over2_inter_fp_normx_bp_norm_fft_ts_0_2_v3_median_in/epoch_5000_10000.pt",
+    # "saved_checkpoint": "checkpoints/SimuMix3D-128-31-05-1-01/kernelnet/backward/kernet_bs_1_lr_1e-06_iter_1_ker_31_mse_over2_inter_fp_normx_bp_norm_fft_ts_0_3_v3_median_in/epoch_3333_10000.pt",
+    # "saved_checkpoint": "checkpoints/SimuMix3D-128-31-05-1-01/kernelnet/backward/kernet_bs_1_lr_1e-06_iter_1_ker_31_mse_over2_inter_fp_normx_bp_norm_fft_ts_0_4_v3_median_in/epoch_2500_10000.pt",
+    # "saved_checkpoint": "checkpoints/SimuMix3D-128-31-05-1-01/kernelnet/backward/kernet_bs_1_lr_1e-06_iter_1_ker_31_mse_over2_inter_fp_normx_bp_norm_fft_ts_0_5_v3_median_in/epoch_2000_10000.pt",
     # "saved_checkpoint": None,
 }
 
@@ -265,12 +277,14 @@ elif model_name == "kernet":
         suffix += "_multiout"
     if params["saved_checkpoint"] is not None:
         suffix += "_continue"
+    if enable_median_filter:
+        suffix += "_median_in-real"
     # start_learning_rate = 0.001
     # start_learning_rate = 0.0001  # 2D real
     # start_learning_rate = 0.00001  # 3D real
-    # start_learning_rate = 0.000001  # simumix
+    start_learning_rate = 0.000001  # simumix
     # start_learning_rate = 0.000002  # simumix
-    start_learning_rate = 0.000005  # simumix
+    # start_learning_rate = 0.000005  # simumix
     epochs = params["epoch_bp"]
 else:
     raise ValueError(f"[ERROR] Unknown model name: {model_name}")
@@ -523,6 +537,15 @@ elif training_data_size > 1:
 else:
     print("[ERROR] Training data size is 0!")
 
+if enable_median_filter:
+    print("[INFO] Enable median filter...")
+    # median filter to remove noise in x
+    x = cupy.asarray(x)
+    tmp_x = cupy.zeros_like(x)
+    for i in range(x.shape[0]):
+        tmp_x[i, 0] = median_filter(x[i, 0], size=3)
+    x = torch.as_tensor(tmp_x, device=device)
+
 print(f"[INFO] Num of baches: {num_batches}")
 print(f"[INFO] Epoch: {epochs} | Batch size: {params['batch_size']}")
 print("-" * 80)
@@ -541,7 +564,7 @@ dict_clip = {
 data_range = params["data_clip_eva"][1] - params["data_clip_eva"][0]
 
 # ------------------------------------------------------------------------------
-pbar = tqdm.tqdm(total=epochs, desc="Training", ncols=80)
+pbar = tqdm.tqdm(total=epochs * num_batches, desc="Training", ncols=80)
 for i_epoch in range(epochs):
     ave_ssim, ave_psnr = 0, 0
     print_loss, print_ssim, print_psnr = [], [], []
@@ -632,6 +655,7 @@ for i_epoch in range(epochs):
 
         # ----------------------------------------------------------------------
         # validation
+        # ----------------------------------------------------------------------
         if (i_iter == 0 or (i_iter + 1) % params["val_every_iter"] == 0) and (
             params["validation_enable"] == True
         ):
@@ -641,6 +665,13 @@ for i_epoch in range(epochs):
                 for i_batch_val, sample_val in enumerate(valid_dataloader):
                     x_val = sample_val["lr"].to(device)
                     y_val = sample_val["hr"].to(device)
+
+                    if enable_median_filter:
+                        x_val = cupy.asarray(x_val)
+                        tmp_x_val = cupy.zeros_like(x_val)
+                        for i in range(x_val.shape[0]):
+                            tmp_x_val[i, 0] = median_filter(x_val[i, 0], size=3)
+                        x_val = torch.as_tensor(tmp_x_val, device=device)
 
                     if model_name == "kernet_fp":
                         inpt_val, gt_val = y_val, x_val
@@ -674,6 +705,7 @@ for i_epoch in range(epochs):
                 writer.add_scalar("psnr_val", statistics.mean(psnr_val_list), i_iter)
                 writer.add_scalar("ssim_val", statistics.mean(ssim_val_list), i_iter)
             model.train()
+        # ----------------------------------------------------------------------
 pbar.close()
 # ------------------------------------------------------------------------------
 # save the last one model
