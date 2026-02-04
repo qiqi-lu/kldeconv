@@ -5,14 +5,18 @@ Rescale image to make the image has a custom defined average intensity.
 
 import numpy as np
 import skimage.io as io
-import os, tqdm
+import os, tqdm, cupy
 from utils.data import read_txt, win2linux
 from scipy.ndimage import gaussian_filter
 import torch
+from cupyx.scipy.ndimage import median_filter
 
 # ------------------------------------------------------------------------------
-# gaussian filtering
-filtering = False
+# filtering
+# gaussian_filtering = True
+gaussian_filtering = False
+# median_filtering = True
+median_filtering = False
 
 # average pooling
 average_pooling, scale_factor = False, 1
@@ -24,8 +28,8 @@ padding, padding_size = False, 1024
 
 # background subtraction
 # bkg_sub, bkg_value = True, 1100
-# bkg_sub, bkg_value = True, None
-bkg_sub, bkg_value = True, 100.0
+bkg_sub, bkg_value = True, None
+# bkg_sub, bkg_value = True, 100.0
 # bkg_sub, bkg_value = False, None
 
 # outlier clipping
@@ -39,6 +43,62 @@ ave_intensity = 100.0
 
 # ------------------------------------------------------------------------------
 path_root = "E:\qiqilu\datasets_2"
+# path_dataset = "BioSR\\transformed\CCPs\\noise_1_sf_1\\raw"
+# path_dataset = "BioSR\\transformed\CCPs\\noise_2_sf_1\\raw"
+# path_dataset = "BioSR\\transformed\CCPs\\noise_3_sf_1\\raw"
+# path_dataset = "BioSR\\transformed\CCPs\\noise_4_sf_1\\raw"
+# path_dataset = "BioSR\\transformed\CCPs\\noise_5_sf_1\\raw"
+# path_dataset = "BioSR\\transformed\CCPs\\noise_6_sf_1\\raw"
+# path_dataset = "BioSR\\transformed\CCPs\\noise_7_sf_1\\raw"
+# path_dataset = "BioSR\\transformed\CCPs\\noise_8_sf_1\\raw"
+# path_dataset = "BioSR\\transformed\CCPs\\noise_9_sf_1\\raw"
+# path_raw_txt = "BioSR\\transformed\CCPs\\all.txt"
+
+# path_dataset = "BioSR\\transformed\ER\\noise_1_sf_1\\raw"
+# path_dataset = "BioSR\\transformed\ER\\noise_2_sf_1\\raw"
+# path_dataset = "BioSR\\transformed\ER\\noise_3_sf_1\\raw"
+# path_dataset = "BioSR\\transformed\ER\\noise_4_sf_1\\raw"
+# path_dataset = "BioSR\\transformed\ER\\noise_5_sf_1\\raw"
+# path_dataset = "BioSR\\transformed\ER\\noise_6_sf_1\\raw"
+# path_raw_txt = "BioSR\\transformed\ER\\all.txt"
+
+# path_dataset = "BioSR\\transformed\F-actin\\noise_1_sf_1\\raw"
+# path_dataset = "BioSR\\transformed\F-actin\\noise_2_sf_1\\raw"
+# path_dataset = "BioSR\\transformed\F-actin\\noise_3_sf_1\\raw"
+# path_dataset = "BioSR\\transformed\F-actin\\noise_4_sf_1\\raw"
+# path_dataset = "BioSR\\transformed\F-actin\\noise_5_sf_1\\raw"
+# path_dataset = "BioSR\\transformed\F-actin\\noise_6_sf_1\\raw"
+# path_dataset = "BioSR\\transformed\F-actin\\noise_7_sf_1\\raw"
+# path_dataset = "BioSR\\transformed\F-actin\\noise_8_sf_1\\raw"
+# path_dataset = "BioSR\\transformed\F-actin\\noise_9_sf_1\\raw"
+# path_dataset = "BioSR\\transformed\F-actin\\noise_10_sf_1\\raw"
+# path_dataset = "BioSR\\transformed\F-actin\\noise_11_sf_1\\raw"
+# path_dataset = "BioSR\\transformed\F-actin\\noise_12_sf_1\\raw"
+# path_raw_txt = "BioSR\\transformed\F-actin\\all.txt"
+
+path_dataset = "BioSR\\transformed\F-actin_Nonlinear\\noise_1_sf_1\\raw"
+# path_dataset = "BioSR\\transformed\F-actin_Nonlinear\\noise_2_sf_1\\raw"
+# path_dataset = "BioSR\\transformed\F-actin_Nonlinear\\noise_3_sf_1\\raw"
+# path_dataset = "BioSR\\transformed\F-actin_Nonlinear\\noise_4_sf_1\\raw"
+# path_dataset = "BioSR\\transformed\F-actin_Nonlinear\\noise_5_sf_1\\raw"
+# path_dataset = "BioSR\\transformed\F-actin_Nonlinear\\noise_6_sf_1\\raw"
+# path_dataset = "BioSR\\transformed\F-actin_Nonlinear\\noise_7_sf_1\\raw"
+# path_dataset = "BioSR\\transformed\F-actin_Nonlinear\\noise_8_sf_1\\raw"
+# path_dataset = "BioSR\\transformed\F-actin_Nonlinear\\noise_9_sf_1\\raw"
+path_raw_txt = "BioSR\\transformed\F-actin_Nonlinear\\all.txt"
+
+# path_dataset = "BioSR\\transformed\Microtubules2\\noise_1_sf_1\\raw"
+# path_dataset = "BioSR\\transformed\Microtubules2\\noise_2_sf_1\\raw"
+# path_dataset = "BioSR\\transformed\Microtubules2\\noise_3_sf_1\\raw"
+# path_dataset = "BioSR\\transformed\Microtubules2\\noise_4_sf_1\\raw"
+# path_dataset = "BioSR\\transformed\Microtubules2\\noise_5_sf_1\\raw"
+# path_dataset = "BioSR\\transformed\Microtubules2\\noise_6_sf_1\\raw"
+# path_dataset = "BioSR\\transformed\Microtubules2\\noise_7_sf_1\\raw"
+# path_dataset = "BioSR\\transformed\Microtubules2\\noise_8_sf_1\\raw"
+# path_dataset = "BioSR\\transformed\Microtubules2\\noise_9_sf_1\\raw"
+# path_raw_txt = "BioSR\\transformed\Microtubules2\\all.txt"
+
+# ------------------------------------------------------------------------------
 # path_dataset = "BioTISR\\transformed\F-actin\SIM_2d"
 # path_dataset = "BioTISR\\transformed\F-actin\WF_noise_level_1_2d"
 # path_dataset = "BioTISR\\transformed\F-actin\WF_noise_level_2_2d"
@@ -111,8 +171,8 @@ path_root = "E:\qiqilu\datasets_2"
 
 # path_dataset = "BioTISR\\transformed\Microtubules-3D\SIM_remove_last_t0"
 # path_dataset = "BioTISR\\transformed\Microtubules-3D\WF_noise_level_1_remove_last_t0"
-path_dataset = "BioTISR\\transformed\Microtubules-3D\WF_noise_level_2_remove_last_t0"
-path_raw_txt = "BioTISR\\transformed\Microtubules-3D\\all.txt"
+# path_dataset = "BioTISR\\transformed\Microtubules-3D\WF_noise_level_2_remove_last_t0"
+# path_raw_txt = "BioTISR\\transformed\Microtubules-3D\\all.txt"
 
 
 # ------------------------------------------------------------------------------
@@ -125,8 +185,10 @@ filenames_raw = read_txt(path_raw_txt)
 
 # ------------------------------------------------------------------------------
 path_save_to_raw = path_dataset + f"_rescale_{ave_intensity}"
-if filtering:
-    path_save_to_raw += "_filter"
+if gaussian_filtering:
+    path_save_to_raw += "_gaufilter"
+if median_filtering:
+    path_save_to_raw += "_medfilter"
 if average_pooling:
     path_save_to_raw += f"_avepool_{scale_factor}"
 if padding:
@@ -195,8 +257,11 @@ def preprocess(path_img):
     if bkg_sub:
         global bkg_value
         if bkg_value is None:
-            bkg_value = np.percentile(data_raw, 2)
-        data_raw = data_raw - bkg_value
+            bv = np.percentile(data_raw, 2)
+        else:
+            bv = bkg_value
+        print(f"[INFO] background value: {bv}")
+        data_raw = data_raw - bv
     else:
         pass
 
@@ -234,8 +299,12 @@ def preprocess(path_img):
     # gaussian filtering the raw image -----------------------------------------
     # the number of photons in the image may be too small,
     # the zero photon pixel need to be filled with a estimated value.
-    if filtering:
+    if gaussian_filtering:
         data_raw = gaussian_filter(data_raw, sigma=1.0, axes=(-2, -1))
+    if median_filtering:
+        data_raw = cupy.asarray(data_raw)
+        data_raw = median_filter(data_raw, size=3)
+        data_raw = cupy.asnumpy(data_raw)
 
     # normalization ------------------------------------------------------------
     intensity_sum = ave_intensity * np.prod(data_raw.shape)

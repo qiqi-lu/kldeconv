@@ -28,7 +28,8 @@ torch.manual_seed(7)
 # ------------------------------------------------------------------------------
 # model_name = "kernet_fp"
 model_name = "kernet"
-enable_median_filter = True
+# enable_median_filter = True
+enable_median_filter = False
 
 # ------------------------------------------------------------------------------
 params = {
@@ -37,22 +38,20 @@ params = {
     # --------------------------------------------------------------------------
     "dataset_name": (
         # "F-actin-nonlinear-9",
-        # "Microtubules2-9",
+        "Microtubules2-9",
         # "CCPs-9",
         # "ER-6",
         # "F-actin-9",
         # ----------------------------------------------------------------------
-        # "F-actin-nonlinear-1",
-        # "Microtubules2-1",
-        # "CCPs-1",
-        # "ER-1",
-        # "F-actin-1",
+        # "Microtubules2-6",
+        # "CCPs-6",
+        # "ER-6",
+        # "F-actin-6",
         # ----------------------------------------------------------------------
-        # "F-actin-nonlinear-2",
-        # "Microtubules2-2",
-        # "CCPs-2",
-        # "ER-2",
-        # "F-actin-2",
+        # "Microtubules2-3",
+        # "CCPs-3",
+        # "ER-3",
+        # "F-actin-3",
         # ----------------------------------------------------------------------
         # "SimuBeads3D-128-31-0-0-1",
         # "SimuBeads3D-128-31-05-1-1",
@@ -62,7 +61,7 @@ params = {
         # "SimuMix3D-128-31-0-0-1",
         # "SimuMix3D-128-31-05-1-1",
         # "SimuMix3D-128-31-05-1-03",
-        "SimuMix3D-128-31-05-1-01",
+        # "SimuMix3D-128-31-05-1-01",
         # "SimuMix3D-128-31-05-1-01-31x31",
         # ----------------------------------------------------------------------
         # "SimuMix3D-256-31-0-0-1",
@@ -132,8 +131,8 @@ params = {
     "in_channels": 1,
     "data_clip_eva": (0, 2.5),
     # --------------------------------------------------------------------------
-    # "FP_type": "pre-trained",  # real 2d or 3d data
-    "FP_type": "known",  # simulated data
+    "FP_type": "pre-trained",  # real 2d or 3d data
+    # "FP_type": "known",  # simulated data
     "BP_type": None,
     "conv_mode": "fft",
     "padding_mode": "reflect",
@@ -150,8 +149,8 @@ params = {
     # "sample_range": (0, 3),
     # "sample_range": (0, 4),
     # "sample_range": (0, 5),
-    "loss_function": "mse",
-    # "loss_function": "mae",
+    # "loss_function": "mse",
+    "loss_function": "mae",
     "use_lr_schedule": True,
     "scheduler_cus": {
         "lr": 0.00001,
@@ -167,12 +166,13 @@ params = {
     # --------------------------------------------------------------------------
     "normalization_eva": (0.03, 0.995),
     "path_checkpoint_save": "checkpoints",
-    "saved_checkpoint": "checkpoints/SimuMix3D-128-31-05-1-01/kernelnet/backward/kernet_bs_1_lr_1e-06_iter_1_ker_31_mse_over2_inter_fp_normx_bp_norm_fft_ts_0_1_v3_median_in/epoch_9999_9999.pt",
+    # "saved_checkpoint": "checkpoints/SimuMix3D-128-31-05-1-01/kernelnet/backward/kernet_bs_1_lr_1e-06_iter_1_ker_31_mse_over2_inter_fp_normx_bp_norm_fft_ts_0_1_v3_median_in/epoch_9999_9999.pt",
     # "saved_checkpoint": "checkpoints/SimuMix3D-128-31-05-1-01/kernelnet/backward/kernet_bs_1_lr_1e-06_iter_1_ker_31_mse_over2_inter_fp_normx_bp_norm_fft_ts_0_2_v3_median_in/epoch_5000_10000.pt",
     # "saved_checkpoint": "checkpoints/SimuMix3D-128-31-05-1-01/kernelnet/backward/kernet_bs_1_lr_1e-06_iter_1_ker_31_mse_over2_inter_fp_normx_bp_norm_fft_ts_0_3_v3_median_in/epoch_3333_10000.pt",
     # "saved_checkpoint": "checkpoints/SimuMix3D-128-31-05-1-01/kernelnet/backward/kernet_bs_1_lr_1e-06_iter_1_ker_31_mse_over2_inter_fp_normx_bp_norm_fft_ts_0_4_v3_median_in/epoch_2500_10000.pt",
     # "saved_checkpoint": "checkpoints/SimuMix3D-128-31-05-1-01/kernelnet/backward/kernet_bs_1_lr_1e-06_iter_1_ker_31_mse_over2_inter_fp_normx_bp_norm_fft_ts_0_5_v3_median_in/epoch_2000_10000.pt",
-    # "saved_checkpoint": None,
+    # "saved_checkpoint": "checkpoints/CCPs-9/kernelnet/backward/kernet_bs_1_lr_0.0001_iter_1_ker_31_mse_over2_inter_fp_normx_bp_norm_fft_ts_0_1_v3/epoch_9999_9999.pt",
+    "saved_checkpoint": None,
 }
 
 # ------------------------------------------------------------------------------
@@ -226,8 +226,9 @@ ker_size_bp = params["kernel_size_bp"][-1]
 if model_name == "kernet_fp":
     norm_tag = "norm" if params["kernel_norm_fp"] else "normx"
 
-    suffix = f"_ker_{ker_size_fp}_{params['loss_function']}_over{params['over_sampling']}_inter_{norm_tag}_{params['conv_mode']}_ts_{params['sample_range'][0]}_{params['sample_range'][1]}_s100_v2"
-
+    suffix = f"_ker_{ker_size_fp}_{params['loss_function']}_over{params['over_sampling']}_inter_{norm_tag}_{params['conv_mode']}_ts_{params['sample_range'][0]}_{params['sample_range'][1]}_s100_v3"
+    if enable_median_filter:
+        suffix += "_median_in"
     params.update(
         {
             "multi_out": False,
@@ -240,9 +241,9 @@ if model_name == "kernet_fp":
             "print_every_iter": 1000,
         }
     )
-    start_learning_rate = 1  # simumix
+    # start_learning_rate = 1  # simumix
     # start_learning_rate = 0.01  # 3d real
-    # start_learning_rate = 0.001  # 2d real
+    start_learning_rate = 0.001  # 2d real
     # start_learning_rate = 0.0001
     # start_learning_rate = 0.00001
     epochs = params["epoch_fp"]
@@ -251,10 +252,12 @@ elif model_name == "kernet":
     params.update(
         {
             # "num_iter": 1,
-            "num_iter": 2,  # default
+            # "num_iter": 2,  # default
             # "num_iter": 3,
             # "num_iter": 4,
-            # "num_iter": 5,
+            "num_iter": 5,
+            # "num_iter": 6,
+            # "num_iter": 7,
             "lam": 0.0,  # lambda for prior
             "multi_out": False,
             "shared_bp": True,
@@ -278,11 +281,11 @@ elif model_name == "kernet":
     if params["saved_checkpoint"] is not None:
         suffix += "_continue"
     if enable_median_filter:
-        suffix += "_median_in-real"
+        suffix += "_median_in"
     # start_learning_rate = 0.001
-    # start_learning_rate = 0.0001  # 2D real
+    start_learning_rate = 0.0001  # 2D real
     # start_learning_rate = 0.00001  # 3D real
-    start_learning_rate = 0.000001  # simumix
+    # start_learning_rate = 0.000001  # simumix
     # start_learning_rate = 0.000002  # simumix
     # start_learning_rate = 0.000005  # simumix
     epochs = params["epoch_bp"]

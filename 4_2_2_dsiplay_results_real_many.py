@@ -14,20 +14,21 @@ plt.rcParams["svg.fonttype"] = "none"
 # ------------------------------------------------------------------------------
 data_info = (
     # data name | dataset-id | sample-id | slice index | repeat_id | num_iter
-    ("MT", "Microtubules2-9", 0, 0, "fp_n1_r1_bp_n1_r1", 2),
-    ("ER", "ER-6", 0, 0, "fp_n1_r1_bp_n1_r1", 2),
-    ("F-actin", "F-actin-9", 0, 0, "fp_n1_r1_bp_n1_r1", 2),
-    ("MT-3D", "Microtubule2-3d-1024", 0, 0, "fp_n1_r1_bp_n1_r1", 2),
-    ("NPC-3D", "Nuclear-pore-complex2-1024", 0, 0, "fp_n1_r1_bp_n1_r1", 2),
-    ("MT", "biotisr-mt-3", 0, 0, "fp_n1_r1_bp_n1_r1", 2),
-    ("Lysosomes", "biotisr-lysosomes-3", 1, 0, "fp_n1_r1_bp_n1_r1", 2),
-    ("E.coli", "deepbacs-ecoli-ave2", 0, 0, "fp_n1_r1_bp_n1_r1", 2),
-    ("S.aureus", "deepbacs-saureus-ave2", 0, 0, "fp_n1_r1_bp_n1_r1", 2),
-    ("Mito", "w2s-0-sim-ave", 0, 0, "fp_n1_r1_bp_n1_r1", 2),
-    ("lysosome", "w2s-1-sim-ave", 0, 0, "fp_n1_r1_bp_n1_r1", 2),
-    ("F-actin", "w2s-2-sim-ave", 0, 0, "fp_n1_r1_bp_n1_r1", 2),
-    ("Mito-3D", "biotisr-3d-mito-2", 0, 1, "fp_n1_r1_bp_n1_r1", 2),
-    ("MT-3D", "biotisr-3d-mt-2", 0, 1, "fp_n1_r1_bp_n1_r1", 2),
+    ("MT", "biotisr-mt-3", 0, 0, "fp_n1_r1_bp_n1_r1", 2),  # 60.4 nm
+    ("Lysosomes", "biotisr-lysosomes-3", 1, 0, "fp_n1_r1_bp_n1_r1", 2),  # 60.4 nm
+    ("MT", "Microtubules2-9", 0, 0, "fp_n1_r1_bp_n1_r1", 2),  # 62.6 nm
+    ("ER", "ER-6", 0, 0, "fp_n1_r1_bp_n1_r1", 2),  # 62.6 nm
+    ("F-actin", "F-actin-9", 0, 0, "fp_n1_r1_bp_n1_r1", 2),  # 62.6 nm
+    ("E.coli", "deepbacs-ecoli-ave2", 0, 0, "fp_n1_r1_bp_n1_r1", 2),  # 80.0 nm
+    ("S.aureus", "deepbacs-saureus-ave2", 0, 0, "fp_n1_r1_bp_n1_r1", 2),  # 80.0 nm
+    # --------------------------------------------------------------------------
+    ("Mito", "w2s-0-sim-ave", 0, 0, "fp_n1_r1_bp_n1_r1", 2),  # 100.0 nm
+    ("lysosome", "w2s-1-sim-ave", 0, 0, "fp_n1_r1_bp_n1_r1", 2),  # 100.0 nm
+    ("F-actin", "w2s-2-sim-ave", 0, 0, "fp_n1_r1_bp_n1_r1", 2),  # 100.0 nm
+    ("MT-3D", "Microtubule2-3d-1024", 0, 0, "fp_n1_r1_bp_n1_r1", 2),  # 25.0 nm
+    ("NPC-3D", "Nuclear-pore-complex2-1024", 0, 0, "fp_n1_r1_bp_n1_r1", 2),  # 25.0 nm
+    ("Mito-3D", "biotisr-3d-mito-2", 0, 1, "fp_n1_r1_bp_n1_r1", 2),  # 61.2 nm
+    ("MT-3D", "biotisr-3d-mt-2", 0, 1, "fp_n1_r1_bp_n1_r1", 2),  # 61.2 nm
 )
 
 method_id = "kernelnet"
@@ -36,7 +37,7 @@ method_id = "kernelnet"
 datasets_info = pandas.read_excel("datasets_test.xlsx")
 
 path_prediction = os.path.join("outputs", "predictions")
-path_figure = os.path.join("outputs", "figures")
+path_figure = os.path.join("outputs", "figures", "analysis_image")
 
 
 num_data = len(data_info)

@@ -296,6 +296,52 @@ plt.savefig(os.path.join(path_figure, f"img_restored_{method_subgroup}.png"))
 plt.savefig(os.path.join(path_figure, f"img_restored_{method_subgroup}.svg"))
 
 # ------------------------------------------------------------------------------
+# show fft of image
+# ------------------------------------------------------------------------------
+print("-" * 80)
+print("[INFO] plot fft of image...")
+# fft of images
+imgs_all_fft = []
+for i_meth in range(num_methods):
+    img = imgs_all[i_meth]
+    # 3D fft
+    # img_fft = np.fft.fftshift(np.fft.fftn(img, s=(256, 256, 256)))
+    img_fft = np.fft.fftshift(np.fft.fftn(img))
+    img_fft = np.log(np.abs(img_fft) + 1)
+    img_fft = img_fft / img_fft.max()
+    imgs_all_fft.append(img_fft)
+
+imgs_all_fft = np.array(imgs_all_fft)
+
+id_slice_center_xy = int(Nz // 2)
+id_slice_center_zx = int(Ny // 2)
+# id_slice_center_xy = int(256 // 2)
+# id_slice_center_zx = int(256 // 2)
+dict_image_fft = dict(cmap="hot", vmin=0.4, vmax=1)
+
+# ------------------------------------------------------------------------------
+# show center slice of xy and xz plane
+nr, nc = 2, num_methods
+fig, axes = plt.subplots(nrows=nr, ncols=nc, figsize=(3 * nc, 3 * nr), **dict_fig)
+[ax.set_axis_off() for ax in axes.ravel()]
+
+for i_meth in range(num_methods):
+    ax = axes[:, i_meth]
+    name_meth, name, iter, color = methods_info[i_meth]
+    img_fft = imgs_all_fft[i_meth]
+    ax[0].imshow(img_fft[id_slice_center_xy], **dict_image_fft)
+    ax[1].imshow(img_fft[:, id_slice_center_zx, :], **dict_image_fft)
+    # add text -----------------------------------------------------------------
+    ax[0].text(s=name, transform=ax[0].transAxes, **dict_text_rt)
+    if i_meth == 0:
+        ax[0].text(s="xy", transform=ax[0].transAxes, **dict_text_lb)
+        ax[1].text(s="xz", transform=ax[1].transAxes, **dict_text_lb)
+
+plt.savefig(os.path.join(path_figure, f"img_fft_{method_subgroup}.png"))
+plt.savefig(os.path.join(path_figure, f"img_fft_{method_subgroup}.svg"))
+
+os._exit(0)
+# ------------------------------------------------------------------------------
 # show resolution-scale error
 # ------------------------------------------------------------------------------
 print("-" * 80)

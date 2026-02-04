@@ -489,6 +489,15 @@ class RLN3D(nn.Module):
             input=x, scale_factor=self.scale, mode="trilinear", align_corners=False
         )
 
+        # pad x to even size
+        in_shape = x.shape
+        if x.shape[2] % 2 == 1:
+            x = nn.functional.pad(x, (0, 0, 0, 0, 0, 1), mode="replicate")
+        if x.shape[3] % 2 == 1:
+            x = nn.functional.pad(x, (0, 1, 0, 0, 0, 0), mode="replicate")
+        if x.shape[4] % 2 == 1:
+            x = nn.functional.pad(x, (0, 0, 0, 1, 0, 0), mode="replicate")
+
         # H1 -------------------------------------------------------------------
         Iap = self.ave_pool(x)
 
@@ -524,6 +533,8 @@ class RLN3D(nn.Module):
             out = self.conv_last(merge)
         else:
             out = torch.mean(input=merge, dim=1, keepdim=True)
+
+        out = out[:, :, : in_shape[2], : in_shape[3], : in_shape[4]]
         return out
 
 
@@ -539,10 +550,10 @@ if __name__ == "__main__":
     print("First kernel sample:\n", kernels[0, 0, :, :, 1])  # middle slice
 
     # --------------------------------------------------------------------------
-    inchannle = 1
-    input_shape = (4, inchannle, 32, 64, 64)  # (B, C, D, H, W)
+    inchannel = 1
+    input_shape = (4, inchannel, 9, 128, 128)  # (B, C, D, H, W)
     x = torch.zeros(size=input_shape)
-    model = RLN3D(scale=1, in_channels=inchannle, n_features=4, kernel_size=3)
+    model = RLN3D(scale=1, in_channels=inchannel, n_features=4, kernel_size=3)
     o = model(x)
     torchinfo.summary(model=model, input_size=input_shape)
     print(f"Input shape: {x.shape}")

@@ -55,14 +55,45 @@ datasets_name = (
     # "ER-3",
     # "ER-2",
     # "ER-1",
+    # --------------------------------------------------------------------------
     # "Microtubule2-3d-1024",
     # "Nuclear-pore-complex2-1024",
+    # --------------------------------------------------------------------------
     # "biotisr-ccps-1",
     # "biotisr-ccps-2",
     # "biotisr-ccps-3",
-    "biotisr-factin-1",
-    "biotisr-factin-2",
-    "biotisr-factin-3",
+    # "biotisr-factin-1",
+    # "biotisr-factin-2",
+    # "biotisr-factin-3",
+    # "biotisr-factin-nonlinear-1",
+    "biotisr-factin-nonlinear-2",
+    "biotisr-factin-nonlinear-3",
+    "biotisr-lysosomes-1",
+    "biotisr-lysosomes-2",
+    "biotisr-lysosomes-3",
+    "biotisr-mt-1",
+    "biotisr-mt-2",
+    "biotisr-mt-3",
+    "biotisr-mito-1",
+    "biotisr-mito-2",
+    "biotisr-mito-3",
+    "deepbacs-ecoli",
+    "deepbacs-ecoli-ave2",
+    "deepbacs-saureus",
+    "deepbacs-saureus-ave2",
+    "w2s-0-sim-ave",
+    "w2s-0-wf-ave-400",
+    "w2s-1-sim-ave",
+    "w2s-1-wf-ave-400",
+    "w2s-2-sim-ave",
+    "w2s-2-wf-ave-400",
+    "biotisr-3d-factin-1",
+    "biotisr-3d-factin-2",
+    "biotisr-3d-mt-1",
+    "biotisr-3d-mt-2",
+    "biotisr-3d-mito-1",
+    "biotisr-3d-mito-2",
+    "biotisr-3d-mito-2-k5",
 )
 
 params = dict(
@@ -71,27 +102,33 @@ params = dict(
     normalization=(0.03, 0.995),
 )
 
+# ------------------------------------------------------------------------------
 info_df = pandas.read_excel("datasets_train.xlsx")
 
+print("-" * 80)
 print(f'[INFO] Patch size : {params["patch_size"]}')
 print(f'[INFO] Step size : {params["step_size"]}')
+normalizer = lambda x: normalization(
+    x, params["normalization"][0], params["normalization"][1]
+)[0]
 
+done_list = []
 num_datasets = len(datasets_name)
 for ds in datasets_name:
     # get the info of the dataset
     info = info_df[info_df["id"] == ds].iloc[0]
-    path_raw = win2linux(info["path_lr"])
+    path_raw = win2linux(info["path_lr_net"])
     path_gt = win2linux(info["path_hr"])
-    path_txt = win2linux(info["path_txt"])
+    path_txt = win2linux(info["path_txt"]).replace("train.txt", "all.txt")
     ndim = info["ndim"]
-
-    path_txt = path_txt.replace("train.txt", "all.txt")
 
     for path in [path_raw, path_gt, path_txt]:
         assert os.path.exists(path), f"[ERROR] {path} does not exist."
 
+    # read and process images --------------------------------------------------
     filenames = read_txt(path_txt)
     num_sample = len(filenames)
+
     print("-" * 80)
     print(f"[INFO] Dataset : {ds}")
     print(f"[INFO] Number of samples : {num_sample}")
@@ -100,24 +137,28 @@ for ds in datasets_name:
     print(f"[INFO] Path txt : {path_txt}")
     print(f"[INFO] Number of dimensions : {ndim}")
 
+    # patching -----------------------------------------------------------------
     for path_img in [path_raw, path_gt]:
+        if path_img in done_list:
+            print(f"[INFO] {path_img} has been patched.")
+            continue
+        done_list.append(path_img)
+
         path_save = path_img + f"_patch"
         os.makedirs(path_save, exist_ok=True)
+
         # save each elements in the params into a json file
         with open(os.path.join(path_save, "params.json"), "w") as f:
             json.dump(params, f, indent=4)
         print(f'[INFO] Patched images are saved to "{path_save}"')
 
-        pbar = tqdm.tqdm(total=num_sample, desc="Patching", ncols=80)
+        pbar = tqdm.tqdm(total=num_sample, desc="[INFO] Patching", ncols=80)
         for filename in filenames:
             img = io.imread(os.path.join(path_img, filename)).astype(np.float32)
-            img = np.clip(img, a_min=0.0, a_max=None)
-            img, _, _ = normalization(
-                img,
-                p_low=params["normalization"][0],
-                p_high=params["normalization"][1],
-            )
+            img = np.clip(img, a_min=0.0, a_max=None)  # clip negative values
+            img = normalizer(img)  # normalization
 
+            # 2D ---------------------------------------------------------------
             if ndim == 2:
                 assert img.ndim == 2, f"[ERROR] Dimension is disagreement. {img.shape}"
                 Ny, Nx = img.shape
@@ -142,15 +183,19 @@ for ds in datasets_name:
                             patch.astype(np.float32),
                             check_contrast=False,
                         )
+
+            # 3D ---------------------------------------------------------------
             elif ndim == 3:
                 assert img.ndim == 3, f"[ERROR] Dimension is disagreement. {img.shape}"
                 Nz, Ny, Nx = img.shape
+
                 # get the number of patches
                 num_patch_z = (Nz - params["patch_size"]) // params["step_size"] + 1
                 if num_patch_z < 0:
                     num_patch_z = 1
                 num_patch_y = (Ny - params["patch_size"]) // params["step_size"] + 1
                 num_patch_x = (Nx - params["patch_size"]) // params["step_size"] + 1
+
                 # get the patches
                 for k in range(num_patch_z):
                     for i in range(num_patch_y):
