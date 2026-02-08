@@ -18,15 +18,13 @@ from checkpoint_list import checkpoints_v1 as checkpoints_list
 
 enable_prediction = False
 enable_prediction = True
-enable_median_filter = True
-enable_median_filter = False
 # ------------------------------------------------------------------------------
 #                             Parameter setting
 # ------------------------------------------------------------------------------
 # id_device = "cpu"
 id_device = "cuda:0"
-output_inter = True  # output intermediate results
-# output_inter = False  # not to output intermediate results
+# output_inter = True  # output intermediate results
+output_inter = False  # not to output intermediate results
 
 # FP_type, BP_type = "known", "learned"  # simulation data
 # FP_type, BP_type = 'known', 'known'
@@ -44,23 +42,13 @@ num_data_bp, id_repeat_bp = 1, 1
 
 # ------------------------------------------------------------------------------
 # num_iter_train = 1
-num_iter_train = 2
+# num_iter_train = 2
 # num_iter_train = 3
 # num_iter_train = 4
-# num_iter_train = 5
+num_iter_train = 5
 
 # num_iter_test = 2
 num_iter_test = num_iter_train
-
-# id_sample = [0, 346, 609, 700, 770, 901]
-# id_sample = [0, 1, 2, 3, 4, 5]
-# id_sample = range(0, 1000, 4)
-# id_sample = [0, 1, 2, 3, 4, 5, 6]
-# id_sample = [7, 8, 9, 10, 11, 12, 13, 14, 15, 16]
-# id_sample = [0, 1, 2, 3, 4, 5, 6]
-# id_sample = [0]
-id_sample = []  # use all the samples
-# id_sample = None # will only save the kernels
 
 # ------------------------------------------------------------------------------
 #                  test dataset | train dataset
@@ -74,87 +62,110 @@ dataset_names_list = (
     # ("SimuMix3D-128-31-05-1-1", "SimuMix3D-128-31-05-1-1"),
     # --------------------------------------------------------------------------
     # ("Microtubule2-3d-1024", "Microtubule2-3d-1024"),
-    # ("Microtubule2-3d-1024", "Nuclear-pore-complex2-1024"),
     # ("Nuclear-pore-complex2-1024", "Nuclear-pore-complex2-1024"),
-    # ("Nuclear-pore-complex2-1024", "Microtubule2-3d-1024"),
     # --------------------------------------------------------------------------
     # ("SirDNA-1024", "SirDNA-1024"),
     # ("SirDNA-1024-train", "SirDNA-1024"),
     # ("SirDNA-1024-live-cell-1", "SirDNA-1024"),
     # ("SirDNA-1024-live-cell-2", "SirDNA-1024"),
     # --------------------------------------------------------------------------
-    # ("deepbacs-ecoli", "deepbacs-ecoli"),
-    # ("deepbacs-ecoli-ave2", "deepbacs-ecoli-ave2"),
-    # ("deepbacs-saureus", "deepbacs-saureus"),
-    # ("deepbacs-saureus-ave2", "deepbacs-saureus-ave2"),
+    ("biotisr-3d-factin-1", "biotisr-3d-factin-1"),
+    ("biotisr-3d-factin-2", "biotisr-3d-factin-2"),
+    ("biotisr-3d-mito-1", "biotisr-3d-mito-1"),
+    ("biotisr-3d-mito-2", "biotisr-3d-mito-2"),
+    ("biotisr-3d-mt-1", "biotisr-3d-mt-1"),
+    ("biotisr-3d-mt-2", "biotisr-3d-mt-2"),
     # --------------------------------------------------------------------------
+    # ("biotisr-ccps-1", "biotisr-ccps-1"),
+    # ("biotisr-ccps-2", "biotisr-ccps-2"),
+    # ("biotisr-ccps-3", "biotisr-ccps-3"),
+    # ("biotisr-factin-1", "biotisr-factin-1"),
+    # ("biotisr-factin-2", "biotisr-factin-2"),
+    # ("biotisr-factin-3", "biotisr-factin-3"),
+    # ("biotisr-factin-nonlinear-1", "biotisr-factin-nonlinear-1"),
+    # ("biotisr-factin-nonlinear-2", "biotisr-factin-nonlinear-2"),
+    # ("biotisr-factin-nonlinear-3", "biotisr-factin-nonlinear-3"),
+    # ("biotisr-lysosomes-1", "biotisr-lysosomes-1"),
+    # ("biotisr-lysosomes-2", "biotisr-lysosomes-2"),
+    # ("biotisr-lysosomes-3", "biotisr-lysosomes-3"),
+    # ("biotisr-mito-1", "biotisr-mito-1"),
+    # ("biotisr-mito-2", "biotisr-mito-2"),
+    # ("biotisr-mito-3", "biotisr-mito-3"),
     # ("biotisr-mt-1", "biotisr-mt-1"),
     # ("biotisr-mt-2", "biotisr-mt-2"),
     # ("biotisr-mt-3", "biotisr-mt-3"),
-    # ("biotisr-lysosomes-3", "biotisr-lysosomes-3"),
+    # ("deepbacs-ecoli-ave2", "deepbacs-ecoli-ave2"),
+    # ("deepbacs-saureus-ave2", "deepbacs-saureus-ave2"),
     # ("w2s-0-sim-ave", "w2s-0-sim-ave"),
     # ("w2s-1-sim-ave", "w2s-1-sim-ave"),
     # ("w2s-2-sim-ave", "w2s-2-sim-ave"),
-    # ("biotisr-3d-mito-2", "biotisr-3d-mito-2"),
-    # ("biotisr-3d-mito-2-k5", "biotisr-3d-mito-2-k5"),
-    # ("biotisr-3d-mt-2", "biotisr-3d-mt-2"),
     # --------------------------------------------------------------------------
-    ("Microtubules2-9", "Microtubules2-9"),
-    ("Microtubules2-9", "CCPs-9"),
-    ("Microtubules2-9", "ER-6"),
-    ("Microtubules2-9", "F-actin-9"),
-    ("ER-6", "Microtubules2-9"),
-    ("ER-6", "CCPs-9"),
-    ("ER-6", "ER-6"),
-    ("ER-6", "F-actin-9"),
-    ("CCPs-9", "Microtubules2-9"),
-    ("CCPs-9", "CCPs-9"),
-    ("CCPs-9", "ER-6"),
-    ("CCPs-9", "F-actin-9"),
-    ("F-actin-9", "Microtubules2-9"),
-    ("F-actin-9", "CCPs-9"),
-    ("F-actin-9", "ER-6"),
-    ("F-actin-9", "F-actin-9"),
-    # --------------------------------------------------------------------------
-    ("Microtubules2-6", "Microtubules2-6"),
-    ("Microtubules2-6", "CCPs-6"),
-    ("Microtubules2-6", "ER-6"),
-    ("Microtubules2-6", "F-actin-6"),
-    ("ER-6", "Microtubules2-6"),
-    ("ER-6", "CCPs-6"),
-    ("ER-6", "ER-6"),
-    ("ER-6", "F-actin-6"),
-    ("CCPs-6", "Microtubules2-6"),
-    ("CCPs-6", "CCPs-6"),
-    ("CCPs-6", "ER-6"),
-    ("CCPs-6", "F-actin-6"),
-    ("F-actin-6", "Microtubules2-6"),
-    ("F-actin-6", "CCPs-6"),
-    ("F-actin-6", "ER-6"),
-    ("F-actin-6", "F-actin-6"),
-    # --------------------------------------------------------------------------
-    ("Microtubules2-3", "Microtubules2-3"),
-    ("Microtubules2-3", "CCPs-3"),
-    ("Microtubules2-3", "ER-3"),
-    ("Microtubules2-3", "F-actin-3"),
-    ("ER-3", "Microtubules2-3"),
-    ("ER-3", "CCPs-3"),
-    ("ER-3", "ER-3"),
-    ("ER-3", "F-actin-3"),
-    ("CCPs-3", "Microtubules2-3"),
-    ("CCPs-3", "CCPs-3"),
-    ("CCPs-3", "ER-3"),
-    ("CCPs-3", "F-actin-3"),
-    ("F-actin-3", "Microtubules2-3"),
-    ("F-actin-3", "CCPs-3"),
-    ("F-actin-3", "ER-3"),
-    ("F-actin-3", "F-actin-3"),
+    # ("Microtubules2-9", "Microtubules2-9"),
+    # ("Microtubules2-9", "CCPs-9"),
+    # ("Microtubules2-9", "ER-6"),
+    # ("Microtubules2-9", "F-actin-9"),
+    # ("ER-6", "Microtubules2-9"),
+    # ("ER-6", "CCPs-9"),
+    # ("ER-6", "ER-6"),
+    # ("ER-6", "F-actin-9"),
+    # ("CCPs-9", "Microtubules2-9"),
+    # ("CCPs-9", "CCPs-9"),
+    # ("CCPs-9", "ER-6"),
+    # ("CCPs-9", "F-actin-9"),
+    # ("F-actin-9", "Microtubules2-9"),
+    # ("F-actin-9", "CCPs-9"),
+    # ("F-actin-9", "ER-6"),
+    # ("F-actin-9", "F-actin-9"),
+    # # --------------------------------------------------------------------------
+    # ("Microtubules2-6", "Microtubules2-6"),
+    # ("Microtubules2-6", "CCPs-6"),
+    # ("Microtubules2-6", "ER-6"),
+    # ("Microtubules2-6", "F-actin-6"),
+    # ("ER-6", "Microtubules2-6"),
+    # ("ER-6", "CCPs-6"),
+    # ("ER-6", "ER-6"),
+    # ("ER-6", "F-actin-6"),
+    # ("CCPs-6", "Microtubules2-6"),
+    # ("CCPs-6", "CCPs-6"),
+    # ("CCPs-6", "ER-6"),
+    # ("CCPs-6", "F-actin-6"),
+    # ("F-actin-6", "Microtubules2-6"),
+    # ("F-actin-6", "CCPs-6"),
+    # ("F-actin-6", "ER-6"),
+    # ("F-actin-6", "F-actin-6"),
+    # # --------------------------------------------------------------------------
+    # ("Microtubules2-3", "Microtubules2-3"),
+    # ("Microtubules2-3", "CCPs-3"),
+    # ("Microtubules2-3", "ER-3"),
+    # ("Microtubules2-3", "F-actin-3"),
+    # ("ER-3", "Microtubules2-3"),
+    # ("ER-3", "CCPs-3"),
+    # ("ER-3", "ER-3"),
+    # ("ER-3", "F-actin-3"),
+    # ("CCPs-3", "Microtubules2-3"),
+    # ("CCPs-3", "CCPs-3"),
+    # ("CCPs-3", "ER-3"),
+    # ("CCPs-3", "F-actin-3"),
+    # ("F-actin-3", "Microtubules2-3"),
+    # ("F-actin-3", "CCPs-3"),
+    # ("F-actin-3", "ER-3"),
+    # ("F-actin-3", "F-actin-3"),
 )
 
 
 for dataset_names in dataset_names_list:
     # dataset_name_test, dataset_name_train = dataset_names
     dataset_name_train, dataset_name_test = dataset_names
+
+    # id_sample = [0, 346, 609, 700, 770, 901]
+    # id_sample = [0, 1, 2, 3, 4, 5]
+    # id_sample = range(0, 1000, 4)
+    # id_sample = [0, 1, 2, 3, 4, 5, 6]
+    # id_sample = [7, 8, 9, 10, 11, 12, 13, 14, 15, 16]
+    # id_sample = [0, 1, 2, 3, 4, 5, 6]
+    # id_sample = [0]
+    id_sample = []  # use all the samples
+    # id_sample = None # will only save the kernels
 
     # --------------------------------------------------------------------------
     path_prediction = os.path.join(
@@ -179,6 +190,10 @@ for dataset_names in dataset_names_list:
     # --------------------------------------------------------------------------
     info_xlsx = pandas.read_excel("datasets_test.xlsx")
     info = info_xlsx[info_xlsx["id"] == dataset_name_test].iloc[0]
+
+    enable_median_filter = int(info["median_filter"])
+    print("-" * 80)
+    print(f"[INFO] Enable median filter: {enable_median_filter}")
 
     params_dict = dict(
         kernel_size_fp=text2tuple(info["ks_fp"]),

@@ -291,6 +291,7 @@ checkpoints_v1 = {
             "n1_r1": "checkpoints/F-actin-1/dfcan/dfcan_mae_bs_16_lr_0.001_id_0_1/epoch_14999_iter_29999.pt",
         },
     },
+    # --------------------------------------------------------------------------
     "SimuBeads3D-128-31-0-0-1": {},
     "SimuBeads3D-128-31-05-1-1": {},
     "SimuBeads3D-128-31-05-1-03": {},
@@ -449,12 +450,296 @@ checkpoints_v1 = {
     },
     "SimuMix3D-382-101-05-1-1-560": {},
     "SimuMix3D-382-101-05-1-1-642": {},
-    "Microtubule2-3d-1024": {
+    # --------------------------------------------------------------------------
+    "deepbacs-ecoli-ave2": {
         "forward": {
-            "n1_r1": "checkpoints/Microtubule2-3d-1024/kernelnet/forward/kernet_fp_bs_4_lr_0.01_ker_3_gauss_0_poiss_0_sf_1_mse_over2_inter_normx_fft_ratio_1_ts_0_4_s100/epoch_500.pt",  # v1
+            "n1_r1": "checkpoints/deepbacs-ecoli-ave2/kernelnet/forward/kernet_fp_bs_1_lr_0.001_ker_31_mse_over2_inter_normx_fft_ts_0_1_s100_v2/epoch_499_499.pt"
         },
         "backward": {
-            "n1_r1_iter2": "checkpoints/Microtubule2-3d-1024/kernelnet/backward/kernet_bs_4_lr_1e-05_iter_2_ker_3_gauss_0_poiss_0_sf_1_lam_0.0_mse_over2_inter_norm_fft_ratio_1_ts_0_4/epoch_10000.pt",  # v1
+            "n1_r1_iter2": "checkpoints/deepbacs-ecoli-ave2/kernelnet/backward/kernet_bs_1_lr_0.0001_iter_2_ker_31_mse_over2_inter_fp_normx_bp_norm_fft_ts_0_1_v2/epoch_9999_9999.pt"
+        },
+        "dfcan": {
+            "n1_r1": "checkpoints/deepbacs-ecoli-ave2/dfcan/dfcan_mae_bs_4_lr_0.001_v3_id_0_1/epoch_2999_iter_29999.pt"
+        },
+    },
+    "deepbacs-saureus-ave2": {
+        "forward": {
+            "n1_r1": "checkpoints/deepbacs-saureus-ave2/kernelnet/forward/kernet_fp_bs_1_lr_0.001_ker_31_mse_over2_inter_normx_fft_ts_0_1_s100_v2/epoch_499_499.pt"
+        },
+        "backward": {
+            "n1_r1_iter2": "checkpoints/deepbacs-saureus-ave2/kernelnet/backward/kernet_bs_1_lr_0.0001_iter_2_ker_31_mse_over2_inter_fp_normx_bp_norm_fft_ts_0_1_v2/epoch_9999_9999.pt"
+        },
+        "dfcan": {
+            "n1_r1": "checkpoints/deepbacs-saureus-ave2/dfcan/dfcan_mae_bs_4_lr_0.001_v3_id_0_1/epoch_2999_iter_29999.pt"
+        },
+    },
+    # --------------------------------------------------------------------------
+    "biotisr-ccps-1": {
+        "forward": {
+            "n1_r1": "checkpoints/biotisr-ccps-1/kernelnet/forward/kernet_fp_bs_1_lr_0.001_ker_(31, 31)_mse_over2_inter_normx_fft_ts_0_1_s100_v3/epoch_999_999.pt"
+        },
+        "backward": {
+            "n1_r1_iter2": "checkpoints/biotisr-ccps-1/kernelnet/backward/kernet_bs_1_lr_0.0001_iter_2_ker_(31, 31)_mse_over2_inter_fp_normx_bp_norm_fft_ts_0_1_v3/epoch_9999_9999.pt",
+            "n1_r1_iter5": "checkpoints/biotisr-ccps-1/kernelnet/backward/kernet_bs_1_lr_0.0001_iter_5_ker_(31, 31)_mse_over2_inter_fp_normx_bp_norm_fft_ts_0_1_v3/epoch_9999_9999.pt",
+        },
+        "dfcan": {
+            "n1_r1": "checkpoints/biotisr-ccps-1/dfcan/dfcan_mae_bs_4_lr_0.001_v3_id_0_1/epoch_2999_iter_29999.pt"
+        },
+    },
+    "biotisr-ccps-2": {
+        "forward": {
+            "n1_r1": "checkpoints/biotisr-ccps-2/kernelnet/forward/kernet_fp_bs_1_lr_0.001_ker_(31, 31)_mse_over2_inter_normx_fft_ts_0_1_s100_v3/epoch_999_999.pt"
+        },
+        "backward": {
+            "n1_r1_iter2": "checkpoints/biotisr-ccps-2/kernelnet/backward/kernet_bs_1_lr_0.0001_iter_2_ker_(31, 31)_mse_over2_inter_fp_normx_bp_norm_fft_ts_0_1_v3/epoch_9999_9999.pt",
+            "n1_r1_iter5": "checkpoints/biotisr-ccps-2/kernelnet/backward/kernet_bs_1_lr_0.0001_iter_5_ker_(31, 31)_mse_over2_inter_fp_normx_bp_norm_fft_ts_0_1_v3/epoch_9999_9999.pt",
+        },
+        "dfcan": {
+            "n1_r1": "checkpoints/biotisr-ccps-2/dfcan/dfcan_mae_bs_4_lr_0.001_v3_id_0_1/epoch_2999_iter_29999.pt"
+        },
+    },
+    "biotisr-ccps-3": {
+        "forward": {
+            "n1_r1": "checkpoints/biotisr-ccps-3/kernelnet/forward/kernet_fp_bs_1_lr_0.001_ker_(31, 31)_mse_over2_inter_normx_fft_ts_0_1_s100_v3/epoch_999_999.pt"
+        },
+        "backward": {
+            "n1_r1_iter2": "checkpoints/biotisr-ccps-3/kernelnet/backward/kernet_bs_1_lr_0.0001_iter_2_ker_(31, 31)_mse_over2_inter_fp_normx_bp_norm_fft_ts_0_1_v3/epoch_9999_9999.pt",
+            "n1_r1_iter5": "checkpoints/biotisr-ccps-3/kernelnet/backward/kernet_bs_1_lr_0.0001_iter_5_ker_(31, 31)_mse_over2_inter_fp_normx_bp_norm_fft_ts_0_1_v3/epoch_9999_9999.pt",
+        },
+        "dfcan": {
+            "n1_r1": "checkpoints/biotisr-ccps-3/dfcan/dfcan_mae_bs_4_lr_0.001_v3_id_0_1/epoch_3000_iter_30000.pt"
+        },
+    },
+    "biotisr-factin-1": {
+        "forward": {
+            "n1_r1": "checkpoints/biotisr-factin-1/kernelnet/forward/kernet_fp_bs_1_lr_0.001_ker_(31, 31)_mse_over2_inter_normx_fft_ts_0_1_s100_v3/epoch_999_999.pt"
+        },
+        "backward": {
+            "n1_r1_iter2": "checkpoints/biotisr-factin-1/kernelnet/backward/kernet_bs_1_lr_0.0001_iter_2_ker_(31, 31)_mse_over2_inter_fp_normx_bp_norm_fft_ts_0_1_v3/epoch_9999_9999.pt",
+            "n1_r1_iter5": "checkpoints/biotisr-factin-1/kernelnet/backward/kernet_bs_1_lr_0.0001_iter_5_ker_(31, 31)_mse_over2_inter_fp_normx_bp_norm_fft_ts_0_1_v3/epoch_9999_9999.pt",
+        },
+        "dfcan": {
+            "n1_r1": "checkpoints/biotisr-factin-1/dfcan/dfcan_mae_bs_4_lr_0.001_v3_id_0_1/epoch_2999_iter_29999.pt"
+        },
+    },
+    "biotisr-factin-2": {
+        "forward": {
+            "n1_r1": "checkpoints/biotisr-factin-2/kernelnet/forward/kernet_fp_bs_1_lr_0.001_ker_(31, 31)_mse_over2_inter_normx_fft_ts_0_1_s100_v3/epoch_999_999.pt"
+        },
+        "backward": {
+            "n1_r1_iter2": "checkpoints/biotisr-factin-2/kernelnet/backward/kernet_bs_1_lr_0.0001_iter_2_ker_(31, 31)_mse_over2_inter_fp_normx_bp_norm_fft_ts_0_1_v3/epoch_9999_9999.pt",
+            "n1_r1_iter5": "checkpoints/biotisr-factin-2/kernelnet/backward/kernet_bs_1_lr_0.0001_iter_5_ker_(31, 31)_mse_over2_inter_fp_normx_bp_norm_fft_ts_0_1_v3/epoch_9999_9999.pt",
+        },
+        "dfcan": {
+            "n1_r1": "checkpoints/biotisr-factin-2/dfcan/dfcan_mae_bs_4_lr_0.001_v3_id_0_1/epoch_2999_iter_29999.pt"
+        },
+    },
+    "biotisr-factin-3": {
+        "forward": {
+            "n1_r1": "checkpoints/biotisr-factin-3/kernelnet/forward/kernet_fp_bs_1_lr_0.001_ker_(31, 31)_mse_over2_inter_normx_fft_ts_0_1_s100_v3/epoch_999_999.pt"
+        },
+        "backward": {
+            "n1_r1_iter2": "checkpoints/biotisr-factin-3/kernelnet/backward/kernet_bs_1_lr_0.0001_iter_2_ker_(31, 31)_mse_over2_inter_fp_normx_bp_norm_fft_ts_0_1_v3/epoch_9999_9999.pt",
+            "n1_r1_iter5": "checkpoints/biotisr-factin-3/kernelnet/backward/kernet_bs_1_lr_0.0001_iter_5_ker_(31, 31)_mse_over2_inter_fp_normx_bp_norm_fft_ts_0_1_v3/epoch_9999_9999.pt",
+        },
+        "dfcan": {
+            "n1_r1": "checkpoints/biotisr-factin-3/dfcan/dfcan_mae_bs_4_lr_0.001_v3_id_0_1/epoch_3000_iter_30000.pt"
+        },
+    },
+    "biotisr-factin-nonlinear-1": {
+        "forward": {
+            "n1_r1": "checkpoints/biotisr-factin-nonlinear-1/kernelnet/forward/kernet_fp_bs_1_lr_0.001_ker_(31, 31)_mse_over2_inter_normx_fft_ts_0_1_s100_v3/epoch_999_999.pt"
+        },
+        "backward": {
+            "n1_r1_iter2": "checkpoints/biotisr-factin-nonlinear-1/kernelnet/backward/kernet_bs_1_lr_0.0001_iter_2_ker_(31, 31)_mse_over2_inter_fp_normx_bp_norm_fft_ts_0_1_v3/epoch_9999_9999.pt",
+            "n1_r1_iter5": "checkpoints/biotisr-factin-nonlinear-1/kernelnet/backward/kernet_bs_1_lr_0.0001_iter_5_ker_(31, 31)_mse_over2_inter_fp_normx_bp_norm_fft_ts_0_1_v3/epoch_9999_9999.pt",
+        },
+        "dfcan": {
+            "n1_r1": "checkpoints/biotisr-factin-nonlinear-1/dfcan/dfcan_mae_bs_4_lr_0.001_v3_id_0_1/epoch_2999_iter_29999.pt"
+        },
+    },
+    "biotisr-factin-nonlinear-2": {
+        "forward": {
+            "n1_r1": "checkpoints/biotisr-factin-nonlinear-2/kernelnet/forward/kernet_fp_bs_1_lr_0.001_ker_(31, 31)_mse_over2_inter_normx_fft_ts_0_1_s100_v3/epoch_999_999.pt"
+        },
+        "backward": {
+            "n1_r1_iter2": "checkpoints/biotisr-factin-nonlinear-2/kernelnet/backward/kernet_bs_1_lr_0.0001_iter_2_ker_(31, 31)_mse_over2_inter_fp_normx_bp_norm_fft_ts_0_1_v3/epoch_9999_9999.pt",
+            "n1_r1_iter5": "checkpoints/biotisr-factin-nonlinear-2/kernelnet/backward/kernet_bs_1_lr_0.0001_iter_5_ker_(31, 31)_mse_over2_inter_fp_normx_bp_norm_fft_ts_0_1_v3/epoch_9999_9999.pt",
+        },
+        "dfcan": {
+            "n1_r1": "checkpoints/biotisr-factin-nonlinear-2/dfcan/dfcan_mae_bs_4_lr_0.001_v3_id_0_1/epoch_2999_iter_29999.pt"
+        },
+    },
+    "biotisr-factin-nonlinear-3": {
+        "forward": {
+            "n1_r1": "checkpoints/biotisr-factin-nonlinear-3/kernelnet/forward/kernet_fp_bs_1_lr_0.001_ker_(31, 31)_mse_over2_inter_normx_fft_ts_0_1_s100_v3/epoch_999_999.pt"
+        },
+        "backward": {
+            "n1_r1_iter2": "checkpoints/biotisr-factin-nonlinear-3/kernelnet/backward/kernet_bs_1_lr_0.0001_iter_2_ker_(31, 31)_mse_over2_inter_fp_normx_bp_norm_fft_ts_0_1_v3/epoch_9999_9999.pt",
+            "n1_r1_iter5": "checkpoints/biotisr-factin-nonlinear-3/kernelnet/backward/kernet_bs_1_lr_0.0001_iter_5_ker_(31, 31)_mse_over2_inter_fp_normx_bp_norm_fft_ts_0_1_v3/epoch_9999_9999.pt",
+        },
+        "dfcan": {
+            "n1_r1": "checkpoints/biotisr-factin-nonlinear-3/dfcan/dfcan_mae_bs_4_lr_0.001_v3_id_0_1/epoch_2999_iter_29999.pt"
+        },
+    },
+    "biotisr-lysosomes-1": {
+        "forward": {
+            "n1_r1": "checkpoints/biotisr-lysosomes-1/kernelnet/forward/kernet_fp_bs_1_lr_0.001_ker_(31, 31)_mse_over2_inter_normx_fft_ts_0_1_s100_v3/epoch_999_999.pt"
+        },
+        "backward": {
+            "n1_r1_iter2": "checkpoints/biotisr-lysosomes-1/kernelnet/backward/kernet_bs_1_lr_0.0001_iter_2_ker_(31, 31)_mse_over2_inter_fp_normx_bp_norm_fft_ts_0_1_v3/epoch_9999_9999.pt",
+            "n1_r1_iter5": "checkpoints/biotisr-lysosomes-1/kernelnet/backward/kernet_bs_1_lr_0.0001_iter_5_ker_(31, 31)_mse_over2_inter_fp_normx_bp_norm_fft_ts_0_1_v3/epoch_9999_9999.pt",
+        },
+        "dfcan": {
+            "n1_r1": "checkpoints/biotisr-lysosomes-1/dfcan/dfcan_mae_bs_4_lr_0.001_v3_id_0_1/epoch_2999_iter_29999.pt"
+        },
+    },
+    "biotisr-lysosomes-2": {
+        "forward": {
+            "n1_r1": "checkpoints/biotisr-lysosomes-2/kernelnet/forward/kernet_fp_bs_1_lr_0.001_ker_(31, 31)_mse_over2_inter_normx_fft_ts_0_1_s100_v3/epoch_999_999.pt"
+        },
+        "backward": {
+            "n1_r1_iter2": "checkpoints/biotisr-lysosomes-2/kernelnet/backward/kernet_bs_1_lr_0.0001_iter_2_ker_(31, 31)_mse_over2_inter_fp_normx_bp_norm_fft_ts_0_1_v3/epoch_9999_9999.pt",
+            "n1_r1_iter5": "checkpoints/biotisr-lysosomes-2/kernelnet/backward/kernet_bs_1_lr_0.0001_iter_5_ker_(31, 31)_mse_over2_inter_fp_normx_bp_norm_fft_ts_0_1_v3/epoch_9999_9999.pt",
+        },
+        "dfcan": {
+            "n1_r1": "checkpoints/biotisr-lysosomes-2/dfcan/dfcan_mae_bs_4_lr_0.001_v3_id_0_1/epoch_2999_iter_29999.pt"
+        },
+    },
+    "biotisr-lysosomes-3": {
+        "forward": {
+            "n1_r1": "checkpoints/biotisr-lysosomes-3/kernelnet/forward/kernet_fp_bs_1_lr_0.001_ker_(31, 31)_mse_over2_inter_normx_fft_ts_0_1_s100_v3/epoch_999_999.pt"
+        },
+        "backward": {
+            "n1_r1_iter2": "checkpoints/biotisr-lysosomes-3/kernelnet/backward/kernet_bs_1_lr_0.0001_iter_2_ker_(31, 31)_mse_over2_inter_fp_normx_bp_norm_fft_ts_0_1_v3/epoch_9999_9999.pt",
+            "n1_r1_iter5": "checkpoints/biotisr-lysosomes-3/kernelnet/backward/kernet_bs_1_lr_0.0001_iter_5_ker_(31, 31)_mse_over2_inter_fp_normx_bp_norm_fft_ts_0_1_v3/epoch_9999_9999.pt",
+        },
+        "dfcan": {
+            "n1_r1": "checkpoints/biotisr-lysosomes-3/dfcan/dfcan_mae_bs_4_lr_0.001_v3_id_0_1/epoch_2999_iter_29999.pt"
+        },
+    },
+    "biotisr-mt-1": {
+        "forward": {
+            "n1_r1": "checkpoints/biotisr-mt-1/kernelnet/forward/kernet_fp_bs_1_lr_0.001_ker_(31, 31)_mse_over2_inter_normx_fft_ts_0_1_s100_v3/epoch_999_999.pt"
+        },
+        "backward": {
+            "n1_r1_iter2": "checkpoints/biotisr-mt-1/kernelnet/backward/kernet_bs_1_lr_0.0001_iter_2_ker_(31, 31)_mse_over2_inter_fp_normx_bp_norm_fft_ts_0_1_v3/epoch_9999_9999.pt",
+            "n1_r1_iter5": "checkpoints/biotisr-mt-1/kernelnet/backward/kernet_bs_1_lr_0.0001_iter_5_ker_(31, 31)_mse_over2_inter_fp_normx_bp_norm_fft_ts_0_1_v3/epoch_9999_9999.pt",
+        },
+        "dfcan": {
+            "n1_r1": "checkpoints/biotisr-mt-1/dfcan/dfcan_mae_bs_4_lr_0.001_v3_id_0_1/epoch_2999_iter_29999.pt"
+        },
+    },
+    "biotisr-mt-2": {
+        "forward": {
+            "n1_r1": "checkpoints/biotisr-mt-2/kernelnet/forward/kernet_fp_bs_1_lr_0.001_ker_(31, 31)_mse_over2_inter_normx_fft_ts_0_1_s100_v3/epoch_999_999.pt"
+        },
+        "backward": {
+            "n1_r1_iter2": "checkpoints/biotisr-mt-2/kernelnet/backward/kernet_bs_1_lr_0.0001_iter_2_ker_(31, 31)_mse_over2_inter_fp_normx_bp_norm_fft_ts_0_1_v3/epoch_9999_9999.pt",
+            "n1_r1_iter5": "checkpoints/biotisr-mt-2/kernelnet/backward/kernet_bs_1_lr_0.0001_iter_5_ker_(31, 31)_mse_over2_inter_fp_normx_bp_norm_fft_ts_0_1_v3/epoch_9999_9999.pt",
+        },
+        "dfcan": {
+            "n1_r1": "checkpoints/biotisr-mt-2/dfcan/dfcan_mae_bs_4_lr_0.001_v3_id_0_1/epoch_2999_iter_29999.pt"
+        },
+    },
+    "biotisr-mt-3": {
+        "forward": {
+            "n1_r1": "checkpoints/biotisr-mt-3/kernelnet/forward/kernet_fp_bs_1_lr_0.001_ker_(31, 31)_mse_over2_inter_normx_fft_ts_0_1_s100_v3/epoch_999_999.pt"
+        },
+        "backward": {
+            "n1_r1_iter2": "checkpoints/biotisr-mt-3/kernelnet/backward/kernet_bs_1_lr_0.0001_iter_2_ker_(31, 31)_mse_over2_inter_fp_normx_bp_norm_fft_ts_0_1_v3/epoch_9999_9999.pt",
+            "n1_r1_iter5": "checkpoints/biotisr-mt-3/kernelnet/backward/kernet_bs_1_lr_0.0001_iter_5_ker_(31, 31)_mse_over2_inter_fp_normx_bp_norm_fft_ts_0_1_v3/epoch_9999_9999.pt",
+        },
+        "dfcan": {
+            "n1_r1": "checkpoints/biotisr-mt-3/dfcan/dfcan_mae_bs_4_lr_0.001_v3_id_0_1/epoch_2999_iter_29999.pt"
+        },
+    },
+    "biotisr-mito-1": {
+        "forward": {
+            "n1_r1": "checkpoints/biotisr-mito-1/kernelnet/forward/kernet_fp_bs_1_lr_0.001_ker_(31, 31)_mse_over2_inter_normx_fft_ts_0_1_s100_v3/epoch_999_999.pt"
+        },
+        "backward": {
+            "n1_r1_iter2": "checkpoints/biotisr-mito-1/kernelnet/backward/kernet_bs_1_lr_0.0001_iter_2_ker_(31, 31)_mse_over2_inter_fp_normx_bp_norm_fft_ts_0_1_v3/epoch_9999_9999.pt",
+            "n1_r1_iter5": "checkpoints/biotisr-mito-1/kernelnet/backward/kernet_bs_1_lr_0.0001_iter_5_ker_(31, 31)_mse_over2_inter_fp_normx_bp_norm_fft_ts_0_1_v3/epoch_9999_9999.pt",
+        },
+        "dfcan": {
+            "n1_r1": "checkpoints/biotisr-mito-1/dfcan/dfcan_mae_bs_4_lr_0.001_v3_id_0_1/epoch_2999_iter_29999.pt"
+        },
+    },
+    "biotisr-mito-2": {
+        "forward": {
+            "n1_r1": "checkpoints/biotisr-mito-2/kernelnet/forward/kernet_fp_bs_1_lr_0.001_ker_(31, 31)_mse_over2_inter_normx_fft_ts_0_1_s100_v3/epoch_999_999.pt"
+        },
+        "backward": {
+            "n1_r1_iter2": "checkpoints/biotisr-mito-2/kernelnet/backward/kernet_bs_1_lr_0.0001_iter_2_ker_(31, 31)_mse_over2_inter_fp_normx_bp_norm_fft_ts_0_1_v3/epoch_9999_9999.pt",
+            "n1_r1_iter5": "checkpoints/biotisr-mito-2/kernelnet/backward/kernet_bs_1_lr_0.0001_iter_5_ker_(31, 31)_mse_over2_inter_fp_normx_bp_norm_fft_ts_0_1_v3/epoch_9999_9999.pt",
+        },
+        "dfcan": {
+            "n1_r1": "checkpoints/biotisr-mito-2/dfcan/dfcan_mae_bs_4_lr_0.001_v3_id_0_1/epoch_2999_iter_29999.pt"
+        },
+    },
+    "biotisr-mito-3": {
+        "forward": {
+            "n1_r1": "checkpoints/biotisr-mito-3/kernelnet/forward/kernet_fp_bs_1_lr_0.001_ker_(31, 31)_mse_over2_inter_normx_fft_ts_0_1_s100_v3/epoch_999_999.pt"
+        },
+        "backward": {
+            "n1_r1_iter2": "checkpoints/biotisr-mito-3/kernelnet/backward/kernet_bs_1_lr_0.0001_iter_2_ker_(31, 31)_mse_over2_inter_fp_normx_bp_norm_fft_ts_0_1_v3/epoch_9999_9999.pt",
+            "n1_r1_iter5": "checkpoints/biotisr-mito-3/kernelnet/backward/kernet_bs_1_lr_0.0001_iter_5_ker_(31, 31)_mse_over2_inter_fp_normx_bp_norm_fft_ts_0_1_v3/epoch_9999_9999.pt",
+        },
+        "dfcan": {
+            "n1_r1": "checkpoints/biotisr-mito-3/dfcan/dfcan_mae_bs_4_lr_0.001_v3_id_0_1/epoch_2999_iter_29999.pt"
+        },
+    },
+    # --------------------------------------------------------------------------
+    "w2s-0-sim-ave": {
+        "forward": {
+            "n1_r1": "checkpoints/w2s-0-sim-ave/kernelnet/forward/kernet_fp_bs_1_lr_0.001_ker_31_mse_over2_inter_normx_fft_ts_0_1_s100_v2/epoch_499_499.pt"
+        },
+        "backward": {
+            "n1_r1_iter2": "checkpoints/w2s-0-sim-ave/kernelnet/backward/kernet_bs_1_lr_0.0001_iter_2_ker_31_mse_over2_inter_fp_normx_bp_norm_fft_ts_0_1_v2/epoch_9999_9999.pt"
+        },
+        "dfcan": {
+            "n1_r1": "checkpoints/w2s-0-sim-ave/dfcan/dfcan_mae_bs_4_lr_0.001_v3_id_0_1/epoch_2999_iter_29999.pt"
+        },
+    },
+    "w2s-1-sim-ave": {
+        "forward": {
+            "n1_r1": "checkpoints/w2s-1-sim-ave/kernelnet/forward/kernet_fp_bs_1_lr_0.001_ker_31_mse_over2_inter_normx_fft_ts_0_1_s100_v2/epoch_499_499.pt"
+        },
+        "backward": {
+            "n1_r1_iter2": "checkpoints/w2s-1-sim-ave/kernelnet/backward/kernet_bs_1_lr_0.0001_iter_2_ker_31_mse_over2_inter_fp_normx_bp_norm_fft_ts_0_1_v2/epoch_9999_9999.pt"
+        },
+        "dfcan": {
+            "n1_r1": "checkpoints/w2s-1-sim-ave/dfcan/dfcan_mae_bs_4_lr_0.001_v3_id_0_1/epoch_2999_iter_29999.pt"
+        },
+    },
+    "w2s-2-sim-ave": {
+        "forward": {
+            "n1_r1": "checkpoints/w2s-2-sim-ave/kernelnet/forward/kernet_fp_bs_1_lr_0.001_ker_31_mse_over2_inter_normx_fft_ts_0_1_s100_v2/epoch_499_499.pt"
+        },
+        "backward": {
+            "n1_r1_iter2": "checkpoints/w2s-2-sim-ave/kernelnet/backward/kernet_bs_1_lr_0.0001_iter_2_ker_31_mse_over2_inter_fp_normx_bp_norm_fft_ts_0_1_v2/epoch_9999_9999.pt"
+        },
+        "dfcan": {
+            "n1_r1": "checkpoints/w2s-2-sim-ave/dfcan/dfcan_mae_bs_4_lr_0.001_v3_id_0_1/epoch_2999_iter_29999.pt"
+        },
+    },
+    # --------------------------------------------------------------------------
+    "Microtubule2-3d-1024": {
+        "forward": {
+            # "n1_r1": "checkpoints/Microtubule2-3d-1024/kernelnet/forward/kernet_fp_bs_4_lr_0.01_ker_3_gauss_0_poiss_0_sf_1_mse_over2_inter_normx_fft_ratio_1_ts_0_4_s100/epoch_500.pt",  # v1
+            # "n1_r1": "checkpoints/Microtubule2-3d-1024/kernelnet/forward/kernet_fp_bs_1_lr_0.01_ker_31_mse_over2_inter_normx_fft_ts_0_1_s100_v3_median_in/epoch_999_999.pt",
+            "n1_r1": "checkpoints/Microtubule2-3d-1024/kernelnet/forward/kernet_fp_bs_1_lr_0.01_ker_(5, 31, 31)_mse_over2_inter_normx_fft_ts_0_1_s100_v3_median_in/epoch_999_999.pt",
+        },
+        "backward": {
+            # "n1_r1_iter2": "checkpoints/Microtubule2-3d-1024/kernelnet/backward/kernet_bs_4_lr_1e-05_iter_2_ker_3_gauss_0_poiss_0_sf_1_lam_0.0_mse_over2_inter_norm_fft_ratio_1_ts_0_4/epoch_10000.pt",  # v1
+            "n1_r1_iter1": "checkpoints/Microtubule2-3d-1024/kernelnet/backward/kernet_bs_1_lr_1e-05_iter_1_ker_31_mse_over2_inter_fp_normx_bp_norm_fft_ts_0_1_v3_median_in/epoch_9999_9999.pt",
+            # "n1_r1_iter2": "checkpoints/Microtubule2-3d-1024/kernelnet/backward/kernet_bs_1_lr_1e-05_iter_2_ker_31_mse_over2_inter_fp_normx_bp_norm_fft_ts_0_1_v3_median_in/epoch_14999_14999.pt",
+            "n1_r1_iter2": "checkpoints/Microtubule2-3d-1024/kernelnet/backward/kernet_bs_1_lr_1e-05_iter_2_ker_(5, 31, 31)_mse_over2_inter_fp_normx_bp_norm_fft_ts_0_1_v3_median_in/epoch_14999_14999.pt",
+            "n1_r1_iter3": "checkpoints/Microtubule2-3d-1024/kernelnet/backward/kernet_bs_1_lr_1e-05_iter_3_ker_31_mse_over2_inter_fp_normx_bp_norm_fft_ts_0_1_v3_median_in/epoch_14999_14999.pt",
+            "n1_r1_iter4": "checkpoints/Microtubule2-3d-1024/kernelnet/backward/kernet_bs_1_lr_1e-05_iter_4_ker_31_mse_over2_inter_fp_normx_bp_norm_fft_ts_0_1_v3_median_in/epoch_14999_14999.pt",
+            # "n1_r1_iter5": "checkpoints/Microtubule2-3d-1024/kernelnet/backward/kernet_bs_1_lr_1e-05_iter_5_ker_31_mse_over2_inter_fp_normx_bp_norm_fft_ts_0_1_v3_median_in/epoch_14999_14999.pt",
+            "n1_r1_iter5": "checkpoints/Microtubule2-3d-1024/kernelnet/backward/kernet_bs_1_lr_1e-05_iter_5_ker_(5, 31, 31)_mse_over2_inter_fp_normx_bp_norm_fft_ts_0_1_v3_median_in/epoch_14999_14999.pt",
         },
         "rln": {
             "n1_r1": "checkpoints/Microtubule2-3d-1024/rln/rln_mae_bs_4_lr_0.01_id_0_1/epoch_699_iter_31499.pt"
@@ -462,15 +747,19 @@ checkpoints_v1 = {
     },
     "Nuclear-pore-complex2-1024": {
         "forward": {
-            "n1_r1": "checkpoints/Nuclear-pore-complex2-1024/kernelnet/forward/kernet_fp_bs_4_lr_0.01_ker_3_gauss_0_poiss_0_sf_1_mse_over2_inter_normx_fft_ratio_1_ts_0_4_s100/epoch_500.pt",  # v1
+            # "n1_r1": "checkpoints/Nuclear-pore-complex2-1024/kernelnet/forward/kernet_fp_bs_4_lr_0.01_ker_3_gauss_0_poiss_0_sf_1_mse_over2_inter_normx_fft_ratio_1_ts_0_4_s100/epoch_500.pt",  # v1
+            "n1_r1": "checkpoints/Nuclear-pore-complex2-1024/kernelnet/forward/kernet_fp_bs_1_lr_0.01_ker_(5, 31, 31)_mse_over2_inter_normx_fft_ts_0_1_s100_v3_median_in/epoch_999_999.pt",
         },
         "backward": {
-            "n1_r1_iter2": "checkpoints/Nuclear-pore-complex2-1024/kernelnet/backward/kernet_bs_4_lr_1e-05_iter_2_ker_3_gauss_0_poiss_0_sf_1_lam_0.0_mse_over2_inter_norm_fft_ratio_1_ts_0_4/epoch_10000.pt",  # v1
+            # "n1_r1_iter2": "checkpoints/Nuclear-pore-complex2-1024/kernelnet/backward/kernet_bs_4_lr_1e-05_iter_2_ker_3_gauss_0_poiss_0_sf_1_lam_0.0_mse_over2_inter_norm_fft_ratio_1_ts_0_4/epoch_10000.pt",  # v1
+            "n1_r1_iter2": "checkpoints/Nuclear-pore-complex2-1024/kernelnet/backward/kernet_bs_1_lr_1e-05_iter_2_ker_(5, 31, 31)_mse_over2_inter_fp_normx_bp_norm_fft_ts_0_1_v3_median_in/epoch_14999_14999.pt",
+            "n1_r1_iter5": "checkpoints/Nuclear-pore-complex2-1024/kernelnet/backward/kernet_bs_1_lr_1e-05_iter_5_ker_(5, 31, 31)_mse_over2_inter_fp_normx_bp_norm_fft_ts_0_1_v3_median_in/epoch_14999_14999.pt",
         },
         "rln": {
             "n1_r1": "checkpoints/Nuclear-pore-complex2-1024/rln/rln_mae_bs_4_lr_0.01_id_0_1/epoch_699_iter_31499.pt"
         },
     },
+    # --------------------------------------------------------------------------
     "SirDNA-1024": {
         "forward": {
             "n1_r1": "checkpoints/SirDNA-1024/kernelnet/forward/kernet_fp_bs_1_lr_0.01_ker_31_mse_over2_inter_normx_fft_ts_0_1_s100_v2/epoch_499_499.pt"
@@ -482,6 +771,7 @@ checkpoints_v1 = {
             # "n1_r1_iter2": "checkpoints/SirDNA-1024/kernelnet/backward/kernet_bs_1_lr_0.0001_iter_2_ker_31_mse_over2_inter_fp_norm_bp_norm_fft_ts_0_1_v2/epoch_9999_9999.pt",
         },
     },
+    # --------------------------------------------------------------------------
     "ZeroShotDeconvNet-simutrain-642": {
         "forward": {},
         "backward": {
@@ -496,6 +786,7 @@ checkpoints_v1 = {
             "n9_r1_iter2": "checkpoints/SimuMix3D-382-101-05-1-1-560/kernelnet/backward/kernet_bs_1_lr_1e-07_iter_2_ker_101_gauss_0.5_poiss_1_sf_1_lam_0.0_mse_over2_inter_norm_fft_ratio_1_ts_0_9_560/epoch_4000.pt",
         },
     },
+    # --------------------------------------------------------------------------
     "ZeroShotDeconvNet-ss-642": {
         "forward": {},
         "backward": {
@@ -508,123 +799,82 @@ checkpoints_v1 = {
             "n1_r1_iter2": "checkpoints/ZeroShotDeconvNet-ss-560/kernelnet/backward/kernet_bs_1_lr_1e-07_iter_2_ker_101_noise_0.5_sf_1_lam_0.0_mse_over2_inter_norm_fft_ratio_1_101x101_560_ss/epoch_3000.pt",
         },
     },
-    "deepbacs-ecoli": {
+    # --------------------------------------------------------------------------
+    "biotisr-3d-factin-1": {
         "forward": {
-            "n1_r1": "checkpoints/deepbacs-ecoli/kernelnet/forward/kernet_fp_bs_1_lr_0.001_ker_31_mse_over2_inter_normx_fft_ts_0_1_s100_v2/epoch_499_499.pt"
+            "n1_r1": "checkpoints/biotisr-3d-factin-1/kernelnet/forward/kernet_fp_bs_1_lr_0.01_ker_(5, 31, 31)_mse_over2_inter_normx_fft_ts_0_1_s100_v3/epoch_999_999.pt"
         },
         "backward": {
-            "n1_r1_iter2": "checkpoints/deepbacs-ecoli/kernelnet/backward/kernet_bs_1_lr_0.0001_iter_2_ker_31_mse_over2_inter_fp_normx_bp_norm_fft_ts_0_1_v2/epoch_9999_9999.pt"
+            "n1_r1_iter2": "checkpoints/biotisr-3d-factin-1/kernelnet/backward/kernet_bs_1_lr_1e-05_iter_2_ker_(5, 31, 31)_mse_over2_inter_fp_normx_bp_norm_fft_ts_0_1_v3/epoch_9999_9999.pt",
+            "n1_r1_iter5": "checkpoints/biotisr-3d-factin-1/kernelnet/backward/kernet_bs_1_lr_1e-05_iter_5_ker_(5, 31, 31)_mse_over2_inter_fp_normx_bp_norm_fft_ts_0_1_v3/epoch_9999_9999.pt",
+        },
+        "rln": {
+            "n1_r1": "checkpoints/biotisr-3d-factin-1/rln/rln_mae_bs_4_lr_0.01_v3_even_id_0_1/epoch_2999_iter_29999.pt"
         },
     },
-    "deepbacs-ecoli-ave2": {
+    "biotisr-3d-factin-2": {
         "forward": {
-            "n1_r1": "checkpoints/deepbacs-ecoli-ave2/kernelnet/forward/kernet_fp_bs_1_lr_0.001_ker_31_mse_over2_inter_normx_fft_ts_0_1_s100_v2/epoch_499_499.pt"
+            "n1_r1": "checkpoints/biotisr-3d-factin-2/kernelnet/forward/kernet_fp_bs_1_lr_0.01_ker_(5, 31, 31)_mse_over2_inter_normx_fft_ts_0_1_s100_v3/epoch_999_999.pt"
         },
         "backward": {
-            "n1_r1_iter2": "checkpoints/deepbacs-ecoli-ave2/kernelnet/backward/kernet_bs_1_lr_0.0001_iter_2_ker_31_mse_over2_inter_fp_normx_bp_norm_fft_ts_0_1_v2/epoch_9999_9999.pt"
+            "n1_r1_iter2": "checkpoints/biotisr-3d-factin-2/kernelnet/backward/kernet_bs_1_lr_1e-05_iter_2_ker_(5, 31, 31)_mse_over2_inter_fp_normx_bp_norm_fft_ts_0_1_v3/epoch_9999_9999.pt",
+            "n1_r1_iter5": "checkpoints/biotisr-3d-factin-2/kernelnet/backward/kernet_bs_1_lr_1e-05_iter_5_ker_(5, 31, 31)_mse_over2_inter_fp_normx_bp_norm_fft_ts_0_1_v3/epoch_9999_9999.pt",
+        },
+        "rln": {
+            "n1_r1": "checkpoints/biotisr-3d-factin-2/rln/rln_mae_bs_4_lr_0.01_v3_even_id_0_1/epoch_2999_iter_29999.pt",
         },
     },
-    "deepbacs-saureus": {
+    # --------------------------------------------------------------------------
+    "biotisr-3d-mt-1": {
         "forward": {
-            "n1_r1": "checkpoints/deepbacs-saureus/kernelnet/forward/kernet_fp_bs_1_lr_0.001_ker_31_mse_over2_inter_normx_fft_ts_0_1_s100_v2/epoch_499_499.pt"
+            "n1_r1": "checkpoints/biotisr-3d-mt-1/kernelnet/forward/kernet_fp_bs_1_lr_0.01_ker_(7, 31, 31)_mse_over2_inter_normx_fft_ts_0_1_s100_v3/epoch_999_999.pt"
         },
         "backward": {
-            "n1_r1_iter2": "checkpoints/deepbacs-saureus/kernelnet/backward/kernet_bs_1_lr_0.0001_iter_2_ker_31_mse_over2_inter_fp_normx_bp_norm_fft_ts_0_1_v2/epoch_9999_9999.pt"
+            "n1_r1_iter2": "checkpoints/biotisr-3d-mt-1/kernelnet/backward/kernet_bs_1_lr_1e-05_iter_2_ker_(7, 31, 31)_mse_over2_inter_fp_normx_bp_norm_fft_ts_0_1_v3/epoch_9999_9999.pt",
+            "n1_r1_iter5": "checkpoints/biotisr-3d-mt-1/kernelnet/backward/kernet_bs_1_lr_1e-05_iter_5_ker_(7, 31, 31)_mse_over2_inter_fp_normx_bp_norm_fft_ts_0_1_v3/epoch_9999_9999.pt",
+        },
+        "rln": {
+            "n1_r1": "checkpoints/biotisr-3d-mt-1/rln/rln_mae_bs_4_lr_0.01_v3_even_id_0_1/epoch_2999_iter_29999.pt"
         },
     },
-    "deepbacs-saureus-ave2": {
-        "forward": {
-            "n1_r1": "checkpoints/deepbacs-saureus-ave2/kernelnet/forward/kernet_fp_bs_1_lr_0.001_ker_31_mse_over2_inter_normx_fft_ts_0_1_s100_v2/epoch_499_499.pt"
-        },
-        "backward": {
-            "n1_r1_iter2": "checkpoints/deepbacs-saureus-ave2/kernelnet/backward/kernet_bs_1_lr_0.0001_iter_2_ker_31_mse_over2_inter_fp_normx_bp_norm_fft_ts_0_1_v2/epoch_9999_9999.pt"
-        },
-    },
-    # "biotisr-ccps-1",
-    # "biotisr-ccps-2",
-    # "biotisr-ccps-3",
-    # "biotisr-factin-1",
-    # "biotisr-factin-2",
-    # "biotisr-factin-3",
-    # "biotisr-factin-nonlinear-1",
-    # "biotisr-factin-nonlinear-2",
-    # "biotisr-factin-nonlinear-3",
-    # "biotisr-lysosomes-1",
-    # "biotisr-lysosomes-2",
-    "biotisr-lysosomes-3": {
-        "forward": {
-            "n1_r1": "checkpoints/biotisr-lysosomes-3/kernelnet/forward/kernet_fp_bs_1_lr_0.001_ker_31_mse_over2_inter_normx_fft_ts_0_1_s100_v2/epoch_499_499.pt"
-        },
-        "backward": {
-            "n1_r1_iter2": "checkpoints/biotisr-lysosomes-3/kernelnet/backward/kernet_bs_1_lr_0.0001_iter_2_ker_31_mse_over2_inter_fp_normx_bp_norm_fft_ts_0_1_v2/epoch_9999_9999.pt"
-        },
-    },
-    # "biotisr-mt-1",
-    # "biotisr-mt-2",
-    "biotisr-mt-3": {
-        "forward": {
-            "n1_r1": "checkpoints/biotisr-mt-3/kernelnet/forward/kernet_fp_bs_1_lr_0.001_ker_31_mse_over2_inter_normx_fft_ts_0_1_s100_v2/epoch_499_499.pt"
-        },
-        "backward": {
-            "n1_r1_iter2": "checkpoints/biotisr-mt-3/kernelnet/backward/kernet_bs_1_lr_0.0001_iter_2_ker_31_mse_over2_inter_fp_normx_bp_norm_fft_ts_0_1_v2/epoch_9999_9999.pt"
-        },
-    },
-    # "biotisr-mito-1",
-    # "biotisr-mito-2",
-    # "biotisr-mito-3",
-    "w2s-0-sim-ave": {
-        "forward": {
-            "n1_r1": "checkpoints/w2s-0-sim-ave/kernelnet/forward/kernet_fp_bs_1_lr_0.001_ker_31_mse_over2_inter_normx_fft_ts_0_1_s100_v2/epoch_499_499.pt"
-        },
-        "backward": {
-            "n1_r1_iter2": "checkpoints/w2s-0-sim-ave/kernelnet/backward/kernet_bs_1_lr_0.0001_iter_2_ker_31_mse_over2_inter_fp_normx_bp_norm_fft_ts_0_1_v2/epoch_9999_9999.pt"
-        },
-    },
-    # "w2s-0-wf-ave-400",
-    "w2s-1-sim-ave": {
-        "forward": {
-            "n1_r1": "checkpoints/w2s-1-sim-ave/kernelnet/forward/kernet_fp_bs_1_lr_0.001_ker_31_mse_over2_inter_normx_fft_ts_0_1_s100_v2/epoch_499_499.pt"
-        },
-        "backward": {
-            "n1_r1_iter2": "checkpoints/w2s-1-sim-ave/kernelnet/backward/kernet_bs_1_lr_0.0001_iter_2_ker_31_mse_over2_inter_fp_normx_bp_norm_fft_ts_0_1_v2/epoch_9999_9999.pt"
-        },
-    },
-    # "w2s-1-wf-ave-400",
-    "w2s-2-sim-ave": {
-        "forward": {
-            "n1_r1": "checkpoints/w2s-2-sim-ave/kernelnet/forward/kernet_fp_bs_1_lr_0.001_ker_31_mse_over2_inter_normx_fft_ts_0_1_s100_v2/epoch_499_499.pt"
-        },
-        "backward": {
-            "n1_r1_iter2": "checkpoints/w2s-2-sim-ave/kernelnet/backward/kernet_bs_1_lr_0.0001_iter_2_ker_31_mse_over2_inter_fp_normx_bp_norm_fft_ts_0_1_v2/epoch_9999_9999.pt"
-        },
-    },
-    # "w2s-2-wf-ave-400",
-    # "biotisr-3d-factin-1",
-    # "biotisr-3d-factin-2",
-    # "biotisr-3d-mt-1",
     "biotisr-3d-mt-2": {
         "forward": {
-            "n1_r1": "checkpoints/biotisr-3d-mt-2/kernelnet/forward/kernet_fp_bs_1_lr_0.01_ker_31_mse_over2_inter_normx_fft_ts_0_1_s100_v2/epoch_499_499.pt"
+            # "n1_r1": "checkpoints/biotisr-3d-mt-2/kernelnet/forward/kernet_fp_bs_1_lr_0.01_ker_31_mse_over2_inter_normx_fft_ts_0_1_s100_v2/epoch_499_499.pt"
+            "n1_r1": "checkpoints/biotisr-3d-mt-2/kernelnet/forward/kernet_fp_bs_1_lr_0.01_ker_(7, 31, 31)_mse_over2_inter_normx_fft_ts_0_1_s100_v3/epoch_999_999.pt"
         },
         "backward": {
-            "n1_r1_iter2": "checkpoints/biotisr-3d-mt-2/kernelnet/backward/kernet_bs_1_lr_1e-05_iter_2_ker_31_mse_over2_inter_fp_normx_bp_norm_fft_ts_0_1_v2/epoch_9999_9999.pt"
+            # "n1_r1_iter2": "checkpoints/biotisr-3d-mt-2/kernelnet/backward/kernet_bs_1_lr_1e-05_iter_2_ker_31_mse_over2_inter_fp_normx_bp_norm_fft_ts_0_1_v2/epoch_9999_9999.pt"
+            "n1_r1_iter2": "checkpoints/biotisr-3d-mt-2/kernelnet/backward/kernet_bs_1_lr_1e-05_iter_2_ker_(7, 31, 31)_mse_over2_inter_fp_normx_bp_norm_fft_ts_0_1_v3/epoch_9999_9999.pt",
+            "n1_r1_iter5": "checkpoints/biotisr-3d-mt-2/kernelnet/backward/kernet_bs_1_lr_1e-05_iter_5_ker_(7, 31, 31)_mse_over2_inter_fp_normx_bp_norm_fft_ts_0_1_v3/epoch_9999_9999.pt",
+        },
+        "rln": {
+            "n1_r1": "checkpoints/biotisr-3d-mt-2/rln/rln_mae_bs_4_lr_0.01_v3_even_id_0_1/epoch_2999_iter_29999.pt"
         },
     },
-    # "biotisr-3d-mito-1",
+    # --------------------------------------------------------------------------
+    "biotisr-3d-mito-1": {
+        "forward": {
+            "n1_r1": "checkpoints/biotisr-3d-mito-1/kernelnet/forward/kernet_fp_bs_1_lr_0.01_ker_(9, 31, 31)_mse_over2_inter_normx_fft_ts_0_1_s100_v3/epoch_999_999.pt"
+        },
+        "backward": {
+            "n1_r1_iter2": "checkpoints/biotisr-3d-mito-1/kernelnet/backward/kernet_bs_1_lr_1e-05_iter_2_ker_(9, 31, 31)_mse_over2_inter_fp_normx_bp_norm_fft_ts_0_1_v3/epoch_9999_9999.pt",
+            "n1_r1_iter5": "checkpoints/biotisr-3d-mito-1/kernelnet/backward/kernet_bs_1_lr_1e-05_iter_5_ker_(9, 31, 31)_mse_over2_inter_fp_normx_bp_norm_fft_ts_0_1_v3/epoch_9999_9999.pt",
+        },
+        "rln": {
+            "n1_r1": "checkpoints/biotisr-3d-mito-1/rln/rln_mae_bs_4_lr_0.01_v3_even_id_0_1/epoch_2999_iter_29999.pt"
+        },
+    },
     "biotisr-3d-mito-2": {
         "forward": {
-            "n1_r1": "checkpoints/biotisr-3d-mito-2/kernelnet/forward/kernet_fp_bs_1_lr_0.01_ker_31_mse_over2_inter_normx_fft_ts_0_1_s100_v2/epoch_499_499.pt"
+            "n1_r1": "checkpoints/biotisr-3d-mito-2/kernelnet/forward/kernet_fp_bs_1_lr_0.01_ker_(9, 31, 31)_mse_over2_inter_normx_fft_ts_0_1_s100_v3/epoch_999_999.pt"
         },
         "backward": {
-            "n1_r1_iter2": "checkpoints/biotisr-3d-mito-2/kernelnet/backward/kernet_bs_1_lr_1e-05_iter_2_ker_31_mse_over2_inter_fp_normx_bp_norm_fft_ts_0_1_v2/epoch_9999_9999.pt"
+            "n1_r1_iter2": "checkpoints/biotisr-3d-mito-2/kernelnet/backward/kernet_bs_1_lr_1e-05_iter_2_ker_(9, 31, 31)_mse_over2_inter_fp_normx_bp_norm_fft_ts_0_1_v3/epoch_9999_9999.pt",
+            "n1_r1_iter5": "checkpoints/biotisr-3d-mito-2/kernelnet/backward/kernet_bs_1_lr_1e-05_iter_5_ker_(9, 31, 31)_mse_over2_inter_fp_normx_bp_norm_fft_ts_0_1_v3/epoch_9999_9999.pt",
+        },
+        "rln": {
+            "n1_r1": "checkpoints/biotisr-3d-mito-2/rln/rln_mae_bs_4_lr_0.01_v3_even_id_0_1/epoch_2999_iter_29999.pt"
         },
     },
-    "biotisr-3d-mito-2-k5": {
-        "forward": {
-            "n1_r1": "checkpoints/biotisr-3d-mito-2-k5/kernelnet/forward/kernet_fp_bs_1_lr_0.01_ker_31_mse_over2_inter_normx_fft_ts_0_1_s100_v2/epoch_499_499.pt"
-        },
-        "backward": {
-            "n1_r1_iter2": "checkpoints/biotisr-3d-mito-2-k5/kernelnet/backward/kernet_bs_1_lr_1e-05_iter_2_ker_31_mse_over2_inter_fp_normx_bp_norm_fft_ts_0_1_v2/epoch_9999_9999.pt"
-        },
-    },
+    # --------------------------------------------------------------------------
 }

@@ -470,7 +470,7 @@ def MSSSIM(img_true, img_test, data_range=None, ndim=2, win_size=11, interp_sf=1
             msssim = np.mean(msssim_each_slice)
         else:
             msssim = ms_ssim(img_true, img_test, **dict_msssim)
-    return msssim.numpy()
+    return float(msssim.numpy())
 
 
 def measure(img_true, img_test, data_range=255):

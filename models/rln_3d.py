@@ -489,15 +489,6 @@ class RLN3D(nn.Module):
             input=x, scale_factor=self.scale, mode="trilinear", align_corners=False
         )
 
-        # pad x to even size
-        in_shape = x.shape
-        if x.shape[2] % 2 == 1:
-            x = nn.functional.pad(x, (0, 0, 0, 0, 0, 1), mode="replicate")
-        if x.shape[3] % 2 == 1:
-            x = nn.functional.pad(x, (0, 1, 0, 0, 0, 0), mode="replicate")
-        if x.shape[4] % 2 == 1:
-            x = nn.functional.pad(x, (0, 0, 0, 1, 0, 0), mode="replicate")
-
         # H1 -------------------------------------------------------------------
         Iap = self.ave_pool(x)
 
@@ -533,8 +524,6 @@ class RLN3D(nn.Module):
             out = self.conv_last(merge)
         else:
             out = torch.mean(input=merge, dim=1, keepdim=True)
-
-        out = out[:, :, : in_shape[2], : in_shape[3], : in_shape[4]]
         return out
 
 

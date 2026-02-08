@@ -15,6 +15,7 @@ from cupyx.scipy.ndimage import median_filter
 # filtering
 # gaussian_filtering = True
 gaussian_filtering = False
+
 # median_filtering = True
 median_filtering = False
 
@@ -25,11 +26,12 @@ average_pooling, scale_factor = False, 1
 
 # padding
 padding, padding_size = False, 1024
+# padding, padding_size = True, 1024
 
 # background subtraction
 # bkg_sub, bkg_value = True, 1100
-bkg_sub, bkg_value = True, None
-# bkg_sub, bkg_value = True, 100.0
+# bkg_sub, bkg_value = True, None
+bkg_sub, bkg_value = True, 100.0
 # bkg_sub, bkg_value = False, None
 
 # outlier clipping
@@ -76,7 +78,7 @@ path_root = "E:\qiqilu\datasets_2"
 # path_dataset = "BioSR\\transformed\F-actin\\noise_12_sf_1\\raw"
 # path_raw_txt = "BioSR\\transformed\F-actin\\all.txt"
 
-path_dataset = "BioSR\\transformed\F-actin_Nonlinear\\noise_1_sf_1\\raw"
+# path_dataset = "BioSR\\transformed\F-actin_Nonlinear\\noise_1_sf_1\\raw"
 # path_dataset = "BioSR\\transformed\F-actin_Nonlinear\\noise_2_sf_1\\raw"
 # path_dataset = "BioSR\\transformed\F-actin_Nonlinear\\noise_3_sf_1\\raw"
 # path_dataset = "BioSR\\transformed\F-actin_Nonlinear\\noise_4_sf_1\\raw"
@@ -85,7 +87,7 @@ path_dataset = "BioSR\\transformed\F-actin_Nonlinear\\noise_1_sf_1\\raw"
 # path_dataset = "BioSR\\transformed\F-actin_Nonlinear\\noise_7_sf_1\\raw"
 # path_dataset = "BioSR\\transformed\F-actin_Nonlinear\\noise_8_sf_1\\raw"
 # path_dataset = "BioSR\\transformed\F-actin_Nonlinear\\noise_9_sf_1\\raw"
-path_raw_txt = "BioSR\\transformed\F-actin_Nonlinear\\all.txt"
+# path_raw_txt = "BioSR\\transformed\F-actin_Nonlinear\\all.txt"
 
 # path_dataset = "BioSR\\transformed\Microtubules2\\noise_1_sf_1\\raw"
 # path_dataset = "BioSR\\transformed\Microtubules2\\noise_2_sf_1\\raw"
@@ -171,8 +173,8 @@ path_raw_txt = "BioSR\\transformed\F-actin_Nonlinear\\all.txt"
 
 # path_dataset = "BioTISR\\transformed\Microtubules-3D\SIM_remove_last_t0"
 # path_dataset = "BioTISR\\transformed\Microtubules-3D\WF_noise_level_1_remove_last_t0"
-# path_dataset = "BioTISR\\transformed\Microtubules-3D\WF_noise_level_2_remove_last_t0"
-# path_raw_txt = "BioTISR\\transformed\Microtubules-3D\\all.txt"
+path_dataset = "BioTISR\\transformed\Microtubules-3D\WF_noise_level_2_remove_last_t0"
+path_raw_txt = "BioTISR\\transformed\Microtubules-3D\\all.txt"
 
 
 # ------------------------------------------------------------------------------

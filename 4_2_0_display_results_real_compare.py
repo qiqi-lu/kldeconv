@@ -21,11 +21,13 @@ from scipy.stats import wilcoxon
 
 plt.rcParams["svg.fonttype"] = "none"
 # ------------------------------------------------------------------------------
-subgroup, show_image, show_statistic = "2d_real", True, True
-# subgroup, show_image, show_statistic = "3d_real", True, True
+# subgroup, show_image, show_statistic = "2d_real", True, True
+# subgroup, show_image, show_statistic = "2d_real", False, True
+subgroup, show_image, show_statistic = "3d_real", True, False
+# subgroup, show_image, show_statistic = "3d_real", False, True
 # subgroup, show_image, show_statistic = "2d_real_many", False, True
-num_samples = 3
-num_samples = 20
+# num_samples_max = 3
+num_samples_max = 10
 show_patch = True
 
 # ------------------------------------------------------------------------------
@@ -36,10 +38,38 @@ settings = {
             # dataset_name | dataset_id | id sample | roi pos (y0,x0,y1,x1)
             # ------------------------------------------------------------------
             # ('F-actin',"F-actin-nonlinear-9", 5, (200, 100, 250, 150)),
-            ("CCP", "CCPs-9", 0, (200, 100, 250, 150)),
-            ("MT", "Microtubules2-9", 0, (100, 200, 200, 300)),
-            ("ER", "ER-6", 0, (100, 200, 200, 300)),
-            ("F-actin", "F-actin-9", 0, (100, 200, 200, 300)),
+            # ("CCP", "CCPs-9", 0, (200, 100, 250, 150)),
+            # ("MT", "Microtubules2-9", 0, (100, 200, 200, 300)),
+            # ("ER", "ER-6", 0, (100, 200, 200, 300)),
+            # ("F-actin", "F-actin-9", 0, (100, 200, 200, 300)),
+            # ("CCP (BioTISR)-1", "biotisr-ccps-1", 0, (200, 100, 250, 150)),
+            # ("CCP (BioTISR)-2", "biotisr-ccps-2", 0, (200, 100, 250, 150)),
+            ("CCP (BioTISR)-3", "biotisr-ccps-3", 0, (200, 100, 250, 150)),
+            # ("F-actin (BioTISR)-1", "biotisr-factin-1", 0, (200, 100, 250, 150)),
+            # ("F-actin (BioTISR)-2", "biotisr-factin-2", 0, (200, 100, 250, 150)),
+            ("F-actin (BioTISR)-3", "biotisr-factin-3", 0, (200, 100, 250, 150)),
+            # ("F-actin-nl (BioTISR)-1", "biotisr-factin-nonlinear-1", 0, (200, 100, 250, 150)),
+            # ("F-actin-nl (BioTISR)-2", "biotisr-factin-nonlinear-2", 0, (200, 100, 250, 150)),
+            (
+                "F-actin-nl (BioTISR)-3",
+                "biotisr-factin-nonlinear-3",
+                0,
+                (200, 100, 250, 150),
+            ),
+            # ("lysosomes (BioTISR)-1", "biotisr-lysosomes-1", 0, (200, 100, 250, 150)),
+            # ("lysosomes (BioTISR)-2", "biotisr-lysosomes-2", 0, (200, 100, 250, 150)),
+            ("lysosomes (BioTISR)-3", "biotisr-lysosomes-3", 0, (200, 100, 250, 150)),
+            # ("Mito (BioTISR)-1", "biotisr-mito-1", 0, (200, 100, 250, 150)),
+            # ("Mito (BioTISR)-2", "biotisr-mito-2", 0, (200, 100, 250, 150)),
+            # ("Mito (BioTISR)-3", "biotisr-mito-3", 0, (200, 100, 250, 150)),
+            # ("MT (BioTISR)-1", "biotisr-mt-1", 0, (200, 100, 250, 150)),
+            # ("MT (BioTISR)-2", "biotisr-mt-2", 0, (200, 100, 250, 150)),
+            # ("MT (BioTISR)-3", "biotisr-mt-3", 0, (200, 100, 250, 150)),
+            # ("E.coli", "deepbacs-ecoli-ave2", 0, (200, 100, 250, 150)),
+            # ("S.aureus", "deepbacs-saureus-ave2", 0, (200, 100, 250, 150)),
+            # ("W2S-0", "w2s-0-sim-ave", 0, (200, 100, 250, 150)),
+            # ("W2S-1", "w2s-1-sim-ave", 0, (200, 100, 250, 150)),
+            # ("W2S-2", "w2s-2-sim-ave", 0, (200, 100, 250, 150)),
         ),
         "methods": (
             # ------------------------------------------------------------------
@@ -51,27 +81,80 @@ settings = {
             ("KLD", "kernelnet", "y_pred_all.tif", 2, "#D95D5B"),
         ),
         "ndim": 2,
+        "ticks_boxplot": {
+            "PSNR": (np.round(np.linspace(0, 60, 25), decimals=1), (25, None)),
+            "MS-SSIM": (np.round(np.linspace(0.0, 1.0, 21), decimals=2), (0.8, 1.0)),
+            "ZNCC": (np.round(np.linspace(0.0, 1.0, 21), decimals=2), (0.7, 1.0)),
+        },
     },
     "3d_real": {
         "datasets": (
             # ------------------------------------------------------------------
             # dataset name | dataset id | sample id | slice id | roi pos | xz plane (y,x0,x1)
+            # (
+            #     "MT",
+            #     "Microtubule2-3d-1024",
+            #     0,
+            #     1,
+            #     (122, 360, 322, 560),
+            #     (512, 100, 200),
+            # ),
+            # (
+            #     "NPC",
+            #     "Nuclear-pore-complex2-1024",
+            #     0,
+            #     1,
+            #     (200, 200, 300, 300),
+            #     (512, 100, 200),
+            # ),
+            # (
+            #     "MT (BioTISR)-1",
+            #     "biotisr-3d-mt-1",
+            #     0,
+            #     1,
+            #     (122, 360, 272, 510),
+            #     (128, 100, 200),
+            # ),
+            # (
+            #     "MT (BioTISR)-2",
+            #     "biotisr-3d-mt-2",
+            #     0,
+            #     1,
+            #     (122, 360, 272, 510),
+            #     (128, 100, 200),
+            # ),
             (
-                "MT-3D",
-                "Microtubule2-3d-1024",
+                "mito (BioTISR)-1",
+                "biotisr-3d-mito-1",
                 0,
                 1,
-                (200, 200, 300, 300),
-                (512, 100, 200),
+                (122, 360, 272, 510),
+                (128, 100, 200),
             ),
             (
-                "NPC-3D",
-                "Nuclear-pore-complex2-1024",
+                "mito (BioTISR)-2",
+                "biotisr-3d-mito-2",
                 0,
                 1,
-                (200, 200, 300, 300),
-                (512, 100, 200),
+                (122, 360, 272, 510),
+                (128, 100, 200),
             ),
+            # (
+            #     "F-actin (BioTISR)-1",
+            #     "biotisr-3d-factin-1",
+            #     0,
+            #     1,
+            #     (122, 360, 272, 510),
+            #     (128, 100, 200),
+            # ),
+            # (
+            #     "F-actin (BioTISR)-2",
+            #     "biotisr-3d-factin-2",
+            #     0,
+            #     1,
+            #     (122, 360, 272, 510),
+            #     (128, 100, 200),
+            # ),
         ),
         "methods": (
             ("DeconvBlind", "deconvblind", "deconv.tif", 2, "#42B4B5"),
@@ -80,6 +163,11 @@ settings = {
             ("KLD", "kernelnet", "y_pred_all.tif", 2, "#D95D5B"),
         ),
         "ndim": 3,
+        "ticks_boxplot": {
+            "PSNR": (np.round(np.linspace(0, 60, 25), decimals=1), (12.5, None)),
+            "MS-SSIM": (np.round(np.linspace(0.0, 1.0, 11), decimals=2), (0.45, 1.0)),
+            "ZNCC": (np.round(np.linspace(0.0, 1.0, 11), decimals=2), (0.25, 1.0)),
+        },
     },
 }
 
@@ -120,12 +208,12 @@ print("-" * 80)
 print(f"[INFO] methods titles: {methods_names}")
 
 # ------------------------------------------------------------------------------
-# load results from different methods nad datasets
+# load one sample from each dataset and method
 # ------------------------------------------------------------------------------
-results_all = []
+results_one = []
 for i_dataset in range(num_datasets):
     # load results
-    dataset_id = datasets_info[i_dataset][1]
+    _, dataset_id, id_sample_show, _, _, _ = datasets_info[i_dataset]
     path_result = os.path.join(path_root_prediction, dataset_id)
 
     print("-" * 80)
@@ -134,68 +222,53 @@ for i_dataset in range(num_datasets):
     info = info_df[info_df["id"] == dataset_id].iloc[0]
     path_raw, path_gt = win2linux(info["path_lr"]), win2linux(info["path_hr"])
     filenames = read_txt(win2linux(info["path_txt"]))
-
     # --------------------------------------------------------------------------
-    results = []
-    pbar = tqdm.tqdm(total=num_samples, desc="[INFO] Load results", ncols=80)
-    for i_sample in range(num_samples):
-        pbar.update(1)
-        results_ss = []
-        # load raw and gt images
-        x = io.imread(os.path.join(path_raw, filenames[i_sample]))
-        y = io.imread(os.path.join(path_gt, filenames[i_sample]))
-        results_ss.append(x.astype(np.float32))
+    results_meth = []
+    # load raw and gt images
+    x = io.imread(os.path.join(path_raw, filenames[id_sample_show]))
+    y = io.imread(os.path.join(path_gt, filenames[id_sample_show]))
+    results_meth.append(x.astype(np.float32))
 
-        filename_wo_ext = filenames[i_sample].split(".")[0]
-        for i_meth in range(num_methods):
-            meth_name, meth_id, meth_filename, num_iter_train = methods_info[i_meth][:4]
+    filename_wo_ext = filenames[id_sample_show].split(".")[0]
+    for i_meth in range(num_methods):
+        meth_name, meth_id, meth_filename, num_iter_train = methods_info[i_meth][:4]
 
-            # load restoed image from KLDeconv method --------------------------
-            if meth_name == "KLD":
-                path_tmp = os.path.join(
-                    path_result,
-                    meth_id,
-                    dataset_id,
-                    "fp_n1_r1_bp_n1_r1",
-                    f"train_iter_{num_iter_train}",
-                    filename_wo_ext,
-                )
-                y_pred = io.imread(os.path.join(path_tmp, "y_pred_all.tif"))
+        # load restoed image from KLDeconv method --------------------------
+        if meth_name == "KLD":
+            path_tmp = os.path.join(
+                path_result,
+                meth_id,
+                dataset_id,
+                "fp_n1_r1_bp_n1_r1",
+                f"train_iter_{num_iter_train}",
+                filename_wo_ext,
+            )
+            y_pred = io.imread(os.path.join(path_tmp, "y_pred_all.tif"))
 
-                # the imread funciton will automaticly reshape the results
-                # when having 3 channels.
-                if (ndim == 2) and (y_pred.shape[-1] in [3, 4]):
-                    y_pred = np.transpose(y_pred, axes=(-1, 0, 1))
-                y_pred = y_pred[-1]
-            elif meth_name in ["DFCAN", "RLN"]:
-                path_tmp = os.path.join(
-                    path_result,
-                    meth_id,
-                    dataset_id,
-                    "n1_r1",
-                    filename_wo_ext,
-                    meth_filename,
-                )
-                y_pred = io.imread(path_tmp)
-            else:
-                path_tmp = os.path.join(
-                    path_result, meth_id, filename_wo_ext, meth_filename
-                )
-                y_pred = io.imread(path_tmp)
+            # the imread funciton will automaticly reshape the results
+            # when having 3 channels.
+            if (ndim == 2) and (y_pred.shape[-1] in [3, 4]):
+                y_pred = np.transpose(y_pred, axes=(-1, 0, 1))
+            y_pred = y_pred[-1]
+        elif meth_name in ["DFCAN", "RLN"]:
+            path_tmp = os.path.join(
+                path_result,
+                meth_id,
+                dataset_id,
+                "n1_r1",
+                filename_wo_ext,
+                meth_filename,
+            )
+            y_pred = io.imread(path_tmp)
+        else:
+            path_tmp = os.path.join(
+                path_result, meth_id, filename_wo_ext, meth_filename
+            )
+            y_pred = io.imread(path_tmp)
 
-            results_ss.append(y_pred.astype(np.float32))
-        results_ss.append(y.astype(np.float32))
-        results.append(results_ss)
-    pbar.close()
-    results_all.append(results)
-
-
-print("-" * 80)
-print(f"[INFO] Num of datasets: {len(results_all)}")
-print(f"[INFO] Num of samples : {len(results_all[0])}")
-print(f"[INFO] Num of methods (+ raw and gt): {len(results_all[0][0])}")
-print(f"[INFO] Shape of image : {results_all[0][0][0].shape}")
-print("-" * 80)
+        results_meth.append(y_pred.astype(np.float32))
+    results_meth.append(y.astype(np.float32))
+    results_one.append(results_meth)
 
 # ------------------------------------------------------------------------------
 # show one sample of each dataset
@@ -243,7 +316,7 @@ if show_image:
             id_slice_xy = round((id_slice_xy + 1) * slice_space / pixel_size) - 1
 
         # ----------------------------------------------------------------------
-        results = results_all[i_dataset][id_sample]
+        results = results_one[i_dataset]
 
         # gt image
         img_gt = np.clip(normalizer(results[-1]), **dict_clip)
@@ -251,6 +324,9 @@ if show_image:
         # restored image from different methods
         for i_meth in range(len(results)):
             img = np.clip(normalizer(results[i_meth]), **dict_clip)
+            dict_eva = dict(img_true=img_gt, img_test=img)
+            psnr = eva.PSNR(data_range=data_range, **dict_eva)
+            ssim = eva.MSSSIM(data_range=data_range, **dict_eva)
 
             # colorize image ---------------------------------------------------
             if ndim == 2:
@@ -299,9 +375,6 @@ if show_image:
 
             # add metrics value ------------------------------------------------
             if i_meth != len(results) - 1:
-                dict_eva = dict(img_true=img_gt, img_test=img)
-                psnr = eva.PSNR(data_range=data_range, **dict_eva)
-                ssim = eva.MSSSIM(data_range=data_range, **dict_eva)
                 ax_t.text(
                     s=f"{psnr:.2f} | {ssim:.4f}",
                     transform=ax_t.transAxes,
@@ -362,7 +435,86 @@ if show_image:
         os.path.join(path_root_figure, f"image_restored_compare_{subgroup}.svg")
     )
 
-# os._exit(0)
+os._exit(0)
+
+# ------------------------------------------------------------------------------
+# load all the results from different methods and datasets
+# ------------------------------------------------------------------------------
+results_all = []
+for i_dataset in range(num_datasets):
+    # load results
+    dataset_id = datasets_info[i_dataset][1]
+    path_result = os.path.join(path_root_prediction, dataset_id)
+
+    print("-" * 80)
+    print("[INFO] Load results from :", path_result)
+
+    info = info_df[info_df["id"] == dataset_id].iloc[0]
+    path_raw, path_gt = win2linux(info["path_lr"]), win2linux(info["path_hr"])
+    filenames = read_txt(win2linux(info["path_txt"]))
+
+    num_samples = min(num_samples_max, len(filenames))
+    # --------------------------------------------------------------------------
+    results = []
+    pbar = tqdm.tqdm(total=num_samples, desc="[INFO] Load results", ncols=80)
+    for i_sample in range(num_samples):
+        pbar.update(1)
+        results_ss = []
+        # load raw and gt images
+        x = io.imread(os.path.join(path_raw, filenames[i_sample]))
+        y = io.imread(os.path.join(path_gt, filenames[i_sample]))
+        results_ss.append(x.astype(np.float32))
+
+        filename_wo_ext = filenames[i_sample].split(".")[0]
+        for i_meth in range(num_methods):
+            meth_name, meth_id, meth_filename, num_iter_train = methods_info[i_meth][:4]
+
+            # load restoed image from KLDeconv method --------------------------
+            if meth_name == "KLD":
+                path_tmp = os.path.join(
+                    path_result,
+                    meth_id,
+                    dataset_id,
+                    "fp_n1_r1_bp_n1_r1",
+                    f"train_iter_{num_iter_train}",
+                    filename_wo_ext,
+                )
+                y_pred = io.imread(os.path.join(path_tmp, "y_pred_all.tif"))
+
+                # the imread funciton will automaticly reshape the results
+                # when having 3 channels.
+                if (ndim == 2) and (y_pred.shape[-1] in [3, 4]):
+                    y_pred = np.transpose(y_pred, axes=(-1, 0, 1))
+                y_pred = y_pred[-1]
+            elif meth_name in ["DFCAN", "RLN"]:
+                path_tmp = os.path.join(
+                    path_result,
+                    meth_id,
+                    dataset_id,
+                    "n1_r1",
+                    filename_wo_ext,
+                    meth_filename,
+                )
+                y_pred = io.imread(path_tmp)
+            else:
+                path_tmp = os.path.join(
+                    path_result, meth_id, filename_wo_ext, meth_filename
+                )
+                y_pred = io.imread(path_tmp)
+
+            results_ss.append(y_pred.astype(np.float32))
+        results_ss.append(y.astype(np.float32))
+        results.append(results_ss)
+    pbar.close()
+    results_all.append(results)
+
+
+print("-" * 80)
+print(f"[INFO] Num of datasets: {len(results_all)}")
+for res in results_all:
+    print(f"[INFO] num of samples: {len(res)}, shape of image: {res[0][0].shape}")
+print("-" * 80)
+
 # ------------------------------------------------------------------------------
 # statistics analysis
 # ------------------------------------------------------------------------------
@@ -372,11 +524,12 @@ if show_statistic:
     # --------------------------------------------------------------------------
     # calculate the metrics value of each method
     metrics_dataset = []
+    pbar_ana = tqdm.tqdm(total=num_datasets, desc="[INFO] Analysis", ncols=80)
     for i_dataset in range(num_datasets):
+        pbar_ana.update(1)
         metrics_sample = []
-        for i_sample in range(num_samples):
-            results = results_all[i_dataset][i_sample]
-
+        res_samples = results_all[i_dataset]
+        for results in res_samples:
             img_gt = results[-1]
             img_gt = np.clip(normalizer(img_gt), **dict_clip)
 
@@ -392,10 +545,9 @@ if show_statistic:
                 metrics_meth.append([psnr, ssim, zncc])
             metrics_sample.append(metrics_meth)
         metrics_dataset.append(metrics_sample)
-
-    # calculate the mean and std of each method
+    pbar_ana.close()
     # (N_dataset, N_sample, N_meth, N_metrics)
-    metrics_dataset = np.array(metrics_dataset)
+    # metrics_dataset = np.array(metrics_dataset)
 
     # --------------------------------------------------------------------------
     # calculate p-value
@@ -404,13 +556,15 @@ if show_statistic:
     pvalues_dataset = []  # (N_dataset, N_metrics, N_pairs)
     for i_dataset in range(num_datasets):
         pvalues_metrics = []
+        met = metrics_dataset[i_dataset]
+        met = np.array(met)  # (N_sample, N_meth, N_metrics)
         for i_metric in range(num_metrics):
             pvalues = []
             for i_pair in range(len(test_pairs)):
                 pair = test_pairs[i_pair]
                 test_result = wilcoxon(
-                    metrics_dataset[i_dataset, :, pair[0], i_metric],
-                    metrics_dataset[i_dataset, :, pair[1], i_metric],
+                    met[:, pair[0], i_metric],
+                    met[:, pair[1], i_metric],
                     alternative="two-sided",
                 )
                 pvalues.append(test_result[1])
@@ -418,7 +572,6 @@ if show_statistic:
         pvalues_dataset.append(pvalues_metrics)
     pvalues_dataset = np.array(pvalues_dataset)  # (N_dataset, N_metrics, N_pairs)
 
-    print(f"[INFO] metrics shape: {metrics_dataset.shape}")
     print(f"[INFO] pvalues shape : {pvalues_dataset.shape}")
     # --------------------------------------------------------------------------
     # transform the metric matrix into dataframe for seaborn
@@ -426,10 +579,10 @@ if show_statistic:
         columns=("dataset", "method", "metric", "id_sample", "value")
     )
     for i_dataset in range(num_datasets):
-        for i_meth in range(num_methods + 1):
+        for i_meth in range(len(metrics_dataset[i_dataset][0])):
             for i_metric in range(num_metrics):
-                for i_sample in range(num_samples):
-                    value = metrics_dataset[i_dataset, i_sample, i_meth, i_metric]
+                for i_sample in range(len(metrics_dataset[i_dataset])):
+                    value = metrics_dataset[i_dataset][i_sample][i_meth][i_metric]
                     df_metrics.loc[len(df_metrics)] = [
                         dataset_names[i_dataset],
                         methods_names[i_meth],
@@ -461,12 +614,8 @@ if show_statistic:
     for i_meth in range(num_methods):
         methods_color.append(methods_info[i_meth][4])
 
-    font_size = 14
-    dict_ticks = {
-        "PSNR": (np.round(np.linspace(0, 60, 25), decimals=1), (25, None)),
-        "MS-SSIM": (np.round(np.linspace(0.0, 1.0, 21), decimals=2), (0.8, 1.0)),
-        "ZNCC": (np.round(np.linspace(0.0, 1.0, 21), decimals=2), (0.7, 1.0)),
-    }
+    font_size = 10
+    dict_ticks = settings[subgroup]["ticks_boxplot"]
     # --------------------------------------------------------------------------
     nr, nc = num_metrics, 1
     # nr, nc = 1, num_metrics
@@ -499,18 +648,14 @@ if show_statistic:
         # add vline
         for i_dataset in range(num_datasets - 1):
             ax.axvline(x=i_dataset + 0.5, color="black", linestyle="--", linewidth=0.5)
-
         # disable the legend
         if i_metric != num_metrics - 1:
             ax.legend().set_visible(False)
-
         ax.set_ylabel(metric_name, fontsize=font_size)
         ax.set_xlabel("")
         ax.spines["top"].set_visible(False)
         ax.spines["right"].set_visible(False)
-
         ax.set_ylim(dict_ticks[metric_name][1])
-
         ax.tick_params(axis="both", which="major", labelsize=font_size)
 
         # # add p-value markers --------------------------------------------------
@@ -526,11 +671,10 @@ if show_statistic:
                 mid = num_methods / 2
                 star_x = (i_meth - mid) * step + i_dataset
 
-                # use the Q3+1.5IQR as star_y ----------------------------------
-                data_tmp = metrics_dataset[i_dataset, :, i_meth, i_metric]
-                Q1, Q3 = np.percentile(data_tmp, 25), np.percentile(data_tmp, 75)
-                star_y = Q3 + (Q3 - Q1) * 1.5
-
+                # get the y limit range of the boxplot
+                ylim = ax.get_ylim()
+                yrange = ylim[1] - ylim[0]
+                star_y = ylim[0] + yrange * 0.97
                 add_significant_star(
                     ax=ax, x=star_x, y=star_y, p_value=pvalues_tmp[i_pair]
                 )

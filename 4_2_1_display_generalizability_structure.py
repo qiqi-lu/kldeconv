@@ -441,8 +441,6 @@ plt.savefig(
 plt.savefig(
     os.path.join(path_figure, f"generalizability_structures_{model_id}_heatmap.svg")
 )
-# save source data -------------------------------------------------------------
-
 
 # ------------------------------------------------------------------------------
 # plot boxplot
@@ -504,6 +502,8 @@ for i_metric in range(len(metric_names)):
     ax.axvline(x=0.5, color="black", linestyle="--", linewidth=0.5)
     ax.axvline(x=1.5, color="black", linestyle="--", linewidth=0.5)
     ax.axvline(x=2.5, color="black", linestyle="--", linewidth=0.5)
+    ax.spines["top"].set_visible(False)
+    ax.spines["right"].set_visible(False)
 
     if metric_name in ["MS-SSIM", "ZNCC"]:
         ax.set_ylim([None, 1.0])
