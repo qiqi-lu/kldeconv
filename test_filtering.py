@@ -54,6 +54,8 @@ noise_level_gauss = 10
 img_blur_noise = np.random.poisson(img_blur) + noise_gauss * noise_level_gauss
 img_blur_noise = np.clip(img_blur_noise, 0, None)
 
+# ------------------------------------------------------------------------------
+# median filter
 img_blur_noise_median = median_filter(img_blur_noise, size=7)
 diff_median = img_blur_noise_median - img_blur
 mae_median = np.mean(np.abs(diff_median))

@@ -1,0 +1,61 @@
+clear all;close all;clc;
+% path_img = "E:\qiqilu\Project\2023 cytoSR\code\methods\background_removal\Dark-sectioning-main\MATLAB_Code\input\Mousekidney_561nm_1.49NA_65nm.tif"
+path_img = "E:\qiqilu\datasets_2\BioTISR\transformed\Mitochondria-3D\WF_noise_level_1_remove_last_t0_rescale_100.0_bkgsub_100.0\Cell_001_0.tif"
+image0 = double(imstackread(path_img));
+ewl = 509;
+NA= 1.41;
+pzs = 30.58;
+image1 = dark_sectioning(image0,610,1.49,65,2);
+% 610: emission wavelength(nm)
+% 1.49: NA
+% 65: pixelsize(nm)
+% 2: resolution factor
+image0 = image0/max(image0(:));
+image1 = image1/max(image1(:));
+
+%% show image
+% id_slice = floor(size(image0, 3)/2);
+id_slice = 7;
+subplot(1,2,1)
+imshow(squeeze(image0(:,:,id_slice)), Colormap=hot);
+subplot(1,2,2)
+imshow(squeeze(image1(:,:,id_slice)), Colormap=hot);
+
+%% process whole dataset
+path_dataset = "E:\qiqilu\datasets_2\BioTISR\transformed\Mitochondria-3D\";
+% path_folder = path_dataset+"WF_noise_level_2_remove_last_t0_rescale_100.0_bkgsub_100.0";
+path_folder = path_dataset+"WF_noise_level_1_remove_last_t0_rescale_100.0_bkgsub_100.0";
+path_save = path_folder+'_dark';
+if ~isfolder(path_save)
+    mkdir(path_save);
+end
+
+k = ["ewl", "NA", "px_size", "factor"];
+v = {509, 1.41, 30.58, 2};
+
+params = dictionary(k, v);
+path_txt = path_dataset+'\all.txt';
+
+% read txt to get all the file names
+filenames = readlines(path_txt);
+if filenames(end) == ""
+    filenames(end)=[];
+end
+
+% background removal
+num_file = size(filenames,1);
+% num_file = 2;
+disp('Start Dark algorithm ...')
+for i_img = 1: num_file
+    filename = filenames(i_img);
+    disp(filename)
+    path_file = path_folder+"\"+filename;
+    path_file_save = path_save + "\" + filename;
+    img = double(imstackread(path_file));
+    img_dark = dark_sectioning(img, params{'ewl'}, params{'NA'}, params{'px_size'}, params{'factor'});
+    img_dark = max(img_dark, 0.0);
+    img_dark = img_dark*(100.0/mean(img_dark(:)));
+    % save dark image
+    WriteTifStack(img_dark,path_file_save,32);
+end
+disp('Done!')

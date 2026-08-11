@@ -69,11 +69,11 @@ datasets_id = (
     # ----------------------------------------------------------------------
     # "SirDNA-1024",
     # ----------------------------------------------------------------------
-    "biotisr-3d-factin-1",
-    "biotisr-3d-factin-2",
-    "biotisr-3d-mt-1",
-    "biotisr-3d-mt-2",
-    "biotisr-3d-mito-1",
+    # "biotisr-3d-factin-1",
+    # "biotisr-3d-factin-2",
+    # "biotisr-3d-mt-1",
+    # "biotisr-3d-mt-2",
+    # "biotisr-3d-mito-1",
     "biotisr-3d-mito-2",
     # ----------------------------------------------------------------------
     # "ZeroShotDeconvNet-642",
@@ -114,7 +114,7 @@ datasets_id = (
 # ------------------------------------------------------------------------------
 for dataset_id in datasets_id:
     params = {
-        "device_id": "cuda:0",
+        "device_id": "cuda:1",
         "num_workers": 6,
         # --------------------------------------------------------------------------
         "batch_size": 1,
@@ -140,8 +140,8 @@ for dataset_id in datasets_id:
         # "sample_range": (0, 3),
         # "sample_range": (0, 4),
         # "sample_range": (0, 5),
-        "loss_function": "mse",
-        # "loss_function": "mae",
+        # "loss_function": "mse",
+        "loss_function": "mae",
         "use_lr_schedule": True,
         "scheduler_cus": {
             "lr": 0.00001,
@@ -178,6 +178,8 @@ for dataset_id in datasets_id:
 
     enable_median_filter = int(info["median_filter"])
     print(f"[INFO] Enable median filter: {enable_median_filter}")
+    enable_dark = int(info["dark"])
+    print(f"[INFO] Enable dark: {enable_dark}")
 
     path_fp = None
     if model_part == "backward" and params["FP_type"] == "pre-trained":
@@ -218,12 +220,14 @@ for dataset_id in datasets_id:
         suffix = f"_ker_{ker_size_fp}_{params['loss_function']}_over{params['over_sampling']}_inter_{norm_tag}_{params['conv_mode']}_ts_{params['sample_range'][0]}_{params['sample_range'][1]}_s100_v3"
         if enable_median_filter:
             suffix += "_median_in"
+        if enable_dark:
+            suffix += "_dark"
         params.update(
             {
                 "multi_out": False,
                 "self_supervised": False,
                 "optimizer_type": "adam",  # real data
-                # 'optimizer_type': 'lbfgs',
+                # "optimizer_type": "lbfgs",
                 "save_every_iter": 100,
                 "plot_every_iter": 2,
                 "val_every_iter": 100,
@@ -248,9 +252,13 @@ for dataset_id in datasets_id:
                 "num_iter": 5,
                 # "num_iter": 6,
                 # "num_iter": 7,
+                # "num_iter": 10,
+                # "num_iter": 11,
                 "lam": 0.0,  # lambda for prior
-                "multi_out": False,
+                # "multi_out": False,
+                "multi_out": True,
                 "shared_bp": True,
+                # "shared_bp": False,
                 "self_supervised": False,
                 # 'self_supervised': True,
                 "optimizer_type": "adam",
@@ -272,6 +280,10 @@ for dataset_id in datasets_id:
             suffix += "_continue"
         if enable_median_filter:
             suffix += "_median_in"
+        if enable_dark:
+            suffix += "_dark"
+        if not params["shared_bp"]:
+            suffix += "_noshared_bp"
         # start_learning_rate = 0.001
         # start_learning_rate = 0.0001  # 2D real
         start_learning_rate = 0.00001  # 3D real
@@ -302,6 +314,10 @@ for dataset_id in datasets_id:
         lr_txt_file_path=params["lr_txt_file_path"],
         normalization=params["normalization"],
     )
+
+    if enable_dark:
+        dict_data.update({"lr_root_path": params["lr_root_path"] + "_dark"})
+
     dict_dataloader = dict(
         batch_size=params["batch_size"], num_workers=params["num_workers"]
     )

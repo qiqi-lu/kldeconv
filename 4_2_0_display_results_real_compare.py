@@ -23,7 +23,8 @@ plt.rcParams["svg.fonttype"] = "none"
 # ------------------------------------------------------------------------------
 # subgroup, show_image, show_statistic = "2d_real", True, True
 # subgroup, show_image, show_statistic = "2d_real", False, True
-subgroup, show_image, show_statistic = "3d_real", True, False
+# subgroup, show_image, show_statistic = "3d_real", True, False
+subgroup, show_image, show_statistic = "3d_real", True, True
 # subgroup, show_image, show_statistic = "3d_real", False, True
 # subgroup, show_image, show_statistic = "2d_real_many", False, True
 # num_samples_max = 3
@@ -160,7 +161,8 @@ settings = {
             ("DeconvBlind", "deconvblind", "deconv.tif", 2, "#42B4B5"),
             ("RLN", "rln", "y_pred.tif", 2, "#B78E72"),
             ("RLD@20", "traditional", "deconv_iter_20.tif", 2, "#4D8FCB"),
-            ("KLD", "kernelnet", "y_pred_all.tif", 2, "#D95D5B"),
+            # ("KLD", "kernelnet", "y_pred_all.tif", 2, "#D95D5B"),
+            ("KLD", "kernelnet", "y_pred_all.tif", 5, "#D95D5B"),
         ),
         "ndim": 3,
         "ticks_boxplot": {
@@ -286,22 +288,30 @@ if show_image:
         fontsize=14, color="white", ha="right", va="top", x=0.95, y=0.95
     )
     dict_text_lt = dict(fontsize=14, color="white", ha="left", va="top", x=0.05, y=0.95)
+    dict_img_res = dict(cmap="hot", vmin=0.0, vmax=0.5)
 
     # --------------------------------------------------------------------------
     fig, axes = plt.subplots(nrows=nr, ncols=nc, figsize=(3 * nc, 3 * nr), **dict_fig)
     [ax.set_axis_off() for ax in axes.ravel()]
 
+    fig_res, axes_res = plt.subplots(
+        nrows=nr, ncols=nc, figsize=(3 * nc, 3 * nr), **dict_fig
+    )
+    [ax.set_axis_off() for ax in axes_res.ravel()]
+
     for i_dataset in range(num_datasets):
         if ndim == 2:
             axes_ds = axes[i_dataset]
+            axes_ds_res = axes_res[i_dataset]
             dataset_name, dataset_id, id_sample, pos_roi = datasets_info[i_dataset]
         if ndim == 3:
             axes_ds = axes[i_dataset * 2 : i_dataset * 2 + 2]
+            axes_ds_res = axes_res[i_dataset * 2 : i_dataset * 2 + 2]
             (
                 dataset_name,
                 dataset_id,
                 id_sample,
-                id_slice_xy,
+                id_slice_xy_ori,
                 pos_roi,
                 pos_plane_xz,
             ) = datasets_info[i_dataset]
@@ -313,20 +323,21 @@ if show_image:
             id_slice_zx, x_start, x_stop = pos_plane_xz
             slice_space = float(info["slice_space"]) / 1000  # slice spacing (um)
             # recalculate the slice index
-            id_slice_xy = round((id_slice_xy + 1) * slice_space / pixel_size) - 1
+            id_slice_xy = round((id_slice_xy_ori + 1) * slice_space / pixel_size) - 1
 
         # ----------------------------------------------------------------------
         results = results_one[i_dataset]
 
         # gt image
-        img_gt = np.clip(normalizer(results[-1]), **dict_clip)
+        img_gt = results[-1]
+        img_gt = np.clip(normalizer(img_gt), **dict_clip)
 
         # restored image from different methods
         for i_meth in range(len(results)):
-            img = np.clip(normalizer(results[i_meth]), **dict_clip)
-            dict_eva = dict(img_true=img_gt, img_test=img)
-            psnr = eva.PSNR(data_range=data_range, **dict_eva)
-            ssim = eva.MSSSIM(data_range=data_range, **dict_eva)
+            img = results[i_meth]
+            img = np.clip(normalizer(img), **dict_clip)
+            img_res = np.abs(img - img_gt)
+            mse = np.mean(np.square(img_gt - img))
 
             # colorize image ---------------------------------------------------
             if ndim == 2:
@@ -339,11 +350,31 @@ if show_image:
             # show image -------------------------------------------------------
             if ndim == 2:
                 axes_ds[i_meth].imshow(img_color)
+
+                axes_ds_res[i_meth].imshow(img_res, **dict_img_res)
+                axes_ds_res[i_meth].text(
+                    s=f"{mse:.4f}",
+                    transform=axes_ds_res[i_meth].transAxes,
+                    **dict_text_rt,
+                )
+
                 img_shape = img.shape
             if ndim == 3:
                 img_shape = img[0].shape
                 axes_ds[0, i_meth].imshow(img_color[id_slice_xy, :, :])
                 axes_ds[1, i_meth].imshow(img_color[:, id_slice_zx, x_start:x_stop])
+
+                axes_ds_res[0, i_meth].imshow(
+                    img_res[id_slice_xy_ori, :, :], **dict_img_res
+                )
+                axes_ds_res[1, i_meth].imshow(
+                    img_res[:, id_slice_zx, x_start:x_stop], **dict_img_res
+                )
+                axes_ds_res[0, i_meth].text(
+                    s=f"{mse:.4f}",
+                    transform=axes_ds_res[0, i_meth].transAxes,
+                    **dict_text_rt,
+                )
 
             # set which ax to show info ----------------------------------------
             if ndim == 2:
@@ -375,6 +406,9 @@ if show_image:
 
             # add metrics value ------------------------------------------------
             if i_meth != len(results) - 1:
+                dict_eva = dict(img_true=img_gt, img_test=img)
+                psnr = eva.PSNR(data_range=data_range, **dict_eva)
+                ssim = eva.MSSSIM(data_range=data_range, **dict_eva)
                 ax_t.text(
                     s=f"{psnr:.2f} | {ssim:.4f}",
                     transform=ax_t.transAxes,
@@ -428,12 +462,18 @@ if show_image:
             if i_meth == 0:
                 ax_t.text(s=dataset_name, transform=ax_t.transAxes, **dict_text_lt)
 
-    plt.savefig(
+    fig.savefig(
         os.path.join(path_root_figure, f"image_restored_compare_{subgroup}.png")
     )
-    plt.savefig(
+    fig.savefig(
         os.path.join(path_root_figure, f"image_restored_compare_{subgroup}.svg")
     )
+    fig_res.savefig(
+        os.path.join(path_root_figure, f"image_restored_compare_{subgroup}_res.png")
+    )
+    # fig_res.savefig(
+    #     os.path.join(path_root_figure, f"image_restored_compare_{subgroup}.svg")
+    # )
 
 os._exit(0)
 

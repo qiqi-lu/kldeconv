@@ -28,7 +28,7 @@ id_image_show = 0
 info_df = pandas.read_excel("datasets_train.xlsx")
 info = info_df[info_df["id"] == dataset_id].iloc[0]
 
-path_raw = win2linux(info["path_lr"])
+path_raw = win2linux(info["path_lr"]) + "_dark"
 path_gt = win2linux(info["path_hr"])
 path_txt = win2linux(info["path_txt"])
 filenames = read_txt(path_txt.replace("train.txt", "all.txt"))
@@ -69,8 +69,8 @@ Nz, Ny, Nx = img_gt.shape
 # ------------------------------------------------------------------------------
 nr, nc = 2, 3
 dict_fig = dict(dpi=300, constrained_layout=True)
-dict_img = dict(cmap="gray", vmin=0, vmax=img_gt.max() * 0.5)
-x_range = slice(50, 150)
+dict_img = dict(cmap="hot", vmin=0, vmax=img_gt.max() * 0.5)
+x_range = slice(200, 300)
 
 # ------------------------------------------------------------------------------
 fig, axes = plt.subplots(nrows=nr, ncols=nc, figsize=(3 * nc, 3 * nr), **dict_fig)
@@ -112,8 +112,8 @@ plt.savefig(os.path.join(path_figures, f"{filename.split('.')[0]}.png"))
 # ------------------------------------------------------------------------------
 # print information of each image in the dataset
 # ------------------------------------------------------------------------------
-print("-" * 80)
-for filename in filenames:
-    img_gt = io.imread(os.path.join(path_gt, filename)).astype(np.float32)
-    img_raw = io.imread(os.path.join(path_raw, filename)).astype(np.float32)
-    print(f"[INFO] {filename}: GT: {img_gt.shape}, RAW: {img_raw.shape}")
+# print("-" * 80)
+# for filename in filenames:
+#     img_gt = io.imread(os.path.join(path_gt, filename)).astype(np.float32)
+#     img_raw = io.imread(os.path.join(path_raw, filename)).astype(np.float32)
+#     print(f"[INFO] {filename}: GT: {img_gt.shape}, RAW: {img_raw.shape}")

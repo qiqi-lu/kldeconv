@@ -23,8 +23,8 @@ enable_prediction = True
 # ------------------------------------------------------------------------------
 # id_device = "cpu"
 id_device = "cuda:0"
-# output_inter = True  # output intermediate results
-output_inter = False  # not to output intermediate results
+output_inter = True  # output intermediate results
+# output_inter = False  # not to output intermediate results
 
 # FP_type, BP_type = "known", "learned"  # simulation data
 # FP_type, BP_type = 'known', 'known'
@@ -69,12 +69,12 @@ dataset_names_list = (
     # ("SirDNA-1024-live-cell-1", "SirDNA-1024"),
     # ("SirDNA-1024-live-cell-2", "SirDNA-1024"),
     # --------------------------------------------------------------------------
-    ("biotisr-3d-factin-1", "biotisr-3d-factin-1"),
-    ("biotisr-3d-factin-2", "biotisr-3d-factin-2"),
-    ("biotisr-3d-mito-1", "biotisr-3d-mito-1"),
+    # ("biotisr-3d-factin-1", "biotisr-3d-factin-1"),
+    # ("biotisr-3d-factin-2", "biotisr-3d-factin-2"),
+    # ("biotisr-3d-mito-1", "biotisr-3d-mito-1"),
     ("biotisr-3d-mito-2", "biotisr-3d-mito-2"),
-    ("biotisr-3d-mt-1", "biotisr-3d-mt-1"),
-    ("biotisr-3d-mt-2", "biotisr-3d-mt-2"),
+    # ("biotisr-3d-mt-1", "biotisr-3d-mt-1"),
+    # ("biotisr-3d-mt-2", "biotisr-3d-mt-2"),
     # --------------------------------------------------------------------------
     # ("biotisr-ccps-1", "biotisr-ccps-1"),
     # ("biotisr-ccps-2", "biotisr-ccps-2"),
@@ -192,8 +192,10 @@ for dataset_names in dataset_names_list:
     info = info_xlsx[info_xlsx["id"] == dataset_name_test].iloc[0]
 
     enable_median_filter = int(info["median_filter"])
+    enable_dark = int(info["dark"])
     print("-" * 80)
     print(f"[INFO] Enable median filter: {enable_median_filter}")
+    print(f"[INFO] Enable dark: {enable_dark}")
 
     params_dict = dict(
         kernel_size_fp=text2tuple(info["ks_fp"]),
@@ -221,6 +223,9 @@ for dataset_names in dataset_names_list:
         train_mode=info["train_mode"],
         num_iter_test=num_iter_test,
     )
+
+    if enable_dark:
+        params_dict.update({"lr_root_path": params_dict["lr_root_path"] + "_dark"})
 
     # ------------------------------------------------------------------------------
     device = torch.device(id_device)

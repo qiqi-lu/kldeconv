@@ -866,11 +866,16 @@ checkpoints_v1 = {
     },
     "biotisr-3d-mito-2": {
         "forward": {
-            "n1_r1": "checkpoints/biotisr-3d-mito-2/kernelnet/forward/kernet_fp_bs_1_lr_0.01_ker_(9, 31, 31)_mse_over2_inter_normx_fft_ts_0_1_s100_v3/epoch_999_999.pt"
+            # "n1_r1": "checkpoints/biotisr-3d-mito-2/kernelnet/forward/kernet_fp_bs_1_lr_0.01_ker_(9, 31, 31)_mse_over2_inter_normx_fft_ts_0_1_s100_v3/epoch_999_999.pt"
+            "n1_r1": "checkpoints/biotisr-3d-mito-2/kernelnet/forward/kernet_fp_bs_1_lr_0.01_ker_(9, 31, 31)_mse_over2_inter_normx_fft_ts_0_1_s100_v3_dark/epoch_999_999.pt"
+            # "n1_r1": "checkpoints/biotisr-3d-mito-2/kernelnet/forward/kernet_fp_bs_1_lr_0.01_ker_(9, 101, 101)_mse_over2_inter_normx_fft_ts_0_1_s100_v3/epoch_999_999.pt"
         },
         "backward": {
-            "n1_r1_iter2": "checkpoints/biotisr-3d-mito-2/kernelnet/backward/kernet_bs_1_lr_1e-05_iter_2_ker_(9, 31, 31)_mse_over2_inter_fp_normx_bp_norm_fft_ts_0_1_v3/epoch_9999_9999.pt",
-            "n1_r1_iter5": "checkpoints/biotisr-3d-mito-2/kernelnet/backward/kernet_bs_1_lr_1e-05_iter_5_ker_(9, 31, 31)_mse_over2_inter_fp_normx_bp_norm_fft_ts_0_1_v3/epoch_9999_9999.pt",
+            # "n1_r1_iter2": "checkpoints/biotisr-3d-mito-2/kernelnet/backward/kernet_bs_1_lr_1e-05_iter_2_ker_(9, 31, 31)_mse_over2_inter_fp_normx_bp_norm_fft_ts_0_1_v3/epoch_9999_9999.pt",
+            "n1_r1_iter2": "checkpoints/biotisr-3d-mito-2/kernelnet/backward/kernet_bs_1_lr_1e-05_iter_2_ker_(9, 31, 31)_mse_over2_inter_fp_normx_bp_norm_fft_ts_0_1_v3_dark/epoch_9999_9999.pt",
+            # "n1_r1_iter2": "checkpoints/biotisr-3d-mito-2/kernelnet/backward/kernet_bs_1_lr_1e-06_iter_2_ker_(9, 101, 101)_mse_over2_inter_fp_normx_bp_norm_fft_ts_0_1_v3/epoch_9999_9999.pt",
+            # "n1_r1_iter5": "checkpoints/biotisr-3d-mito-2/kernelnet/backward/kernet_bs_1_lr_1e-05_iter_5_ker_(9, 31, 31)_mse_over2_inter_fp_normx_bp_norm_fft_ts_0_1_v3/epoch_9999_9999.pt",
+            "n1_r1_iter5": "checkpoints/biotisr-3d-mito-2/kernelnet/backward/kernet_bs_1_lr_1e-05_iter_5_ker_(9, 31, 31)_mae_over2_inter_fp_normx_bp_norm_fft_ts_0_1_v3_dark/epoch_9999_9999.pt",
         },
         "rln": {
             "n1_r1": "checkpoints/biotisr-3d-mito-2/rln/rln_mae_bs_4_lr_0.01_v3_even_id_0_1/epoch_2999_iter_29999.pt"
