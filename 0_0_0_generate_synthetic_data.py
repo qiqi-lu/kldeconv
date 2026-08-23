@@ -11,6 +11,7 @@ import utils.evaluation as utils_eva
 import utils.data as utils_data
 
 path_root = "E:\qiqilu\datasets_2\RLN\\unzip\kldeconv"
+path_root = utils_data.win2linux(path_root)
 
 # ------------------------------------------------------------------------------
 # PARAMETER SETTING
@@ -64,14 +65,16 @@ dataset_info = {
 }
 
 # ------------------------------------------------------------------------------
-s_crop = dataset_info[dataset_name]["s_crop"]
-size = dataset_info[dataset_name]["size"]
+# get the dataset info
+info = dataset_info[dataset_name]
+s_crop = info["s_crop"]
+size = info["size"]
 print(
     f"[INFO] std_gauss: {std_gauss}, poisson: {poisson}, ratio: {ratio}, scale_factor: {scale_factor}"
 )
 
 # path and file names
-path_dataset = utils_data.win2linux(os.path.join(path_root, dataset_name))
+path_dataset = os.path.join(path_root, dataset_name)
 path_gt = os.path.join(path_dataset, "gt")
 path_filenames = os.path.join(path_dataset, "all.txt")
 
@@ -121,7 +124,8 @@ io.imsave(path_psf_crop, arr=PSF_crop, check_contrast=False)
 pbar = tqdm.tqdm(total=num_samples, desc="DEGRADATION", ncols=80)
 for fn in filenames:
     img_gt = io.imread(os.path.join(path_gt, fn)).astype(np.float32)
-    # scale to control SNR -------------------------------------------------
+    # scale to control SNR -----------------------------------------------------
+    # the ratio is used to control the intensity of Poisson noise
     img_gt = img_gt * ratio
     # blur -----------------------------------------------------------------
     img_blur = dcv.convolution(img_gt, PSF_crop, padding_mode="reflect", domain="fft")

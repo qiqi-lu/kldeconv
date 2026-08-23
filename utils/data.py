@@ -371,11 +371,12 @@ def add_mix_noise(x, poisson=0, sigma_gauss=0, scale_factor: int = 1):
     # https://github.com/MeatyPlus/Richardson-Lucy-Net/blob/77256d1019dae7db7c4763b2659aa19a8a0e666f/Phantom_generate/Generation_of_anisotropic_input.m#L42
     if sigma_gauss > 0:
         max_signal = np.max(x_poi)
+        # the signal intensity is first rescale to [0, 1]
         x_poi_norm = x_poi / max_signal
         x_poi_gaus = x_poi_norm + np.random.normal(
             loc=0, scale=sigma_gauss / max_signal, size=x_poi_norm.shape
         )
-        x_n = x_poi_gaus * max_signal
+        x_n = x_poi_gaus * max_signal  # rescale back to original range
     else:
         x_n = x_poi
     x_n = x_n.astype(np.float32)

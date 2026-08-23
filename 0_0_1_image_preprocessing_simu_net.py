@@ -1,6 +1,10 @@
 """
 Preprocessing of simulated images for deep learning network training, which need
 normalization and clipping.
+- clip to [0, None]
+- normalize with percentile normalization, but not clip the value to [0, 1].
+
+The KLDeconv does not use this preprocessing.
 """
 
 import numpy as np
@@ -10,6 +14,7 @@ from utils.data import win2linux, read_txt, NormalizePercentile
 
 # ------------------------------------------------------------------------------
 path_root = "E:\qiqilu\datasets_2\RLN\\unzip\kldeconv\SimuMix3D_128"
+path_root = win2linux(path_root)
 
 folder_names = (
     "raw_psf_31_gauss_0.5_poiss_1_sf_1_ratio_0.1",
@@ -20,7 +25,6 @@ folder_names = (
 )
 
 # ------------------------------------------------------------------------------
-path_root = win2linux(path_root)
 path_txt = os.path.join(path_root, "all.txt")
 filenames = read_txt(path_txt)
 

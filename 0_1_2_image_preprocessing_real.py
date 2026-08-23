@@ -1,5 +1,5 @@
 """
-For image preprocessing kldeconv algorithm.
+Real image preprocessing for KLDeconv algorithm.
 Rescale image to make the image has a custom defined average intensity.
 """
 
@@ -44,7 +44,9 @@ outlier_clip, clip_value = False, None
 ave_intensity = 100.0
 
 # ------------------------------------------------------------------------------
-path_root = "E:\qiqilu\datasets_2"
+path_root = win2linux("E:\qiqilu\datasets_2")
+
+# set the path of dataset and the text file saving the filenames to preprocess.
 # path_dataset = "BioSR\\transformed\CCPs\\noise_1_sf_1\\raw"
 # path_dataset = "BioSR\\transformed\CCPs\\noise_2_sf_1\\raw"
 # path_dataset = "BioSR\\transformed\CCPs\\noise_3_sf_1\\raw"
@@ -178,7 +180,6 @@ path_raw_txt = "BioTISR\\transformed\Microtubules-3D\\all.txt"
 
 
 # ------------------------------------------------------------------------------
-path_root = win2linux(path_root)
 path_dataset = win2linux(path_dataset)
 path_raw_txt = win2linux(path_raw_txt)
 path_dataset = os.path.join(path_root, path_dataset)
@@ -229,7 +230,8 @@ def preprocess(path_img):
     if padding:
         assert (
             data_raw.shape[-1] <= padding_size and data_raw.shape[-2] <= padding_size
-        ), f"[ERROR] the original shape of the image is {data_raw.shape}, which has exceed the padding size {padding_size} in the last two dimensions."
+        ), f"[ERROR] the original shape of the image is {data_raw.shape}, \
+            which has exceed the padding size {padding_size} in the last two dimensions."
 
         if ndim == 3:
             # only pad the last tow dimesions
@@ -256,6 +258,12 @@ def preprocess(path_img):
             raise ValueError(f"[ERROR] the dimension of the image is {ndim}.")
 
     # background subtraction ---------------------------------------------------
+    # subtract the background from the image.
+    # (1) if the background value is None, then use the percentile normalization
+    #     to estimate the background value.
+    # (2) if the background value is not None, then use the background value to
+    #     subtract the image.
+
     if bkg_sub:
         global bkg_value
         if bkg_value is None:
@@ -268,9 +276,16 @@ def preprocess(path_img):
         pass
 
     # positive constriant (2, new version) -------------------------------------
+    # clip the image to the range [0, None]
+
     data_raw = np.clip(data_raw, 0.0, None)
 
     # outlier clipping ---------------------------------------------------------
+    # clip the image to the range [0, clip_value]
+    # (1) if the clip_value is None, then use the percentile normalization
+    #     to estimate the clip_value.
+    # (2) if the clip_value is not None, then use the clip_value to clip the image.
+
     if outlier_clip:
         global clip_value
         if clip_value is None:
@@ -279,6 +294,7 @@ def preprocess(path_img):
 
     # average pooling ----------------------------------------------------------
     # only the last two dimensions are pooled
+
     if average_pooling:
         if ndim == 2:
             data_raw = torch.tensor(data_raw)[None, None]
@@ -299,8 +315,12 @@ def preprocess(path_img):
             data_raw = data_raw.numpy()[0]
 
     # gaussian filtering the raw image -----------------------------------------
-    # the number of photons in the image may be too small,
-    # the zero photon pixel need to be filled with a estimated value.
+    # the number of photons in the image may be too small.
+    # the zero photon pixel need to be filled with a estimated value, so we use
+    # different methods to fill the zero photon pixel, including:
+    # (1) gaussian filtering
+    # (2) median filtering
+
     if gaussian_filtering:
         data_raw = gaussian_filter(data_raw, sigma=1.0, axes=(-2, -1))
     if median_filtering:
@@ -309,6 +329,7 @@ def preprocess(path_img):
         data_raw = cupy.asnumpy(data_raw)
 
     # normalization ------------------------------------------------------------
+    # make the image have an average intensity of ave_intensity.
     intensity_sum = ave_intensity * np.prod(data_raw.shape)
     data_raw = data_raw / data_raw.sum() * intensity_sum
 

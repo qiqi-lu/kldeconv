@@ -10,6 +10,9 @@ from skimage import io
 from methods.back_projector import BackProjector, FWHM2sigma, FWHM_PSF, PSF_gaussian
 from methods.deconvolution import adjust_size
 
+# save as svg
+plt.rcParams["svg.fonttype"] = "none"
+
 path_fig = os.path.join("outputs", "figures", "test")
 os.makedirs(path_fig, exist_ok=True)
 
@@ -99,24 +102,28 @@ if dim == 3:
         )
 
     # --------------------------------------------------------------------------
-    nc, nr = 3, 1
+    nc, nr = 3, 2
     fig, axes = plt.subplots(nrows=nr, ncols=nc, figsize=(3 * nc, 3 * nr), **dict_fig)
-    axes[0].set_title("|FT(PSF)|", loc="left")
-    axes[1].set_title("|FT(BP)|", loc="left")
-    axes[2].set_title("|FT(BP) x FT(PSF)|", loc="left")
+    axes[0, 0].set_title("|FT(PSF)|", loc="left")
+    axes[0, 1].set_title("|FT(BP)|", loc="left")
+    axes[0, 2].set_title("|FT(BP) x FT(PSF)|", loc="left")
 
-    axes[0].plot(
+    axes[0, 0].plot(
         PSF_FT_shift_abs[size[0] // 2, size[1] // 2 :, size[2] // 2], color="blue"
     )
-    plot_profile(BP_trad_OTF, [axes[1], axes[2]], name="Traditional", color="blue")
-    plot_profile(BP_gauss_OTF, [axes[1], axes[2]], name="Gaussian", color="cyan")
-    plot_profile(BP_bw_OTF, [axes[1], axes[2]], name="Butterworth", color="orange")
+    plot_profile(
+        BP_trad_OTF, [axes[0, 1], axes[0, 2]], name="Traditional", color="blue"
+    )
+    plot_profile(BP_gauss_OTF, [axes[0, 1], axes[0, 2]], name="Gaussian", color="cyan")
+    plot_profile(
+        BP_bw_OTF, [axes[0, 1], axes[0, 2]], name="Butterworth", color="orange"
+    )
     # plot_profile(BP_wiener_OTF, [axes[1], axes[2]], name='wiener', color='green')
-    plot_profile(BP_wb_OTF, [axes[1], axes[2]], name="WB", color="orangered")
-    axes[1].legend()
-    axes[2].legend()
+    plot_profile(BP_wb_OTF, [axes[0, 1], axes[0, 2]], name="WB", color="orangered")
+    axes[0, 1].legend()
+    axes[0, 2].legend()
 
-    for ax in [axes[0], axes[1], axes[2]]:
+    for ax in [axes[0, 0], axes[0, 1], axes[0, 2]]:
         ax.set_xlim([0, None])
         ax.set_ylim([0, None])
         ax.set_xlabel("Frequency (kx, nm-1)")
@@ -129,8 +136,27 @@ if dim == 3:
         ax.spines["top"].set_visible(False)
         ax.spines["right"].set_visible(False)
 
-plt.savefig(os.path.join(path_fig, "BP_profiles.png"))
+    # show kernel profile in spatial domain
+    axes[1, 0].set_title("PSF", loc="left")
+    axes[1, 1].set_title("BP", loc="left")
 
+    axes[1, 2].set_axis_off()
+    axes[1, 0].plot(
+        PSF[size[0] // 2, size[1] // 2 - 20 : size[1] // 2 + 20, size[2] // 2],
+        color="blue",
+    )
+
+    for bp in [BP_trad, BP_gauss, BP_bw, BP_wiener, BP_wb]:
+        bp = bp / np.max(bp)
+        axes[1, 1].plot(
+            bp[size[0] // 2, size[1] // 2 - 20 : size[1] // 2 + 20, size[2] // 2]
+        )
+
+
+plt.savefig(os.path.join(path_fig, "BP_profiles.png"))
+plt.savefig(os.path.join(path_fig, "BP_profiles.svg"))
+
+os._exit(0)
 # ------------------------------------------------------------------------------
 # show kernel in spatial domain and Fourier domain
 if dim == 2:

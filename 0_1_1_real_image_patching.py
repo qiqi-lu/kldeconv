@@ -1,6 +1,12 @@
 """
 Pathcing the image for deep learning network training.
-- use normalization.
+1. clip the value in the image to [0, None]
+2. normalize the image with percentile normalization, but not clip the value to [0, 1].
+3. patching
+
+The path of the data are saved in the Excel file "datasets_test.xlsx".
+
+KLDeconv does not use this preprocessing, and use the whole image to do training.
 """
 
 import os, tqdm, pandas, json
@@ -9,6 +15,7 @@ import skimage.io as io
 from utils.data import win2linux, read_txt, normalization
 
 # ------------------------------------------------------------------------------
+# select the dataset names used for patching.
 datasets_name = (
     # "F-actin-nonlinear-9",
     # "F-actin-nonlinear-8",
@@ -95,6 +102,7 @@ datasets_name = (
     "biotisr-3d-mito-2",
 )
 
+# the parameters for patching.
 params = dict(
     patch_size=128,
     step_size=64,
@@ -107,6 +115,7 @@ info_df = pandas.read_excel("datasets_train.xlsx")
 print("-" * 80)
 print(f'[INFO] Patch size : {params["patch_size"]}')
 print(f'[INFO] Step size : {params["step_size"]}')
+
 normalizer = lambda x: normalization(
     x, params["normalization"][0], params["normalization"][1]
 )[0]
@@ -118,6 +127,7 @@ for ds in datasets_name:
     info = info_df[info_df["id"] == ds].iloc[0]
     path_raw = win2linux(info["path_lr_net"])
     path_gt = win2linux(info["path_hr"])
+    # only patch the data used for training
     path_txt = win2linux(info["path_txt"]).replace("train.txt", "all.txt")
     ndim = info["ndim"]
 
@@ -125,7 +135,7 @@ for ds in datasets_name:
         assert os.path.exists(path), f"[ERROR] {path} does not exist."
 
     # read and process images --------------------------------------------------
-    filenames = read_txt(path_txt)
+    filenames = read_txt(path_txt)  # get all the filenames in the txt file
     num_sample = len(filenames)
 
     print("-" * 80)
