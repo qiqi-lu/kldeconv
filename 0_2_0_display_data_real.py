@@ -23,6 +23,8 @@ from utils.data import win2linux, read_txt, NormalizePercentile
 dataset_id = "biotisr-3d-mito-2"
 
 id_image_show = 0
+path_figures = os.path.join("outputs", "figures", "datasets", dataset_id, "examples")
+os.makedirs(path_figures, exist_ok=True)
 
 # ------------------------------------------------------------------------------
 info_df = pandas.read_excel("datasets_train.xlsx")
@@ -36,9 +38,7 @@ ndim = info["ndim"]
 
 filename = filenames[id_image_show]
 
-path_figures = os.path.join("outputs", "figures", dataset_id, "examples")
-os.makedirs(path_figures, exist_ok=True)
-
+# ------------------------------------------------------------------------------
 img_gt = io.imread(os.path.join(path_gt, filename)).astype(np.float32)
 img_raw = io.imread(os.path.join(path_raw, filename)).astype(np.float32)
 

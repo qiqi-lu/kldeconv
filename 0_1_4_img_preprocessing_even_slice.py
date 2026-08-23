@@ -2,7 +2,6 @@
 RLN only support even slice, remove one of the odd slice.
 """
 
-import numpy as np
 import os, tqdm
 import skimage.io as io
 from utils.data import win2linux
@@ -18,6 +17,7 @@ path_list = (
     "E:\qiqilu\datasets_2\BioTISR\\transformed\F-actin-3D\SIM_remove_last_t0",
     "E:\qiqilu\datasets_2\BioTISR\\transformed\F-actin-3D\WF_noise_level_1_remove_last_t0",
 )
+
 for path in path_list:
     path_images = win2linux(path)
     # get all the image names end with .tif
@@ -40,6 +40,7 @@ for path in path_list:
         # read the image
         image = io.imread(os.path.join(path_images, image_name))
         shape = image.shape
+        # if the slice number is odd, remove the last slice
         if shape[0] % 2 != 0:
             image = image[:-1, :, :]
         # save the image

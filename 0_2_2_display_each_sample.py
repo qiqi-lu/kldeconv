@@ -1,5 +1,6 @@
 """
-check each sample, show each sample.
+Display all the samples in the training and testing datasets.
+Show the LR and HR images.
 """
 
 import numpy as np
@@ -103,7 +104,7 @@ df_info_test = pandas.read_excel(path_test_excel)
 df_info_train = pandas.read_excel(path_train_excel)
 
 dict_fig = dict(dpi=150, constrained_layout=True)
-path_root_figure = os.path.join("outputs", "figures")
+path_root_figure = os.path.join("outputs", "figures", "datasets")
 
 groups = ["test", "train"]
 
@@ -121,9 +122,13 @@ for dataset_id in datasets_list:
 
         filenames = read_txt(path_index)
         num_samples = len(filenames)
+
+        # ----------------------------------------------------------------------
         pbar = tqdm.tqdm(
             total=num_samples, desc=f"[INFO] {dataset_id} ({groups[i_df]})", ncols=80
         )
+
+        nr, nc = 1, 2
         for filename in filenames:
             path_lr_sample = os.path.join(path_lr, filename)
             path_hr_sample = os.path.join(path_hr, filename)
@@ -132,10 +137,8 @@ for dataset_id in datasets_list:
             img_hr = np.squeeze(io.imread(path_hr_sample))
 
             if img_hr.ndim == 3:
-                img_lr = img_lr[1]
-                img_hr = img_hr[1]
+                img_lr, img_hr = img_lr[1], img_hr[1]
 
-            nr, nc = 1, 2
             fig, axes = plt.subplots(
                 nrows=nr, ncols=nc, figsize=(nc * 3, nr * 3), **dict_fig
             )
