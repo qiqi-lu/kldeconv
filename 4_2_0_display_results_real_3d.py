@@ -23,8 +23,6 @@ from scipy.stats import wilcoxon
 plt.rcParams["svg.fonttype"] = "none"
 # ------------------------------------------------------------------------------
 show_image, show_statistic = True, True
-# show_image, show_statistic = True, False
-# show_image, show_statistic = False, True
 # num_samples_max = 3
 num_samples_max = 10
 show_patch = True
@@ -61,10 +59,10 @@ settings = {
         (
             "MT (BioTISR)-2",
             "biotisr-3d-mt-2",
-            0,
+            2,
             1,
             (122, 360, 272, 510),
-            (128, 100, 200),
+            (200, 100, 200),
         ),
         # (
         #     "mito (BioTISR)-1",
@@ -90,14 +88,14 @@ settings = {
         #     (122, 360, 272, 510),
         #     (128, 100, 200),
         # ),
-        # (
-        #     "F-actin (BioTISR)-2",
-        #     "biotisr-3d-factin-2",
-        #     0,
-        #     1,
-        #     (122, 360, 272, 510),
-        #     (128, 100, 200),
-        # ),
+        (
+            "F-actin (BioTISR)-2",
+            "biotisr-3d-factin-2",
+            0,
+            1,
+            (122, 360, 272, 510),
+            (128, 100, 200),
+        ),
     ),
     "methods": (
         ("DeconvBlind", "deconvblind", "deconv.tif", 2, "#42B4B5"),
@@ -109,9 +107,9 @@ settings = {
 }
 
 dict_ticks = {
-    "PSNR": ((17, 25, 2.5), (17, 27.5, 2.5)),
-    "MS-SSIM": ((0.6, 0.85, 0.1), (0.65, 0.9, 0.1)),
-    "ZNCC": ((0.35, 0.7, 0.1), (0.4, 0.8, 0.1)),
+    "PSNR": ((17, 25, 2.5), (17, 27.5, 2.5), (17, 27.5, 2.5)),
+    "MS-SSIM": ((0.6, 0.85, 0.1), (0.65, 0.9, 0.1), (0.65, 0.9, 0.1)),
+    "ZNCC": ((0.35, 0.7, 0.1), (0.4, 0.8, 0.1), (0.4, 0.8, 0.1)),
 }
 
 
@@ -130,6 +128,7 @@ dict_clip = {"a_min": 0, "a_max": 2.5}
 
 
 def preprocess(img):
+    img = np.clip(img, 0, None)
     img = normalizer(img)
     img = np.clip(img, **dict_clip)
     return img
@@ -216,6 +215,7 @@ for i_dataset in range(num_datasets):
 
         results_meth.append(y_pred.astype(np.float32))
     results_meth.append(y.astype(np.float32))
+
     results_one.append(results_meth)
 
 # ------------------------------------------------------------------------------
@@ -340,7 +340,7 @@ if show_image:
             if i_meth != len(results) - 1:
                 dict_eva = dict(img_true=img_gt, img_test=img)
                 psnr = eva.PSNR(data_range=data_range, **dict_eva)
-                ssim = eva.MSSSIM(data_range=data_range, **dict_eva)
+                ssim = eva.MSSSIM(data_range=data_range, **dict_eva, ndim=3)
                 ax_xy.text(
                     s=f"{psnr:.2f} | {ssim:.4f}",
                     transform=ax_xy.transAxes,
@@ -395,7 +395,7 @@ if show_image:
     fig_res.savefig(os.path.join(path_figure, f"image_restored_compare_res.png"))
     fig_res.savefig(os.path.join(path_figure, f"image_restored_compare_res.svg"))
 
-# os._exit(0)
+os._exit(0)
 
 # ------------------------------------------------------------------------------
 # load all the results from different methods and datasets
@@ -503,7 +503,7 @@ if show_statistic:
                 # --------------------------------------------------------------
                 dict_eva = {"img_true": img_gt, "img_test": img}
                 psnr = eva.PSNR(**dict_eva, data_range=data_range)
-                ssim = eva.MSSSIM(**dict_eva, data_range=data_range, ndim=2)
+                ssim = eva.MSSSIM(**dict_eva, data_range=data_range, ndim=3)
                 zncc = eva.NCC(**dict_eva)
                 # --------------------------------------------------------------
                 metrics_meth.append([psnr, ssim, zncc])

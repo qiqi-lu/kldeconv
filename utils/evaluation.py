@@ -358,6 +358,8 @@ def SNR(img_true, img_test, type: int = 0):
 
 def NCC(img_true, img_test):
     """
+    https://en.wikipedia.org/wiki/Cross-correlation
+    It is actually the zero-normalized cross-correlation (ZNCC).
     Normalized cross-correlation (NCC).
     ### Parameters:
     - img_true (array): ground truth.
@@ -461,7 +463,8 @@ def MSSSIM(img_true, img_test, data_range=None, ndim=2, win_size=11, interp_sf=1
         msssim = ms_ssim(img_true, img_test, **dict_msssim)
     if ndim == 3:
         n_slice = img_true.shape[2]
-        if n_slice < 11:
+        # if n_slice < 11:
+        if n_slice < (win_size - 1) * 16 + 1:
             msssim_each_slice = []
             for i in range(n_slice):
                 msssim_each_slice.append(
@@ -470,7 +473,8 @@ def MSSSIM(img_true, img_test, data_range=None, ndim=2, win_size=11, interp_sf=1
             msssim = np.mean(msssim_each_slice)
         else:
             msssim = ms_ssim(img_true, img_test, **dict_msssim)
-    return float(msssim.numpy())
+            msssim = float(msssim.numpy())
+    return msssim
 
 
 def measure(img_true, img_test, data_range=255):

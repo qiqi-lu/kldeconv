@@ -15,70 +15,74 @@ plt.rcParams["svg.fonttype"] = "none"
 # ------------------------------------------------------------------------------
 # parameters
 # ------------------------------------------------------------------------------
-datasets_info = (
-    ("ZeroShotDeconvNet-mitosis-642", mpl.colormaps["gray"]),
-    ("ZeroShotDeconvNet-mitosis-560", mpl.colormaps["afmhot"]),
-)
-
 p_raw = ((0.0, 0.0), (99.99, 99.9))
-methods_info = {
-    "ZeroShotDeconvNet-mitosis-642": (
-        ("Traditional@30", "traditional", "deconv.tif", (0.0, 99.5)),
-        ("Gaussian@30", "gaussian", "deconv.tif", (0.0, 99.5)),
-        ("Butterworth@3", "butterworth", "deconv.tif", (0.0, 99.5)),
-        ("WB@2", "wiener_butterworth", "deconv.tif", (0.0, 99.5)),
-        (
-            "KLD-SS@2",
-            "kernelnet_ss\ZeroShotDeconvNet-mitosis-642\\n1_r1",
-            "y_pred_all.tif",
-            (0.0, 99.5),
+results_info = {
+    "ZeroShotDeconvNet-mitosis-642": {
+        "color": mpl.colormaps["gray"],
+        "methods": (
+            ("Traditional@30", "traditional", "deconv.tif", (0.0, 99.5)),
+            ("Gaussian@30", "gaussian", "deconv.tif", (0.0, 99.5)),
+            ("Butterworth@3", "butterworth", "deconv.tif", (0.0, 99.5)),
+            ("WB@2", "wiener_butterworth", "deconv.tif", (0.0, 99.5)),
+            (
+                "KLD-SS@2",
+                "kernelnet_ss\ZeroShotDeconvNet-mitosis-642\\n1_r1",
+                "y_pred_all.tif",
+                (0.0, 99.5),
+            ),
+            (
+                "KLD@2",
+                "kernelnet\SimuMix3D-382-101-05-1-1-642\\n1_r1",
+                "y_pred_all.tif",
+                (0.0, 99.5),
+            ),
         ),
-        (
-            "KLD@2",
-            "kernelnet\SimuMix3D-382-101-05-1-1-642\\n1_r1",
-            "y_pred_all.tif",
-            (0.0, 99.5),
+    },
+    "ZeroShotDeconvNet-mitosis-560": {
+        "color": mpl.colormaps["afmhot"],
+        "methods": (
+            ("Traditional@30", "traditional", "deconv.tif", (0.0, 99.5)),
+            ("Gaussian@30", "gaussian", "deconv.tif", (0.0, 99.5)),
+            ("Butterworth@30", "butterworth", "deconv.tif", (0.0, 99.5)),
+            ("WB@2", "wiener_butterworth", "deconv.tif", (0.0, 99.5)),
+            (
+                "KLD-ss@2",
+                "kernelnet_ss\ZeroShotDeconvNet-mitosis-560\\n1_r1",
+                "y_pred_all.tif",
+                (0.0, 99.5),
+            ),
+            (
+                "KLD@2",
+                "kernelnet\SimuMix3D-382-101-05-1-1-560\\n1_r1",
+                "y_pred_all.tif",
+                (0.0, 99.5),
+            ),
         ),
-    ),
-    "ZeroShotDeconvNet-mitosis-560": (
-        ("Traditional@30", "traditional", "deconv.tif", (0.0, 99.5)),
-        ("Gaussian@30", "gaussian", "deconv.tif", (0.0, 99.5)),
-        ("Butterworth@30", "butterworth", "deconv.tif", (0.0, 99.5)),
-        ("WB@2", "wiener_butterworth", "deconv.tif", (0.0, 99.5)),
-        (
-            "KLD-ss@2",
-            "kernelnet_ss\ZeroShotDeconvNet-mitosis-560\\n1_r1",
-            "y_pred_all.tif",
-            (0.0, 99.5),
-        ),
-        (
-            "KLD@2",
-            "kernelnet\SimuMix3D-382-101-05-1-1-560\\n1_r1",
-            "y_pred_all.tif",
-            (0.0, 99.5),
-        ),
-    ),
+    },
 }
 
+dataset_names = list(results_info.keys())
+method_names = [info[0] for info in results_info[dataset_names[0]]["methods"]]
+
 num_iter = 2
-id_sample_show = 0
+timepoint_show = 0
 show_patch = True
 
 # ------------------------------------------------------------------------------
-assert len(methods_info["ZeroShotDeconvNet-mitosis-560"]) == len(
-    methods_info["ZeroShotDeconvNet-mitosis-642"]
-), "methods_info is not consistent!"
+# check the number of methods in each dataset
+assert len(results_info[dataset_names[0]]["methods"]) == len(
+    results_info[dataset_names[1]]["methods"]
+), "The number of methods in each dataset is not consistent!"
 
 # get all the name of methods
-methods_name = [info[0] for info in methods_info["ZeroShotDeconvNet-mitosis-642"]]
-num_methods = len(methods_name)
-num_channels = len(datasets_info)
+num_methods = len(method_names)
+num_channels = len(dataset_names)
 
 path_prediction = os.path.join("outputs", "predictions")
-path_fig = os.path.join("outputs", "figures")
+path_fig = os.path.join("outputs", "figures", "analysis_image", "real_live")
 info_df = pandas.read_excel("datasets_test.xlsx")
 
-info_one = info_df[info_df["id"] == "ZeroShotDeconvNet-mitosis-642"].iloc[0]
+info_one = info_df[info_df["id"] == dataset_names[0]].iloc[0]
 pixel_size = float(info_one["pixel_size"]) / 1000  # um
 slice_space = float(info_one["slice_space"]) / 1000  # um
 
@@ -87,8 +91,8 @@ slice_space = float(info_one["slice_space"]) / 1000  # um
 # ------------------------------------------------------------------------------
 imgs_deconv_mc = []
 for i_channel in range(num_channels):
-    ds_name = datasets_info[i_channel][0]
-    methods = methods_info[ds_name]
+    ds_name = dataset_names[i_channel]
+    methods = results_info[ds_name]["methods"]
 
     info = info_df[info_df["id"] == ds_name].iloc[0]
 
@@ -98,7 +102,8 @@ for i_channel in range(num_channels):
     # --------------------------------------------------------------------------
     imgs = []
     # load RAW image
-    imgs.append(io.imread(os.path.join(path_lr, filenames[id_sample_show])))
+    imgs.append(io.imread(os.path.join(path_lr, filenames[timepoint_show])))
+
     # load deconvolved image
     for i_method in range(num_methods):
         img = io.imread(
@@ -106,7 +111,7 @@ for i_channel in range(num_channels):
                 path_prediction,
                 ds_name,
                 win2linux(methods[i_method][1]),
-                f"sample_{id_sample_show}",
+                f"sample_{timepoint_show}",
                 methods[i_method][2],
             )
         )
@@ -159,8 +164,8 @@ for imeth in range(Nmeth):
         pl, ph = [], []
         for ds_info in datasets_info:
             ds_name = ds_info[0]
-            pl.append(methods_info[ds_name][imeth - 1][3][0])
-            ph.append(methods_info[ds_name][imeth - 1][3][1])
+            pl.append(results_info[ds_name][imeth - 1][3][0])
+            ph.append(results_info[ds_name][imeth - 1][3][1])
 
     xy_plane_color = render(xy_plane, cmaps=cmaps, plow=pl, phigh=ph)
     xz_plane_color = render(xz_plane, cmaps=cmaps, plow=pl, phigh=ph)
@@ -197,7 +202,7 @@ for imeth in range(Nmeth):
         )
 
     # add title ----------------------------------------------------------------
-    titles = ["Raw"] + methods_name
+    titles = ["Raw"] + method_names
     pos_text = (
         xy_plane.shape[1] - int(img.shape[1] * 0.04),
         int(xy_plane.shape[0] * 0.04),
@@ -219,8 +224,8 @@ for imeth in range(Nmeth):
 
 
 plt.savefig(
-    os.path.join(path_fig, f"image_restored_compare_live3d_id_{id_sample_show}.png")
+    os.path.join(path_fig, f"image_restored_compare_live3d_id_{timepoint_show}.png")
 )
 plt.savefig(
-    os.path.join(path_fig, f"image_restored_compare_live3d_id_{id_sample_show}.svg")
+    os.path.join(path_fig, f"image_restored_compare_live3d_id_{timepoint_show}.svg")
 )
