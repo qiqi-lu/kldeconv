@@ -25,7 +25,7 @@ plt.rcParams["svg.fonttype"] = "none"
 show_image, show_statistic = True, True
 # show_image, show_statistic =  False, True
 # num_samples_max = 3
-num_samples_max = 10
+num_samples_max = 20
 show_patch = True
 
 # ------------------------------------------------------------------------------
@@ -77,13 +77,19 @@ settings = {
         ("RLD@100", "traditional", "deconv_iter_100.tif", 2, "#4D8FCB"),
         ("KLD", "kernelnet", "y_pred_all.tif", 2, "#D95D5B"),
     ),
-    "ticks_boxplot": {
-        "PSNR": (np.round(np.linspace(0, 60, 25), decimals=1), (25, None)),
-        "MS-SSIM": (np.round(np.linspace(0.0, 1.0, 21), decimals=2), (0.8, 1.0)),
-        "ZNCC": (np.round(np.linspace(0.0, 1.0, 21), decimals=2), (0.7, 1.0)),
-    },
 }
 
+dict_ticks = {
+    # metrics name, yticks, ylim
+    "PSNR": ((20, 35, 5), (25, 37.5, 2.5), (25, 40, 2.5), (25, 37.5, 2.5)),
+    "MS-SSIM": (
+        (0.5, 1.0, 0.1),
+        (0.92, 1.0, 0.02),
+        (0.94, 1.0, 0.02),
+        (0.92, 1.0, 0.02),
+    ),
+    "ZNCC": ((0.7, 0.95, 0.1), (0.85, 1.0, 0.05), (0.9, 1.0, 0.02), (0.9, 1.0, 0.02)),
+}
 
 # ------------------------------------------------------------------------------
 datasets_info = settings["datasets"]
@@ -100,7 +106,7 @@ dict_clip = {"a_min": 0, "a_max": 2.5}
 
 
 def preprocess(img):
-    img = np.clip(img, 0, None)
+    # img = np.clip(img, 0, None)
     img = normalizer(img)
     img = np.clip(img, **dict_clip)
     return img
@@ -302,7 +308,7 @@ if show_image:
                         x1 - x0,
                         y1 - y0,
                         linewidth=1,
-                        edgecolor="magenta",
+                        edgecolor="red",
                         facecolor="none",
                     )
                 )
@@ -340,7 +346,7 @@ if show_image:
     fig_res.savefig(os.path.join(path_figure, f"image_restored_compare_res.png"))
     fig_res.savefig(os.path.join(path_figure, f"image_restored_compare_res.svg"))
 
-os._exit(0)
+# os._exit(0)
 
 # ------------------------------------------------------------------------------
 # load all the results from different methods and datasets
@@ -362,9 +368,11 @@ for i_dataset in range(num_datasets):
     # --------------------------------------------------------------------------
     results = []
     pbar = tqdm.tqdm(total=num_samples, desc="[INFO] Load results", ncols=80)
+
     for i_sample in range(num_samples):
         pbar.update(1)
-        results_ss = []
+        results_ss = []  # to store results from different methods
+
         # load raw and gt images
         x = io.imread(os.path.join(path_raw, filenames[i_sample]))
         y = io.imread(os.path.join(path_gt, filenames[i_sample]))
@@ -417,9 +425,9 @@ for i_dataset in range(num_datasets):
     pbar.close()
 
     # print number of samples
-    print(f"[INFO] Dataset {dataset_id}: \
-            num of samples: {len(results)}, \
-                shape of image: {results[0][0].shape}")
+    print(
+        f"[INFO] Dataset {dataset_id}: num of samples: {len(results)}, shape of image: {results[0][0].shape}"
+    )
 
     results_all.append(results)
 
@@ -433,10 +441,12 @@ if show_statistic:
     # calculate the metrics value of each method
     metrics_dataset = []
     pbar_ana = tqdm.tqdm(total=num_datasets, desc="[INFO] Analysis", ncols=80)
+
     for i_dataset in range(num_datasets):
         pbar_ana.update(1)
         metrics_sample = []
         res_samples = results_all[i_dataset]
+
         for results in res_samples:
             img_gt = results[-1]
             img_gt = preprocess(img_gt)
@@ -446,13 +456,17 @@ if show_statistic:
                 img = results[i_meth]
                 img = preprocess(img)
 
+                # --------------------------------------------------------------
                 dict_eva = {"img_true": img_gt, "img_test": img}
                 psnr = eva.PSNR(**dict_eva, data_range=data_range)
                 ssim = eva.MSSSIM(**dict_eva, data_range=data_range, ndim=2)
                 zncc = eva.NCC(**dict_eva)
+                # --------------------------------------------------------------
+
                 metrics_meth.append([psnr, ssim, zncc])
             metrics_sample.append(metrics_meth)
         metrics_dataset.append(metrics_sample)
+
     pbar_ana.close()
     # (N_dataset, N_sample, N_meth, N_metrics)
     # metrics_dataset = np.array(metrics_dataset)
@@ -466,21 +480,25 @@ if show_statistic:
         pvalues_metrics = []
         met = metrics_dataset[i_dataset]
         met = np.array(met)  # (N_sample, N_meth, N_metrics)
+
         for i_metric in range(num_metrics):
             pvalues = []
             for i_pair in range(len(test_pairs)):
                 pair = test_pairs[i_pair]
+                # --------------------------------------------------------------
                 test_result = wilcoxon(
                     met[:, pair[0], i_metric],
                     met[:, pair[1], i_metric],
                     alternative="two-sided",
                 )
+                # --------------------------------------------------------------
                 pvalues.append(test_result[1])
             pvalues_metrics.append(pvalues)
         pvalues_dataset.append(pvalues_metrics)
     pvalues_dataset = np.array(pvalues_dataset)  # (N_dataset, N_metrics, N_pairs)
 
     print(f"[INFO] pvalues shape : {pvalues_dataset.shape}")
+
     # --------------------------------------------------------------------------
     # transform the metric matrix into dataframe for seaborn
     df_metrics = pandas.DataFrame(
@@ -490,6 +508,7 @@ if show_statistic:
         for i_meth in range(len(metrics_dataset[i_dataset][0])):
             for i_metric in range(num_metrics):
                 for i_sample in range(len(metrics_dataset[i_dataset])):
+
                     value = metrics_dataset[i_dataset][i_sample][i_meth][i_metric]
                     df_metrics.loc[len(df_metrics)] = [
                         dataset_names[i_dataset],
@@ -504,6 +523,7 @@ if show_statistic:
         for i_metric in range(num_metrics):
             for i_pair in range(len(test_pairs)):
                 pair = test_pairs[i_pair]
+
                 pvalue = pvalues_dataset[i_dataset, i_metric, i_pair]
                 df_pvalue.loc[len(df_pvalue)] = [
                     dataset_names[i_dataset],
@@ -518,73 +538,85 @@ if show_statistic:
     print("-" * 80)
     print("[INFO] Show statistics analysis...")
     # --------------------------------------------------------------------------
-    methods_color = ["#8E99AB"]
+    methods_color = ["#8E99AB"]  # the first one is for raw
     for i_meth in range(num_methods):
         methods_color.append(methods_info[i_meth][4])
 
-    font_size = 10
-    dict_ticks = settings["ticks_boxplot"]
+    font_size = 15
+    aspect = 1.25
     # --------------------------------------------------------------------------
-    nr, nc = num_metrics, 1
-    # nr, nc = 1, num_metrics
-    fac = num_datasets / 2.0
+    nr, nc = num_metrics, num_datasets
     fig, axes = plt.subplots(
-        nrows=nr, ncols=nc, figsize=(3 * nc * fac, 3 * nr), **dict_fig
+        nrows=nr, ncols=nc, figsize=(3 * nc, 3 * nr * aspect), **dict_fig
     )
 
     for i_metric in range(num_metrics):
-        ax = axes[i_metric]
-        metric_name = metrics_names[i_metric]
-
-        ax.set_yticks(dict_ticks[metric_name][0])
-        ax.set_yticklabels(dict_ticks[metric_name][0], fontsize=font_size)
-
-        # grouped boxplot
-        df = df_metrics[df_metrics["metric"] == metric_name]
-        sns.boxplot(
-            x="dataset",
-            y="value",
-            hue="method",
-            data=df,
-            ax=ax,
-            palette=methods_color,
-            gap=0.2,
-            fliersize=0.5,
-            linecolor="black",
-        )
-
-        # add vline
-        for i_dataset in range(num_datasets - 1):
-            ax.axvline(x=i_dataset + 0.5, color="black", linestyle="--", linewidth=0.5)
-        # disable the legend
-        if i_metric != num_metrics - 1:
-            ax.legend().set_visible(False)
-        ax.set_ylabel(metric_name, fontsize=font_size)
-        ax.set_xlabel("")
-        ax.spines["top"].set_visible(False)
-        ax.spines["right"].set_visible(False)
-        ax.set_ylim(dict_ticks[metric_name][1])
-        ax.tick_params(axis="both", which="major", labelsize=font_size)
-
-        # # add p-value markers --------------------------------------------------
         for i_dataset in range(num_datasets):
+            ax = axes[i_metric, i_dataset]
+            metric_name = metrics_names[i_metric]
+
+            tick_para = dict_ticks[metric_name][i_dataset]
+            yticks = np.round(
+                np.arange(tick_para[0], tick_para[1] + tick_para[2] / 2, tick_para[2]),
+                decimals=2,
+            )
+            ax.set_yticks(yticks)
+            ax.set_yticklabels(yticks, fontsize=font_size)
+            ax.set_box_aspect(aspect)
+
+            # grouped boxplot
+            df = df_metrics[
+                (df_metrics["metric"] == metric_name)
+                & (df_metrics["dataset"] == dataset_names[i_dataset])
+            ]
+            sns.boxplot(
+                data=df,
+                x="method",
+                y="value",
+                hue="method",
+                ax=ax,
+                palette=methods_color,
+                gap=0.2,
+                fliersize=0.5,
+                linecolor="black",
+                legend="brief",
+            )
+
+            if i_metric == 0 and i_dataset == 0:
+                ax.legend(fontsize=12, frameon=False, title=None)
+            else:
+                ax.legend().set_visible(False)
+
+            if i_dataset == 0:
+                ax.set_ylabel(metric_name, fontsize=font_size)
+            else:
+                ax.set_ylabel("")
+
+            if i_metric == 0:
+                ax.set_title(dataset_names[i_dataset], fontsize=font_size, ha="center")
+
+            ax.set_xlabel("")
+            ax.spines["top"].set_visible(False)
+            ax.spines["right"].set_visible(False)
+            ax.set_ylim((tick_para[0], tick_para[1]))
+            ax.tick_params(axis="both", which="major", labelsize=font_size)
+
+            # disable xticklabels
+            ax.set_xticklabels([])
+            ax.set_xticks([])
+
+            # # add p-value markers --------------------------------------------------
             pvalues_tmp = np.array(pvalues_dataset)[i_dataset, i_metric, :]
             for i_pair in range(len(test_pairs)):
                 i_meth = test_pairs[i_pair][0]
-
-                boxes = ax.artists
-                box_positions = [box.get_x() + box.get_width() / 2 for box in boxes]
-
-                step = 1.0 / (num_methods + 2)
-                mid = num_methods / 2
-                star_x = (i_meth - mid) * step + i_dataset
-
-                # get the y limit range of the boxplot
-                ylim = ax.get_ylim()
-                yrange = ylim[1] - ylim[0]
-                star_y = ylim[0] + yrange * 0.97
+                star_x = i_meth
+                star_y = ax.get_ylim()[1]
                 add_significant_star(
-                    ax=ax, x=star_x, y=star_y, p_value=pvalues_tmp[i_pair]
+                    ax=ax,
+                    x=star_x,
+                    y=star_y,
+                    p_value=pvalues_tmp[i_pair],
+                    fontsize=font_size,
                 )
 
     plt.savefig(os.path.join(path_figure, f"image_restored_compare_metrics.png"))
@@ -596,4 +628,27 @@ if show_statistic:
     )
     df_metrics.to_excel(writer, index=False, sheet_name="metrics")
     df_pvalue.to_excel(writer, index=False, sheet_name="pvalue")
+    writer.close()
+
+    # save metrics value to each sheet (dataset-metric)
+    writer = pandas.ExcelWriter(
+        os.path.join(path_figure, f"image_restored_compare_metrics_pivot.xlsx"),
+        engine="xlsxwriter",
+    )
+    for i_dataset in range(num_datasets):
+        for i_metric in range(num_metrics):
+            df = df_metrics[
+                (df_metrics["metric"] == metrics_names[i_metric])
+                & (df_metrics["dataset"] == dataset_names[i_dataset])
+            ]
+
+            # convert to a matrix form
+            df_pivot = df.pivot(index="id_sample", columns="method", values="value")[
+                methods_names[:-1]
+            ]
+            df_pivot.to_excel(
+                writer,
+                sheet_name=f"{dataset_names[i_dataset]} ({metrics_names[i_metric]})",
+                index=False,
+            )
     writer.close()

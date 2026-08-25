@@ -194,7 +194,7 @@ def add_significant_bars(ax, x1, x2, y, p_value, dict_line={}, dict_asterisks={}
     ax.text(x1, y * 0.98, asterisks, **dict_a)
 
 
-def add_significant_star(ax, x, y, p_value, dict_asterisks={}):
+def add_significant_star(ax, x, y, p_value, dict_asterisks={}, fontsize=8):
     """
     Add significant stars to the given axes at a specific position.
 
@@ -214,7 +214,7 @@ def add_significant_star(ax, x, y, p_value, dict_asterisks={}):
         asterisks = "*"
     else:
         asterisks = "ns"
-    dict_a = {"ha": "center", "va": "bottom", "fontsize": 8, "color": "black"}
+    dict_a = {"ha": "center", "va": "bottom", "fontsize": fontsize, "color": "black"}
     if dict_asterisks:
         dict_a.update(dict_asterisks)
     ax.text(x, y, asterisks, **dict_a)
