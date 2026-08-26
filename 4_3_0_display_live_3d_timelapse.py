@@ -153,9 +153,9 @@ text_time = [f"{t*interval/60:.1f} min" for t in id_sample_show]
 title_methods = ["Raw"] + methods_show
 
 dict_text = dict(fontsize=15, color="white")
-dict_text_stage = dict(ha="right", va="top", **dict_text)
-dict_text_rb = dict(ha="right", va="bottom", **dict_text)
-dict_text_lb = dict(ha="left", va="bottom", **dict_text)
+dict_text_stage = dict(x=0.96, y=0.96, ha="right", va="top", **dict_text)
+dict_text_rb = dict(x=0.96, y=0.04, ha="right", va="bottom", **dict_text)
+dict_text_lb = dict(x=0.04, y=0.04, ha="left", va="bottom", **dict_text)
 
 cmaps = []
 for i_channel in range(Nc):
@@ -180,18 +180,10 @@ for i_meth in range(Nmeth):
 
         # add text -------------------------------------------------------------
         if i_meth == 0:
-            ax.text(
-                0.96, 0.96, text_stage[i_t], transform=ax.transAxes, **dict_text_stage
-            )
-            ax.text(0.96, 0.04, text_time[i_t], transform=ax.transAxes, **dict_text_rb)
+            ax.text(text_stage[i_t], transform=ax.transAxes, **dict_text_stage)
+            ax.text(text_time[i_t], transform=ax.transAxes, **dict_text_rb)
         if i_t == 0:
-            ax.text(
-                0.04,
-                0.04,
-                title_methods[i_meth],
-                transform=ax.transAxes,
-                **dict_text_lb,
-            )
+            ax.text(title_methods[i_meth], transform=ax.transAxes, **dict_text_lb)
 
         if (i_meth == 0) and (i_t == Nt - 1):
             # add scale bar

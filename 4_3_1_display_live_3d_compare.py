@@ -63,6 +63,7 @@ results_info = {
 
 dataset_names = list(results_info.keys())
 method_names = [info[0] for info in results_info[dataset_names[0]]["methods"]]
+titles = ["Raw"] + method_names  # add 'Raw'
 
 num_iter = 2
 timepoint_show = 0
@@ -121,6 +122,7 @@ for i_channel in range(num_channels):
     imgs_deconv_mc.append(imgs)
 
 imgs_deconv_mc = np.array(imgs_deconv_mc)
+
 Nc, Nmeth, Nz, Ny, Nx = imgs_deconv_mc.shape
 print(f"Num of channel: {Nc}, num of methods: {Nmeth}, image shape: {(Nz, Ny, Nx)}")
 
@@ -129,9 +131,11 @@ print(f"Num of channel: {Nc}, num of methods: {Nmeth}, image shape: {(Nz, Ny, Nx
 # ------------------------------------------------------------------------------
 dict_fig = dict(dpi=600, constrained_layout=True)
 dict_line = {"color": "white", "linewidth": 1}
-cmaps = [info[1] for info in datasets_info]
-dict_text_meth = {"fontsize": 18, "color": "white", "ha": "right", "va": "top"}
-dict_text_plane = {"fontsize": 18, "color": "white", "ha": "left", "va": "bottom"}
+cmaps = [results_info[ds_name]["color"] for ds_name in dataset_names]
+
+dict_text = dict(fontsize=15, color="white")
+dict_text_rt = dict(x=0.96, y=0.96, ha="right", va="top", **dict_text)
+dict_text_lb = dict(x=0.04, y=0.04, ha="left", va="bottom", **dict_text)
 
 # ------------------------------------------------------------------------------
 # define color
@@ -142,39 +146,45 @@ fig, axes = plt.subplots(nrows=nr, ncols=nc, figsize=(3 * nc, 3 * nr), **dict_fi
 slice_range_xy = (50, 70)
 slice_range_xz = (140, 160)
 
-for imeth in range(Nmeth):
-    img = imgs_deconv_mc[:, imeth]
+for i_meth in range(Nmeth):
+    ax_xy = axes[0, i_meth]
+    ax_xz = axes[1, i_meth]
+
+    # --------------------------------------------------------------------------
+    img = imgs_deconv_mc[:, i_meth]
     img = np.transpose(img, axes=(1, 2, 3, 0))
 
-    # xy plane
+    # xy/xz plane with max intensity projection
     xy_plane = np.max(img[slice_range_xy[0] : slice_range_xy[1]], axis=0)
-    # xz plane
     xz_plane = np.max(img[:, slice_range_xz[0] : slice_range_xz[1], :], axis=1)
 
+    # interpolate xz plane
     xz_plane_interp = [
         interp(xz_plane[..., i], ps_xy=pixel_size, ps_z=slice_space) for i in range(Nc)
     ]
     xz_plane = np.transpose(np.array(xz_plane_interp), axes=(1, 2, 0))
     # --------------------------------------------------------------------------
-    if imeth == 0:
+    if i_meth == 0:
         # raw image
         pl, ph = p_raw
     else:
         # deconvolved image
         pl, ph = [], []
-        for ds_info in datasets_info:
-            ds_name = ds_info[0]
-            pl.append(results_info[ds_name][imeth - 1][3][0])
-            ph.append(results_info[ds_name][imeth - 1][3][1])
+        for ds_name in dataset_names:
+            ran = results_info[ds_name]["methods"][i_meth - 1][3]
+            pl.append(ran[0])
+            ph.append(ran[1])
 
-    xy_plane_color = render(xy_plane, cmaps=cmaps, plow=pl, phigh=ph)
-    xz_plane_color = render(xz_plane, cmaps=cmaps, plow=pl, phigh=ph)
+    dict_render = dict(cmaps=cmaps, plow=pl, phigh=ph)
+    xy_plane_color = render(xy_plane, **dict_render)
+    xz_plane_color = render(xz_plane, **dict_render)
 
-    axes[0, imeth].imshow(xy_plane_color)
-    axes[1, imeth].imshow(xz_plane_color)
+    # --------------------------------------------------------------------------
+    ax_xy.imshow(xy_plane_color)
+    ax_xz.imshow(xz_plane_color)
 
     # add scale bar ------------------------------------------------------------
-    if imeth == Nmeth - 1:
+    if i_meth == Nmeth - 1:
         tp = 0.05
         dict_scale_bar = {
             "pixel_size": pixel_size,
@@ -183,49 +193,32 @@ for imeth in range(Nmeth):
             "bar_color": "white",
             "pos": (int(Nx * tp), int(Ny * (1 - tp))),
         }
-        add_scale_bar(axes[0, imeth], image=xy_plane, **dict_scale_bar)
+        add_scale_bar(ax_xy, image=xy_plane, **dict_scale_bar)
 
     #  add zoom box ------------------------------------------------------------
     pos, size = (120, 155), 60
     if show_patch:
-        show_box = True if imeth == Nmeth - 1 else False
+        show_box = True if i_meth == Nmeth - 1 else False
         add_patch(
-            axes[0, imeth],
+            ax_xy,
             image=xy_plane_color,
             pos=pos,
             size=size,
             show_box=show_box,
             axes_lw=1,
             box_lw=1,
-            box_color="white",
+            box_color="red",
             percent=0.4,
         )
 
     # add title ----------------------------------------------------------------
-    titles = ["Raw"] + method_names
-    pos_text = (
-        xy_plane.shape[1] - int(img.shape[1] * 0.04),
-        int(xy_plane.shape[0] * 0.04),
-    )
-    axes[0, imeth].text(pos_text[0], pos_text[1], titles[imeth], **dict_text_meth)
+    ax_xy.text(s=titles[i_meth], transform=ax_xy.transAxes, **dict_text_rt)
 
     # add plane label ----------------------------------------------------------
-    if imeth == 0:
-        pos_text = (
-            int(xy_plane.shape[1] * 0.04),
-            int(xy_plane.shape[0] * 0.96),
-        )
-        axes[0, imeth].text(pos_text[0], pos_text[1], "xy", **dict_text_plane)
-        pos_text = (
-            int(xz_plane.shape[1] * 0.04),
-            int(xz_plane.shape[0] * 0.96),
-        )
-        axes[1, imeth].text(pos_text[0], pos_text[1], "xz", **dict_text_plane)
+    if i_meth == 0:
+        ax_xy.text(s="xy", transform=ax_xy.transAxes, **dict_text_lb)
+        ax_xz.text(s="xz", transform=ax_xz.transAxes, **dict_text_lb)
 
 
-plt.savefig(
-    os.path.join(path_fig, f"image_restored_compare_live3d_id_{timepoint_show}.png")
-)
-plt.savefig(
-    os.path.join(path_fig, f"image_restored_compare_live3d_id_{timepoint_show}.svg")
-)
+plt.savefig(os.path.join(path_fig, f"image_restored_compare_id_{timepoint_show}.png"))
+plt.savefig(os.path.join(path_fig, f"image_restored_compare_id_{timepoint_show}.svg"))
