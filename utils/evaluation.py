@@ -3,6 +3,34 @@ from utils import data
 import numpy as np
 from pytorch_msssim import ms_ssim
 import torch, itertools, math
+from nanopyx.core.transform import ErrorMap
+
+
+def SQUIRREL(img, img_ref):
+    """
+    **SQUIRREL analysis**, super-resolution quantitative image taing and repoting error locations.
+    Reference: https://github.com/HenriquesLab/NanoPyx/blob/main/notebooks/SRMetrics.ipynb
+    ### Parameters:
+    - `img`: image to evaluate, commonly be a super-resolution image.
+    - `img_ref`: reference image, commonly be a **diffraction-limited** image, also
+        can be a super-resolution image from different modality. (But its resolution
+        may need to be lower than that of `img`)
+    ### Returns:
+    - `RSE`: resolution-scaled error. [lower is better]
+    - `RSP`: resolution-scaled Pearson coefficient. [higher is better]
+    - `emap`: error map. Pixel-wise absolute error between the reference and resolution-scaled images.
+    """
+    # convert to numpy array
+    img = tensor_to_array(img)
+    img_ref = tensor_to_array(img_ref)
+
+    error_map = ErrorMap()
+    error_map.optimise(img_ref, img)
+    RSE = error_map.getRSE()
+    RSP = error_map.getRSP()
+    emap = np.array(error_map.imRSE)
+
+    return RSE, RSP, emap
 
 
 def tensor_to_array(img):

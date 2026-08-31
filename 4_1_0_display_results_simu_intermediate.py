@@ -48,7 +48,9 @@ path_kernel = os.path.join(path_predictions, "kernel")
 
 file_id = filenames[id_sample].split(".")[0]
 path_sample = os.path.join(path_predictions, file_id)
-path_figure = os.path.join("outputs", "figures", dataset_name_test, file_id)
+path_figure = os.path.join(
+    "outputs", "figures", "analysis_image", dataset_name_test, file_id, "intermediate"
+)
 os.makedirs(path_figure, exist_ok=True)
 
 print("-" * 80)

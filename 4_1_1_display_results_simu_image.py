@@ -17,11 +17,13 @@ from methods.deconvolution import Convolution
 
 plt.rcParams["svg.fonttype"] = "none"
 # ------------------------------------------------------------------------------
-num_samples_statistic = 20
+num_samples_statistic = 20  # the number of sample used for statistics evaluation
 enable_normalization = True
 # enable_normalization = False
 enable_image_metrics = False
+enable_image_metrics = True
 enable_profile = False
+enable_profile = True
 
 method_subgroup = "different_methods"
 # method_subgroup = "along_iter"
@@ -65,6 +67,7 @@ methods_info_dict = {
         # ("wiener-butterworth", "WB@3", 3, "#42B4B5"),
         ("rln", "RLN", 2, "#EC8860"),
         ("kernelnet", "KLD@2", 2, "#C23637"),
+        # ("kernelnet", "KLD@5", 5, "#C23637"),
         # ("kernelnet_ss", "KLD-ss", 2, "#F3B95F"),
         ("gt", "GT", 2, "#212C3E"),
     ),
@@ -86,10 +89,9 @@ methods_info_dict = {
     ),
 }
 
-methods_info = methods_info_dict[method_subgroup]
-
 
 # ------------------------------------------------------------------------------
+methods_info = methods_info_dict[method_subgroup]
 (
     dataset_name_test,
     id_sample,
@@ -116,11 +118,13 @@ filenames = read_txt(path_txt)
 pixel_size = info["pixel_size"] / 1000  # um
 ratio = info["ratio"]
 
+path_figure_root = os.path.join(
+    "outputs", "figures", "analysis_image", dataset_name_test
+)
 path_figure = os.path.join(
-    "outputs",
-    "figures",
-    dataset_name_test,
-    filenames[id_sample].split(".")[0],
+    path_figure_root,
+    filenames[id_sample].split(".")[0],  # the folder name is the id of sample
+    method_subgroup,
 )
 os.makedirs(path_figure, exist_ok=True)
 
@@ -128,9 +132,15 @@ os.makedirs(path_figure, exist_ok=True)
 num_methods = len(methods_info)
 print("-" * 80)
 print(f"[INFO] Show methods : {[name[0] for name in methods_info]}")
-
 print(f"[INFO] Enable normalization : {enable_normalization}")
 normalizer = NormalizePercentile(p_low=0.03, p_high=0.995, ndim=3)
+
+
+def preprocess(img):
+    img = normalizer(img)
+    img = np.clip(img, a_min=0.0, a_max=2.5)
+    return img
+
 
 # ------------------------------------------------------------------------------
 # load results
@@ -209,11 +219,12 @@ for i_meth in range(num_methods):
     imgs_all_fp[i_meth] = img_fp
 
 # image normalization ----------------------------------------------------------
+# whether normalize the image before calculating the metrics
 if enable_normalization:
     print("[INFO] image normalization...")
     imgs_all_norm = np.zeros_like(imgs_all)
     for i in range(imgs_all.shape[0]):
-        imgs_all_norm[i] = np.clip(normalizer(imgs_all[i]), a_min=0, a_max=2.5)
+        imgs_all_norm[i] = preprocess(imgs_all[i])
     data_range = 2.5
 else:
     imgs_all_norm = imgs_all
@@ -230,9 +241,10 @@ lxy_start, lxy_end = line_xy[0], line_xy[1]
 lzx_start, lzx_end = line_xz[0], line_xz[1]
 
 dict_fig = dict(dpi=300, constrained_layout=True)
-dict_text_rt = dict(color="white", fontsize=18, ha="right", va="top", x=0.95, y=0.95)
-dict_text_lb = dict(color="white", fontsize=18, ha="left", va="bottom", x=0.05, y=0.05)
-dict_text_rb = dict(color="white", fontsize=18, ha="right", va="bottom", x=0.95, y=0.05)
+dict_text = dict(color="white", fontsize=18)
+dict_text_rt = dict(ha="right", va="top", x=0.95, y=0.95, **dict_text)
+dict_text_lb = dict(ha="left", va="bottom", x=0.05, y=0.05, **dict_text)
+dict_text_rb = dict(ha="right", va="bottom", x=0.95, y=0.05, **dict_text)
 dict_line = dict(color="deeppink", linewidth=1.5)
 dict_image = dict(cmap="gray", vmin=0, vmax=0.9)
 
@@ -276,9 +288,13 @@ for i_meth in range(num_methods):
                 img_true=img_gt, img_test=img, data_range=data_range, interp_sf=2
             )
             ssim = ssim * 100
+            zncc = eva.NCC(img_true=img_gt, img_test=img)
 
             ax[0].text(
-                s=f"{psnr:.2f} | {ssim:.2f}", transform=ax[0].transAxes, **dict_text_rb
+                # s=f"{psnr:.2f} | {ssim:.2f} | {zncc:.2f}",
+                s=f"{psnr:.2f} | {zncc:.2f}",
+                transform=ax[0].transAxes,
+                **dict_text_rb,
             )
 
     # add scale bar
@@ -292,9 +308,10 @@ for i_meth in range(num_methods):
         }
         add_scale_bar(ax[0], image=img, **dict_scale_bar)
 
-plt.savefig(os.path.join(path_figure, f"img_restored_{method_subgroup}.png"))
-plt.savefig(os.path.join(path_figure, f"img_restored_{method_subgroup}.svg"))
+plt.savefig(os.path.join(path_figure, f"img_restored.png"))
+plt.savefig(os.path.join(path_figure, f"img_restored.svg"))
 
+# os._exit(0)
 # ------------------------------------------------------------------------------
 # show fft of image
 # ------------------------------------------------------------------------------
@@ -304,8 +321,6 @@ print("[INFO] plot fft of image...")
 imgs_all_fft = []
 for i_meth in range(num_methods):
     img = imgs_all[i_meth]
-    # 3D fft
-    # img_fft = np.fft.fftshift(np.fft.fftn(img, s=(256, 256, 256)))
     img_fft = np.fft.fftshift(np.fft.fftn(img))
     img_fft = np.log(np.abs(img_fft) + 1)
     img_fft = img_fft / img_fft.max()
@@ -315,9 +330,8 @@ imgs_all_fft = np.array(imgs_all_fft)
 
 id_slice_center_xy = int(Nz // 2)
 id_slice_center_zx = int(Ny // 2)
-# id_slice_center_xy = int(256 // 2)
-# id_slice_center_zx = int(256 // 2)
-dict_image_fft = dict(cmap="hot", vmin=0.4, vmax=1)
+# dict_image_fft = dict(cmap="hot", vmin=0.4, vmax=1)
+dict_image_fft = dict(cmap="hot", vmin=0.2, vmax=1)
 
 # ------------------------------------------------------------------------------
 # show center slice of xy and xz plane
@@ -337,17 +351,20 @@ for i_meth in range(num_methods):
         ax[0].text(s="xy", transform=ax[0].transAxes, **dict_text_lb)
         ax[1].text(s="xz", transform=ax[1].transAxes, **dict_text_lb)
 
-plt.savefig(os.path.join(path_figure, f"img_fft_{method_subgroup}.png"))
-plt.savefig(os.path.join(path_figure, f"img_fft_{method_subgroup}.svg"))
+plt.savefig(os.path.join(path_figure, f"img_fft.png"))
+plt.savefig(os.path.join(path_figure, f"img_fft.svg"))
 
-os._exit(0)
+# os._exit(0)
 # ------------------------------------------------------------------------------
 # show resolution-scale error
 # ------------------------------------------------------------------------------
+# here we use the real psf to convole the restored image to get the
+# resolution-scale error
 print("-" * 80)
 print("[INFO] plot resolution-scale error...")
 dict_image = dict(cmap="gray", vmin=0, vmax=25)
 dict_image_error = dict(cmap="plasma", vmin=0, vmax=12.5)
+
 nr, nc = 4, num_methods
 fig, axes = plt.subplots(nrows=nr, ncols=nc, figsize=(3 * nc, 3 * nr), **dict_fig)
 [ax.set_axis_off() for ax in axes.ravel()]
@@ -359,7 +376,7 @@ for i_meth in range(num_methods - 1):
         ax[0].imshow(img_ref[id_slice_xy], **dict_image)
         ax[2].imshow(img_ref[:, id_slice_zx, :], **dict_image)
     else:
-        img_rescale = imgs_all_fp[i_meth]
+        img_rescale = imgs_all_fp[i_meth]  # the image have be conv for resolution scale
         if "rln" in name_meth:
             img_rescale = linear_transform(img_rescale, img_ref)
         img_err = np.abs(img_rescale - img_ref)
@@ -407,12 +424,8 @@ for ax in axes[:2, -1]:
 axes[0, -1].set_ylim(dict_image["vmin"], dict_image["vmax"])
 axes[1, -1].set_ylim(dict_image_error["vmin"], dict_image_error["vmax"])
 
-plt.savefig(
-    os.path.join(path_figure, f"img_resolution_scale_error_{method_subgroup}.png")
-)
-plt.savefig(
-    os.path.join(path_figure, f"img_resolution_scale_error_{method_subgroup}.svg")
-)
+plt.savefig(os.path.join(path_figure, f"img_resolution_scale_error.png"))
+plt.savefig(os.path.join(path_figure, f"img_resolution_scale_error.svg"))
 
 # os._exit(0)
 # ------------------------------------------------------------------------------
@@ -479,6 +492,7 @@ if enable_profile:
             print("[INFO] plot line in zx plane")
             line_start = (lzx_start[1], lzx_start[0])
             line_end = (lzx_end[1], lzx_end[0])
+
             for i_meth in range(num_methods):
                 name_meth, name, iter, color = methods_info[i_meth]
                 img = imgs_all_norm[i_meth]
@@ -501,13 +515,10 @@ if enable_profile:
         # set the axes to square
         ax.set_box_aspect(1)
 
-    plt.savefig(
-        os.path.join(path_figure, f"img_restored_profile_{method_subgroup}.png")
-    )
-    plt.savefig(
-        os.path.join(path_figure, f"img_restored_profile_{method_subgroup}.svg")
-    )
+    plt.savefig(os.path.join(path_figure, f"img_restored_profile.png"))
+    plt.savefig(os.path.join(path_figure, f"img_restored_profile.svg"))
 
+# os._exit(0)
 # ------------------------------------------------------------------------------
 # load all samples and calculate the statistics
 # ------------------------------------------------------------------------------
@@ -578,13 +589,16 @@ for i_meth in range(num_methods):
         imgs_all_samples_fp[i_meth, i_sample] = img_fp
 
 # image normalization ----------------------------------------------------------
-imgs_all_samples_norm = np.zeros_like(imgs_all_samples)
-for i in range(imgs_all_samples.shape[0]):
-    for j in range(imgs_all_samples.shape[1]):
-        imgs_all_samples_norm[i, j] = np.clip(
-            normalizer(imgs_all_samples[i, j]), a_min=0, a_max=2.5
-        )
-data_range = 2.5
+if enable_normalization:
+    imgs_all_samples_norm = np.zeros_like(imgs_all_samples)
+    for i in range(imgs_all_samples.shape[0]):
+        for j in range(imgs_all_samples.shape[1]):
+            imgs_all_samples_norm[i, j] = preprocess(imgs_all_samples[i, j])
+
+    data_range = 2.5
+else:
+    imgs_all_samples_norm = imgs_all_samples
+    data_range = None
 
 # calculate metrics ------------------------------------------------------------
 print("-" * 80)
@@ -595,9 +609,11 @@ num_metrics = len(metrics_names)
 metrics_all_samples = np.zeros((num_methods - 1, num_samples_statistic, num_metrics))
 for i_meth in range(num_methods - 1):
     for i_sample in range(num_samples_statistic):
+        # used for calculate PSNR, SSIM, and ZNCC
         img_gt = imgs_all_samples_norm[-1, i_sample]
         img_pred = imgs_all_samples_norm[i_meth, i_sample]
 
+        # used for calculate RSE and RSP
         img_ref = imgs_all_samples[0, i_sample]
         img_pred_fp = imgs_all_samples_fp[i_meth, i_sample]
 
@@ -647,6 +663,7 @@ yticks_metrics_dict = {
 yticks_metrics = yticks_metrics_dict[method_subgroup]
 
 # calculate pvalue -------------------------------------------------------------
+# compare each method with the reference method (last method)
 test_pairs = [(i, num_methods - 2) for i in range(num_methods - 2)]
 pvalues = np.zeros((num_metrics, len(test_pairs)))
 for i_metric in range(num_metrics):
@@ -661,32 +678,40 @@ print("[INFO] pvalues shape : ", pvalues.shape)
 # plot -------------------------------------------------------------------------
 nr, nc = 1, num_metrics
 fig, axes = plt.subplots(nrows=nr, ncols=nc, figsize=(3 * nc, 3 * nr), **dict_fig)
+colors_all = [color for _, _, _, color in methods_info]
+labels_all = [name for _, name, _, _ in methods_info]
+dict_bar = dict(capsize=5, width=0.8)
 
 for i_metric in range(num_metrics):
     ax = axes[i_metric]
     metric_name = metrics_names[i_metric]
     if metric_name in ["PSNR", "MS-SSIM", "ZNCC"]:
         data = metrics_all_samples[:, :, i_metric]
-        pvs = pvalues[i_metric, :]
-        colors = [color for _, _, _, color in methods_info[:-1]]
-        labels = [name for _, name, _, _ in methods_info[:-1]]
+        pvs = pvalues[i_metric]
+        colors = colors_all[:-1]
+        labels = labels_all[:-1]
         x_pos = np.arange(num_methods - 1)
         test_pairs_show = test_pairs
-
     elif metric_name in ["RSE", "RSP"]:
         data = metrics_all_samples[1:, :, i_metric]
         pvs = pvalues[i_metric, 1:]
-        colors = [color for _, _, _, color in methods_info[1:-1]]
-        labels = [name for _, name, _, _ in methods_info[1:-1]]
+        colors = colors_all[1:-1]
+        labels = labels_all[1:-1]
         x_pos = np.arange(num_methods - 2)
         test_pairs_show = test_pairs[1:]
+    else:
+        raise ValueError(
+            f"Unknown metric name: {metric_name}. "
+            "Please use one of PSNR, MS-SSIM, ZNCC, RSE, RSP."
+        )
 
+    # --------------------------------------------------------------------------
     data_std = data.std(axis=1)
     data_mean = data.mean(axis=1)
     data_max, data_min = data.max(), data.min()
+    data_range = data_max - data_min
 
     # --------------------------------------------------------------------------
-    dict_bar = dict(capsize=5, width=0.8)
     ax.bar(x_pos, data_mean, yerr=data_std, color=colors, label=labels, **dict_bar)
 
     # --------------------------------------------------------------------------
@@ -701,14 +726,11 @@ for i_metric in range(num_metrics):
     if metric_name == "RSP":
         ax.set_yticklabels([f"{x:.3f}" for x in ticks])
     else:
-        ax.set_yticklabels([f"{x:.1f}" for x in ticks])
+        ax.set_yticklabels([f"{x:.2f}" for x in ticks])
 
     ax.set_ylabel(metric_name)
 
-    y_lim = (
-        data_min - (data_max - data_min) * 0.1,
-        data_max + (data_max - data_min) * 0.1,
-    )
+    y_lim = (data_min - data_range * 0.1, data_max + data_range * 0.1)
     ax.set_ylim(y_lim)
     ax.spines["top"].set_visible(False)
     ax.spines["right"].set_visible(False)
@@ -724,17 +746,16 @@ for i_metric in range(num_metrics):
         star_y = data_mean[i_pos] + data_std[i_pos] + 0.02 * (y_lim[1] - y_lim[0])
         add_significant_star(ax, star_x, star_y, pv)
 
-path_save = os.path.join(
-    os.path.dirname(path_figure), f"img_restored_metrics_{method_subgroup}"
-)
-plt.savefig(path_save + ".png")
-plt.savefig(path_save + ".svg")
+path_save = os.path.join(path_figure_root, method_subgroup)
+os.makedirs(path_save, exist_ok=True)
+plt.savefig(os.path.join(path_save, "img_restored_metrics.png"))
+plt.savefig(os.path.join(path_save, "img_restored_metrics.svg"))
 
 # save source data -------------------------------------------------------------
+# save seach metric to a sheet of excel
 print("-" * 80)
 print("[INFO] save source data...")
-# save seach metric to a sheet of excel
-path_excel = path_save + ".xlsx"
+path_excel = os.path.join(path_save, "img_restored_metrics.xlsx")
 # if excel is exist, delete it
 if os.path.exists(path_excel):
     os.remove(path_excel)
@@ -745,6 +766,6 @@ for i_metric in range(num_metrics):
     df = pandas.DataFrame(columns=methods_name[:-1])
     for i_meth in range(num_methods - 1):
         df[methods_name[i_meth]] = data[i_meth]
-    df.to_excel(writer, sheet_name=metrics_names[i_metric], index=False)
+    df.to_excel(writer, sheet_name=metrics_names[i_metric], index=True)
 writer.close()
 # ------------------------------------------------------------------------------
