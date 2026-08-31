@@ -7,23 +7,43 @@ import matplotlib.pyplot as plt
 import skimage.io as io
 import numpy as np
 import os, pandas
-import utils.data as utils_data
+from utils.data import fft_n, win2linux
 
 plt.rcParams["svg.fonttype"] = "none"
 # ------------------------------------------------------------------------------
 # pixel_size = 162.5  # nm
-path_results_show = (
-    "SimuMix3D-128-31-0-0-1/traditional/kernel/ker_bp.tif",
-    "SimuMix3D-128-31-0-0-1/wiener-butterworth/kernel/ker_bp.tif",
-    "SimuMix3D-128-31-0-0-1/kernelnet/SimuMix3D-128-31-0-0-1/fp_knonw_bp_n80_r_1/kernel/kernel_bp.tif",
-    "SimuMix3D-128-31-05-1-03/kernelnet/SimuMix3D-128-31-05-1-03/fp_knonw_bp_n3_r1/kernel/kernel_bp.tif",
+path_kernel_learned = (
+    (
+        "Traditional",
+        "SimuMix3D-128-31-0-0-1/traditional/kernel/ker_bp.tif",
+        "black",
+    ),
+    (
+        "WB",
+        "SimuMix3D-128-31-0-0-1/wiener-butterworth/kernel/ker_bp.tif",
+        "#6895D2",
+    ),
+    (
+        "KLD (NF)",
+        "SimuMix3D-128-31-0-0-1/kernelnet/SimuMix3D-128-31-0-0-1/fp_knonw_bp_n80_r_1/kernel/kernel_bp.tif",
+        "#D04848",
+    ),
+    (
+        "KLD (NF)",
+        "SimuMix3D-128-31-05-1-03/kernelnet/SimuMix3D-128-31-05-1-03/fp_knonw_bp_n3_r1/kernel/kernel_bp.tif",
+        "#F3B95F",
+    ),
 )
+
 path_kernel_true = "SimuMix3D-128-31-05-1-03/kernelnet/SimuMix3D-128-31-05-1-03/fp_knonw_bp_n3_r1/kernel/kernel_true.tif"
 path_image_y = "SimuMix3D-128-31-05-1-03/kernelnet/SimuMix3D-128-31-05-1-03/fp_knonw_bp_n3_r1/10/y.tif"
 
+path_kernel_true = win2linux(path_kernel_true)
+path_image_y = win2linux(path_image_y)
+
 # ------------------------------------------------------------------------------
 path_prediction = os.path.join("outputs", "predictions")
-path_fig = os.path.join("outputs", "figures", "analysis_kernel")
+path_fig = os.path.join("outputs", "figures", "analysis_kernel", "backward_kernel")
 os.makedirs(path_fig, exist_ok=True)
 
 info_df = pandas.read_excel("datasets_test.xlsx")
@@ -31,22 +51,25 @@ info = info_df[info_df["id"] == "SimuMix3D-128-31-05-1-03"].iloc[0]
 pixel_size = info["pixel_size"]
 pixel_size_um = pixel_size / 1000
 
-print("[INFO] load data from:", path_prediction)
-print("[INFO] save figures to:", path_fig)
-print(f"[INFO] pixel size: {pixel_size_um} um")
+print(f"[INFO] Load data from: {path_prediction}")
+print(f"[INFO] Save figures to: {path_fig}")
+print(f"[INFO] Pixel size: {pixel_size_um} um")
+
+methods_name = [path[0] for path in path_kernel_learned]
+methods_color = [path[2] for path in path_kernel_learned]
+
 
 # ------------------------------------------------------------------------------
 # load kernels
 # ------------------------------------------------------------------------------
 print("[INFO] load kernels ...")
 ker_BP = []
-for path in path_results_show:
+for path in path_kernel_learned:
+    path = win2linux(path[1])
     ker_BP.append(io.imread(os.path.join(path_prediction, path)))
 
 # true forward kernel
 ker_true = io.imread(os.path.join(path_prediction, path_kernel_true))
-
-# ------------------------------------------------------------------------------
 
 # ------------------------------------------------------------------------------
 # show backward kernel planes
@@ -61,12 +84,16 @@ nr, nc = 3, 8
 fig, axes = plt.subplots(nrows=nr, ncols=nc, figsize=(3 * nc, 3 * nr), **dict_fig)
 [ax.set_axis_off() for ax in axes.ravel()]
 
+dict_text = dict(color="white", fontsize=24)
+dict_text_lb = dict(x=0.04, y=0.04, ha="left", va="bottom", **dict_text)
+dict_text_rt = dict(x=0.96, y=0.96, ha="right", va="top", **dict_text)
+dict_ker = {"cmap": "hot", "vmin": 0.0}
 
-def show(ker_fp, ker_bp, axes, s=None, title=""):
-    dict_ker = {"cmap": "hot", "vmin": 0.0}
 
-    ker_fp_fft = utils_data.fft_n(ker_fp, s=s)
-    ker_bp_fft = utils_data.fft_n(ker_bp, s=s)
+def show(ker_fp, ker_bp, axes, s=None):
+
+    ker_fp_fft = fft_n(ker_fp, s=s)
+    ker_bp_fft = fft_n(ker_bp, s=s)
     N_kb = ker_bp.shape
     N_kf_ft = ker_fp_fft.shape
     a = np.abs(ker_bp_fft)
@@ -80,19 +107,18 @@ def show(ker_fp, ker_bp, axes, s=None, title=""):
     axes[2, 1].imshow(b[:, N_kf_ft[1] // 2, :], vmax=b.max(), **dict_ker)
 
 
-show(ker_true, ker_BP[0], axes=axes[:, 0:2], s=s_fft, title="Traditional")
-show(ker_true, ker_BP[1], axes=axes[:, 2:4], s=s_fft, title="WB")
-show(ker_true, ker_BP[2], axes=axes[:, 4:6], s=s_fft, title="KLD (NF)")
-show(ker_true, ker_BP[3], axes=axes[:, 6:], s=s_fft, title="KLD (N)")
+for i in range(len(methods_name)):
+    show(ker_true, ker_BP[i], axes=axes[:, i * 2 : i * 2 + 2], s=s_fft)
+    axes[0, i * 2].text(
+        s=methods_name[i], transform=axes[0, i * 2].transAxes, **dict_text_rt
+    )
 
-dict_text_spa = {"x": 1, "y": ker_true.shape[-1] - 2, "color": "white", "fontsize": 24}
-dict_text_fre = {"x": 8, "y": s_fft[-1] - 10, "color": "white", "fontsize": 24}
-axes[0, 0].text(s="$xy$", **dict_text_spa)
-axes[0, 1].text(s="$xz$", **dict_text_spa)
-axes[1, 0].text(s="$k_x$$k_y$", **dict_text_fre)
-axes[1, 1].text(s="$k_x$$k_z$", **dict_text_fre)
-axes[2, 0].text(s="$k_x$$k_y$", **dict_text_fre)
-axes[2, 1].text(s="$k_x$$k_z$", **dict_text_fre)
+axes[0, 0].text(s="$xy$", transform=axes[0, 0].transAxes, **dict_text_lb)
+axes[0, 1].text(s="$xz$", transform=axes[0, 1].transAxes, **dict_text_lb)
+axes[1, 0].text(s="$k_x$$k_y$", transform=axes[1, 0].transAxes, **dict_text_lb)
+axes[1, 1].text(s="$k_x$$k_z$", transform=axes[1, 1].transAxes, **dict_text_lb)
+axes[2, 0].text(s="$k_x$$k_y$", transform=axes[2, 0].transAxes, **dict_text_lb)
+axes[2, 1].text(s="$k_x$$k_z$", transform=axes[2, 1].transAxes, **dict_text_lb)
 
 plt.savefig(os.path.join(path_fig, "kernel_bp.png"))
 plt.savefig(os.path.join(path_fig, "kernel_bp.svg"))
@@ -109,8 +135,8 @@ fig, axes = plt.subplots(nrows=nr, ncols=nc, figsize=(3 * nc, 3 * nr), **dict_fi
 def plot_profile(axes, ker_fp, ker_bp, s=None, color=None, label=None):
     dict_ker_profile = {"color": color, "label": label, "linewidth": 1}
 
-    ker_fp_fft = utils_data.fft_n(ker_fp, s=s)
-    ker_bp_fft = utils_data.fft_n(ker_bp, s=s)
+    ker_fp_fft = fft_n(ker_fp, s=s)
+    ker_bp_fft = fft_n(ker_bp, s=s)
     N_kb = ker_bp.shape
     N_kf_ft = ker_fp_fft.shape
     a = np.abs(ker_bp_fft)
@@ -136,11 +162,9 @@ def plot_profile(axes, ker_fp, ker_bp, s=None, color=None, label=None):
     return lines
 
 
-axes[0, 0].axhline(y=0.0, color="gray", lw=1.0, linestyle="--")
-axes[1, 0].axhline(y=0.0, color="gray", lw=1.0, linestyle="--")
+for ax in [axes[0, 0], axes[1, 0]]:
+    ax.axhline(y=0.0, color="gray", lw=1.0, linestyle="--")
 
-methods_color = ["black", "#6895D2", "#D04848", "#F3B95F"]
-methods_name = ["Traditional", "WB", "KLD (NF)", "KLD (N)"]
 
 all_lines = []  # collect the value of all lines
 for i in range(len(methods_name)):
@@ -185,8 +209,9 @@ for ax in axes[:, 2].ravel():
 # add frequency labels
 ticks = [0, 20, 40, 60]
 ticklables = [0]
+Nx = y.shape[-1]
 for tick in ticks[1:]:
-    ticklables.append(f"1/{round(pixel_size*128/tick)}")
+    ticklables.append(f"1/{round(pixel_size*Nx/tick)}")
 for ax in axes[:, 1:].ravel():
     ax.set_xticks(ticks)
     ax.set_xticklabels(ticklables)
@@ -198,7 +223,7 @@ for ax in axes.ravel():
         spine.set_linewidth(1.0)
     ax.spines[["right", "top"]].set_visible(False)
 
-plt.savefig(os.path.join(path_fig, "kernel_bp_fft"))
+plt.savefig(os.path.join(path_fig, "kernel_bp_fft.png"))
 plt.savefig(os.path.join(path_fig, "kernel_bp_fft.svg"))
 
 # save source data -------------------------------------------------------------

@@ -47,6 +47,8 @@ path_predictions = os.path.join(
 path_kernel = os.path.join(path_predictions, "kernel")
 
 file_id = filenames[id_sample].split(".")[0]
+
+# ------------------------------------------------------------------------------
 path_sample = os.path.join(path_predictions, file_id)
 path_figure = os.path.join(
     "outputs", "figures", "analysis_image", dataset_name_test, file_id, "intermediate"
@@ -79,36 +81,20 @@ y_pred_all = io.imread(os.path.join(path_sample, "y_pred_all.tif"))
 # ------------------------------------------------------------------------------
 y_pred = y_pred_all[num_iter_train]
 
-Nz_kt, Ny_kt, Nx_kt = ker_true.shape
-Nz_kf, Ny_kf, Nx_kf = ker_FP.shape
-Nz_kb, Ny_kb, Nx_kb = ker_BP.shape
 Nz, Ny, Nx = img_y.shape
 
 # ------------------------------------------------------------------------------
 # show iteration process
 # ------------------------------------------------------------------------------
-dict_fig = {"dpi": 300, "constrained_layout": True}
-dict_ker_fp = {"cmap": "hot", "vmin": 0.0, "vmax": ker_true.max()}
-dict_ker_bp = {"cmap": "hot", "vmin": 0.0, "vmax": np.max(ker_BP)}
-dict_img = {"cmap": "gray", "vmin": 0.0, "vmax": img_y.max() * 0.6}
-dict_dv = {"cmap": "bwr", "vmin": 0.5, "vmax": 1.5}
-dict_bp = {"cmap": "bwr", "vmin": -0.5, "vmax": 2.5}
-dict_text_lb = {
-    "color": "white",
-    "fontsize": 20,
-    "ha": "left",
-    "va": "bottom",
-    "x": 0.05,
-    "y": 0.05,
-}
-dict_text_rt = {
-    "color": "white",
-    "fontsize": 20,
-    "ha": "right",
-    "va": "top",
-    "x": 0.95,
-    "y": 0.95,
-}
+dict_fig = dict(dpi=300, constrained_layout=True)
+dict_ker_fp = dict(cmap="hot", vmin=0.0, vmax=ker_true.max())
+dict_ker_bp = dict(cmap="hot", vmin=0.0, vmax=np.max(ker_BP))
+dict_img = dict(cmap="gray", vmin=0.0, vmax=img_y.max() * 0.6)
+dict_dv = dict(cmap="bwr", vmin=0.5, vmax=1.5)
+dict_bp = dict(cmap="bwr", vmin=-0.5, vmax=2.5)
+dict_text = dict(color="white", fontsize=20)
+dict_text_lb = dict(ha="left", va="bottom", x=0.05, y=0.05, **dict_text)
+dict_text_rt = dict(ha="right", va="top", x=0.95, y=0.95, **dict_text)
 
 # ------------------------------------------------------------------------------
 print("[INFO] plot iteration process...")
@@ -118,7 +104,7 @@ fig, axes = plt.subplots(nrows=nr, ncols=nc, figsize=(3 * nc, 3 * nr), **dict_fi
 
 
 def show_xy_zx(ax, img, dict_params):
-    Nz, Ny, Nx = img.shape
+    Nz, Ny, _ = img.shape
     ax[0].imshow(img[Nz // 2], **dict_params)
     ax[1].imshow(img[:, Ny // 2, :], **dict_params)
 
@@ -141,7 +127,7 @@ axes[0, 0].text(s="input", transform=axes[0, 0].transAxes, **dict_text_rt)
 axes[0, 1].text(s="x$_0$", transform=axes[0, 1].transAxes, **dict_text_rt)
 axes[0, 8].text(s="GT", transform=axes[0, 8].transAxes, **dict_text_rt)
 
-# add scale bar to image
+# add scale bar to image -------------------------------------------------------
 img_shape = img_x.shape
 print(f"[INFO] img_shape = {img_shape}")
 tp = 0.05
@@ -154,7 +140,7 @@ dict_scale_bar = {
 }
 add_scale_bar(axes[0, 0], image=img_x, **dict_scale_bar)
 
-# add scale bar to kernel
+# add scale bar to kernel ------------------------------------------------------
 ker_shape = ker_FP.shape
 print(f"[INFO] ker_shape = {ker_shape}")
 dict_scale_bar = {
@@ -172,7 +158,6 @@ cbar = fig.colorbar(aximage, cax=axes[2, 4], orientation="horizontal")
 # set the aspect of axes
 axes[2, 4].set_aspect(0.1)
 axes[2, 4].set_axis_on()
-
 
 # save
 plt.savefig(os.path.join(path_figure, "iteration_process.png"))
@@ -225,9 +210,8 @@ y_idx, x_idx = np.unravel_index(xz_plane.argmax(), xz_plane.shape)
 axes[1, 3].plot(img_x0[:, i_slice, x_idx], "black", label="x0")
 axes[1, 3].plot(img_y[:, i_slice, x_idx], "red", label="y")
 axes[1, 3].plot(img_y_fp[:, i_slice, x_idx], "green", label="y_fp", linestyle="--")
-# remove box of legend
-
 axes[1, 3].legend(frameon=False)
+
 # plot the line in the image
 for ax in [axes[0, 2], axes[0, 3], axes[1, 2]]:
     ax.plot([x_idx, x_idx], [0, Nz - 1], "red", linewidth=1)
@@ -237,3 +221,4 @@ axes[1, 2].set_title("y")
 
 # save
 plt.savefig(os.path.join(path_figure, "compare_x0_y_fp.png"))
+plt.savefig(os.path.join(path_figure, "compare_x0_y_fp.svg"))

@@ -15,24 +15,30 @@ plt.rcParams["svg.fonttype"] = "none"
 # ------------------------------------------------------------------------------
 data_info = (
     # (dataset_name, (id_num_data, id_repeat))
-    ("SimuMix3D-256-31-0-0-1", (1, 1)),
-    ("SimuMix3D-256-31-05-1-1", (1, 1)),
-    ("SimuMix3D-256-31-05-1-03", (1, 1)),
-    ("SimuMix3D-256-31-05-1-01", (1, 1)),
+    ("SimuMix3D-256-31-0-0-1", (1, 1), "NF", "black"),
+    ("SimuMix3D-256-31-05-1-1", (1, 1), "20 dB", "red"),
+    ("SimuMix3D-256-31-05-1-03", (1, 1), "15 dB", "green"),
+    ("SimuMix3D-256-31-05-1-01", (1, 1), "10 dB", "blue"),
 )
-noise_level = ["NF", "20", "15", "10"]
+
+num_data = [1, 2, 3]
+id_repeat = [1, 2, 3]
+
+datasets_name = [info[0] for info in data_info]
+noise_level = [info[2] for info in data_info]
+colors = [info[3] for info in data_info]
+
+num_noise_level = len(noise_level)
 
 # ------------------------------------------------------------------------------
-datasets_name = [info[0] for info in data_info]
-
 info_df = pandas.read_excel("datasets_test.xlsx")
 info = info_df[info_df["id"] == datasets_name[0]].iloc[0]
 path_psf = win2linux(info["path_psf"])
 pixel_size = info["pixel_size"] / 1000  # um
 
 path_prediction = os.path.join("outputs", "predictions")
-path_fig = os.path.join("outputs", "figures", "analysis_kernel")
-os.makedirs(path_fig, exist_ok=True)
+path_figure = os.path.join("outputs", "figures", "analysis_kernel", "forward_kernel")
+os.makedirs(path_figure, exist_ok=True)
 
 kf_true = io.imread(path_psf).astype(np.float32)
 print(f"[INFO] PSF path : {path_psf}")
@@ -41,9 +47,6 @@ print(f"[INFO] PSF shape : {kf_true.shape}")
 # ------------------------------------------------------------------------------
 # load estimated kernels
 # ------------------------------------------------------------------------------
-num_data = [1, 2, 3]
-id_repeat = [1, 2, 3]
-
 kf_est = []  # backward kernels
 for dataset in datasets_name:
     path_kernel = os.path.join(path_prediction, dataset, "kernelnet", dataset)
@@ -67,39 +70,15 @@ print(f"[INFO] (N_noise_level, N_data_num, N_repeat) : {kf_est.shape}")
 # ------------------------------------------------------------------------------
 # display forward kernels
 # ------------------------------------------------------------------------------
-dict_fig = {"dpi": 600, "constrained_layout": True}
 
-# ------------------------------------------------------------------------------
-num_noise_level = len(noise_level)
+dict_fig = {"dpi": 600, "constrained_layout": True}
+dict_kernel = {"cmap": "hot", "vmin": 0, "vmax": kf_true.max()}
+dict_text = dict(color="white", fontsize=24)
+dict_text_lt = dict(**dict_text, ha="left", va="top", x=0.05, y=0.95)
+dict_text_lb = dict(**dict_text, ha="left", va="bottom", x=0.05, y=0.05)
+dict_text_rb = dict(**dict_text, ha="right", va="bottom", x=0.95, y=0.05)
 
 Nz, Ny, Nx = kf_true.shape
-
-dict_kernel = {"cmap": "hot", "vmin": 0, "vmax": kf_true.max()}
-dict_text_lt = {
-    "color": "white",
-    "fontsize": 24,
-    "ha": "left",
-    "va": "top",
-    "x": 0.05,
-    "y": 0.95,
-}
-dict_text_lb = {
-    "color": "white",
-    "fontsize": 24,
-    "ha": "left",
-    "va": "bottom",
-    "x": 0.05,
-    "y": 0.05,
-}
-dict_text_rb = {
-    "color": "white",
-    "fontsize": 24,
-    "ha": "right",
-    "va": "bottom",
-    "x": 0.95,
-    "y": 0.05,
-}
-
 id_slice_xy = Nz // 2
 id_slice_zx = Ny // 2
 
@@ -121,14 +100,12 @@ for i_nl in range(num_noise_level):
     ker = kf_est[i_nl, id_num_data, id_repeat]
     axes[i_nl + 1, 0].imshow(ker[id_slice_xy], **dict_kernel)
     axes[i_nl + 1, 1].imshow(ker[:, id_slice_zx, :], **dict_kernel)
-
-    text = noise_level[i_nl] if i_nl == 0 else (noise_level[i_nl] + " dB")
     axes[i_nl + 1, 0].text(
-        s=text, transform=axes[i_nl + 1, 0].transAxes, **dict_text_lt
+        s=noise_level[i_nl], transform=axes[i_nl + 1, 0].transAxes, **dict_text_lt
     )
 
-plt.savefig(os.path.join(path_fig, "kf_noise_level.png"))
-plt.savefig(os.path.join(path_fig, "kf_noise_level.svg"))
+plt.savefig(os.path.join(path_figure, "kf_noise_level.png"))
+plt.savefig(os.path.join(path_figure, "kf_noise_level.svg"))
 
 # ------------------------------------------------------------------------------
 # calculate metric value
@@ -153,15 +130,9 @@ dict_line = {"linewidth": 0.5, "capsize": 2, "elinewidth": 0.5, "capthick": 0.5}
 nr, nc = 1, 1
 fig, axes = plt.subplots(nrows=nr, ncols=nc, figsize=(3 * nc, 3 * nr), **dict_fig)
 
-colors = ["black", "red", "green", "blue"]  # color for each noise level
-
 for i in range(N_nl):
     axes.errorbar(
-        x=num_data,
-        y=rmse_mean[i],
-        yerr=rmse_std[i],
-        color=colors[0],
-        **dict_line,
+        x=num_data, y=rmse_mean[i], yerr=rmse_std[i], color="black", **dict_line
     )
     axes.plot(
         num_data,
@@ -177,12 +148,12 @@ axes.set_box_aspect(1)
 axes.set_xticks(ticks=num_data, labels=num_data)
 axes.set_xlabel("Number of samples")
 
-plt.savefig(os.path.join(path_fig, "kf_rmse.png"))
-plt.savefig(os.path.join(path_fig, "kf_rmse.svg"))
+plt.savefig(os.path.join(path_figure, "kf_rmse.png"))
+plt.savefig(os.path.join(path_figure, "kf_rmse.svg"))
 
 # ------------------------------------------------------------------------------
 # save source data
-excel_file = os.path.join(path_fig, "kf_rmse.xlsx")
+excel_file = os.path.join(path_figure, "kf_rmse.xlsx")
 if os.path.exists(excel_file):
     os.remove(excel_file)
 with pandas.ExcelWriter(excel_file, mode="w") as writer:
