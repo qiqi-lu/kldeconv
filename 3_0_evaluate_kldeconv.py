@@ -21,14 +21,15 @@ enable_prediction = True
 # ------------------------------------------------------------------------------
 #                             Parameter setting
 # ------------------------------------------------------------------------------
-# id_device = "cpu"
-id_device = "cuda:0"
-output_inter = True  # output intermediate results
-# output_inter = False  # not to output intermediate results
+id_device = "cpu"
+# id_device = "cuda:0"
+# ------------------------------------------------------------------------------
+# output_inter = True  # output intermediate results
+output_inter = False  # not to output intermediate results
 
-# FP_type, BP_type = "known", "learned"  # simulation data
+FP_type, BP_type = "known", "learned"  # simulation data
+# FP_type, BP_type = "pre-trained", "learned"  # 2D and 3D real data
 # FP_type, BP_type = 'known', 'known'
-FP_type, BP_type = "pre-trained", "learned"  # 2D and 3D real data
 # FP_type, BP_type = 'pre-trained', 'known'
 
 # ------------------------------------------------------------------------------
@@ -42,10 +43,10 @@ num_data_bp, id_repeat_bp = 1, 1
 
 # ------------------------------------------------------------------------------
 # num_iter_train = 1
-# num_iter_train = 2
+num_iter_train = 2
 # num_iter_train = 3
 # num_iter_train = 4
-num_iter_train = 5
+# num_iter_train = 5
 
 # num_iter_test = 2
 num_iter_test = num_iter_train
@@ -56,7 +57,7 @@ num_iter_test = num_iter_train
 dataset_names_list = (
     # ("SimuMix3D-128-31-0-0-1", "SimuMix3D-128-31-0-0-1"),
     # ("SimuMix3D-128-31-05-1-01", "SimuMix3D-128-31-05-1-01"),
-    # ("SimuMix3D-512-31-05-1-01", "SimuMix3D-128-31-05-1-01"),
+    ("SimuMix3D-512-31-05-1-01", "SimuMix3D-128-31-05-1-01"),
     # ("SimuMix3D-1024-31-05-1-01", "SimuMix3D-128-31-05-1-01"),
     # ("SimuMix3D-128-31-05-1-03", "SimuMix3D-128-31-05-1-03"),
     # ("SimuMix3D-128-31-05-1-1", "SimuMix3D-128-31-05-1-1"),
@@ -72,7 +73,7 @@ dataset_names_list = (
     # ("biotisr-3d-factin-1", "biotisr-3d-factin-1"),
     # ("biotisr-3d-factin-2", "biotisr-3d-factin-2"),
     # ("biotisr-3d-mito-1", "biotisr-3d-mito-1"),
-    ("biotisr-3d-mito-2", "biotisr-3d-mito-2"),
+    # ("biotisr-3d-mito-2", "biotisr-3d-mito-2"),
     # ("biotisr-3d-mt-1", "biotisr-3d-mt-1"),
     # ("biotisr-3d-mt-2", "biotisr-3d-mt-2"),
     # --------------------------------------------------------------------------
@@ -152,10 +153,23 @@ dataset_names_list = (
     # ("F-actin-3", "F-actin-3"),
 )
 
+print("-" * 80)
+print(f"[INFO] Device: {id_device}")
+print(f"[INFO] Output intermediate results: {output_inter}")
+info_xlsx = pandas.read_excel("datasets_test.xlsx")
+device = torch.device(id_device)
+t2n = lambda x: x.cpu().detach().numpy()[0, 0]  # tensor to numpy
+clamp = lambda x: torch.clamp(x, min=0.0, max=3.0)  # clamp the value to [0, 3]
+print_time_each_sample = True
+
 
 for dataset_names in dataset_names_list:
-    # dataset_name_test, dataset_name_train = dataset_names
-    dataset_name_train, dataset_name_test = dataset_names
+    dataset_name_test, dataset_name_train = dataset_names
+    # dataset_name_train, dataset_name_test = dataset_names
+
+    print("-" * 80)
+    print(f"[INFO] Dataset (test): {dataset_name_test}")
+    print(f"[INFO] Dataset (train): {dataset_name_train}")
 
     # id_sample = [0, 346, 609, 700, 770, 901]
     # id_sample = [0, 1, 2, 3, 4, 5]
@@ -168,10 +182,10 @@ for dataset_names in dataset_names_list:
     # id_sample = None # will only save the kernels
 
     # --------------------------------------------------------------------------
+    # create the folder for saving the predictions
     path_prediction = os.path.join(
         "outputs", "predictions", dataset_name_test, "kernelnet", dataset_name_train
     )
-    # --------------------------------------------------------------------------
 
     if FP_type == "known" and BP_type == "learned":
         folder = f"fp_knonw_bp_n{num_data_bp}_r{id_repeat_bp}"
@@ -188,12 +202,10 @@ for dataset_names in dataset_names_list:
     os.makedirs(path_prediction, exist_ok=True)
 
     # --------------------------------------------------------------------------
-    info_xlsx = pandas.read_excel("datasets_test.xlsx")
     info = info_xlsx[info_xlsx["id"] == dataset_name_test].iloc[0]
-
     enable_median_filter = int(info["median_filter"])
     enable_dark = int(info["dark"])
-    print("-" * 80)
+
     print(f"[INFO] Enable median filter: {enable_median_filter}")
     print(f"[INFO] Enable dark: {enable_dark}")
 
@@ -227,18 +239,12 @@ for dataset_names in dataset_names_list:
     if enable_dark:
         params_dict.update({"lr_root_path": params_dict["lr_root_path"] + "_dark"})
 
-    # ------------------------------------------------------------------------------
-    device = torch.device(id_device)
+    # --------------------------------------------------------------------------
     suffix_net = "_ss" if params_dict["train_mode"] == "ss" else ""
 
+    # use direct convolution for 2D data, use FFT for 3D data
     params_dict["conv_mode"] = "direct" if params_dict["dim"] == 2 else "fft"
     # params_dict["conv_mode"] = "fft"
-
-    print("-" * 80)
-    print(f"[INFO] Dataset (test): {dataset_name_test}")
-    print(f"[INFO] Dataset (train): {dataset_name_train}")
-    print(f"[INFO] Device: {id_device}")
-    print(f"[INFO] Output intermediate results: {output_inter}")
 
     # print all the elements in the dict
     print("-" * 80)
@@ -246,9 +252,9 @@ for dataset_names in dataset_names_list:
         print(f"[INFO] {key}: {value}")
     print("-" * 80)
 
-    # ------------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     #                                  Dataset
-    # ------------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     if os.path.exists(params_dict["path_psf"]):
         print(f'[INFO] Load PSF from: {params_dict["path_psf"]}')
         PSF_true = io.imread(params_dict["path_psf"]).astype(np.float32)
@@ -256,7 +262,7 @@ for dataset_names in dataset_names_list:
         print(f"[WARNNING] PSF not found, use all zeros.")
         PSF_true = np.zeros(shape=params_dict["kernel_size_fp"]).astype(np.float32)
 
-    # ------------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     print(f'[INFO] Load LR data from: {params_dict["lr_root_path"]}')
     print(f"[INFO] Load HR data from: {params_dict['hr_root_path']}")
 
@@ -275,13 +281,13 @@ for dataset_names in dataset_names_list:
         # use all the samples
         id_sample = list(range(num_samples_all))
 
-    # ------------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     # Model
-    # ------------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     FP, BP = None, None
-    # Forward Projection
     print("-" * 80)
-    # ------------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
+    # Forward Projection
     if FP_type == "pre-trained":
         FP_path = checkpoints_list[dataset_name_train]["forward"][
             f"n{num_data_fp}_r{id_repeat_fp}"
@@ -310,7 +316,7 @@ for dataset_names in dataset_names_list:
         FP.load_state_dict(torch.load(FP_path, map_location=device)["model_state_dict"])
         FP.eval()
 
-    # ------------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     if FP_type == "known":
         print("[INFO] Use known PSF as forward projector.")
         ks = PSF_true.shape
@@ -349,7 +355,7 @@ for dataset_names in dataset_names_list:
         # The PSF now is known, setting the initial PSF as all zeros.
         ker_fp_init = np.zeros_like(ker_FP)
 
-    # ------------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     # Backward Projection
     if BP_type == "known":
         print("[INFO] Use known BP kernel.")
@@ -361,7 +367,7 @@ for dataset_names in dataset_names_list:
         )
         ker_BP = PSF_true
 
-    # ------------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     model = kernelnet.KernelNet(
         in_channels=params_dict["in_channels"],
         scale_factor=params_dict["scale_factor"],
@@ -384,7 +390,7 @@ for dataset_names in dataset_names_list:
         conv_mode=params_dict["conv_mode"],
     ).to(device)
 
-    # ------------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     if BP_type == "learned":
         model_path = checkpoints_list[dataset_name_train]["backward"][
             f"n{num_data_bp}_r{id_repeat_bp}_iter{num_iter_train}"
@@ -409,15 +415,15 @@ for dataset_names in dataset_names_list:
 
     print("[INFO] BP kernel shape:", ker_BP.shape)
 
-    # ------------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     if FP_type == "pre-trained":
         # get the FP learned FP kernel
         ker_FP = model.FP.conv.get_kernel()[0, 0].cpu().detach().numpy()
         print("[INFO] FP kernel shape:", ker_FP.shape)
 
-    # ------------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     # Save kernels
-    # ------------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     path_save_kernel = os.path.join(path_prediction, f"kernel_iter_{num_iter_train}")
     save_kernel = lambda fname, arr: io.imsave(
         fname=os.path.join(path_save_kernel, fname), arr=arr, check_contrast=False
@@ -438,11 +444,12 @@ for dataset_names in dataset_names_list:
     save_kernel("kernel_fp.tif", ker_FP)
     save_kernel(f"kernel_bp{suffix_net}.tif", ker_BP)
 
-    # ------------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     #                                   Prediction
-    # ------------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     if not enable_prediction:
-        exit()
+        print("[INFO] enable_prediction is False, exit.")
+        os._exit(0)
 
     print("-" * 80)
     print("[INFO] Prediciton ...")
@@ -472,11 +479,8 @@ for dataset_names in dataset_names_list:
         json.dump(params_dict, f, indent=4)
     print(f"[INFO] save parameters to: {path_params_json}")
 
-    t2n = lambda x: x.cpu().detach().numpy()[0, 0]  # tensor to numpy
-    clamp = lambda x: torch.clamp(x, min=0.0, max=3.0)  # clamp the value to [0, 3]
-
-    pbar = tqdm.tqdm(total=len(id_sample), desc="Prediction", ncols=80)
-    print_time_each_sample = True
+    # --------------------------------------------------------------------------
+    pbar = tqdm.tqdm(total=len(id_sample), desc="[INFO] Prediction", ncols=80)
     time_list = []
     for i in id_sample:
         if i >= dataset_test.__len__():
@@ -484,7 +488,7 @@ for dataset_names in dataset_names_list:
             break
 
         data = dataset_test[i]  # load one sample
-
+        # ----------------------------------------------------------------------
         x = torch.unsqueeze(data["lr"], 0)
         # median filter to remove the noise
         if enable_median_filter:
@@ -495,7 +499,7 @@ for dataset_names in dataset_names_list:
             x = x.to(device)
         y = torch.unsqueeze(data["hr"], 0).to(device) * params_dict["ratio"]
 
-        # intermedia results -------------------------------------------------------
+        # intermedia results ---------------------------------------------------
         if output_inter:
             # forward projection of gt
             y_fp = model.FP(y)
@@ -518,22 +522,25 @@ for dataset_names in dataset_names_list:
             if BP_type == "learned":
                 bp = t2n(bp)
 
-        # final results ------------------------------------------------------------
+        # final results --------------------------------------------------------
         # measure the time used for prediction
-        torch.cuda.synchronize(device=device)
+        if "cuda" in id_device:
+            torch.cuda.synchronize(device=device)
         tic = time.time()
         y_pred_all = model(x)
-        torch.cuda.synchronize(device=device)
+        if "cuda" in id_device:
+            torch.cuda.synchronize(device=device)
         toc = time.time()
         used_time = toc - tic
         time_list.append(used_time)
+
         if print_time_each_sample:
             print(f"[INFO] Sample {i}: {used_time:.4f} s")
         y_pred_all = y_pred_all.cpu().detach().numpy()[:, 0, 0]
         y, x = t2n(y), t2n(x)
         pbar.update(1)
 
-        # Save results -------------------------------------------------------------
+        # Save results ---------------------------------------------------------
         path_sample = os.path.join(
             path_prediction, f"train_iter_{num_iter_train}", filenames[i].split(".")[0]
         )
@@ -560,11 +567,15 @@ for dataset_names in dataset_names_list:
     pbar.close()
     print(f"[INFO] Results have been saved into: {path_prediction}")
 
-    # save the time used for prediction into excel ---------------------------------
+    # save the time used for prediction into excel -----------------------------
     df = pandas.DataFrame(columns=["time (s)"])
     df["time (s)"] = time_list
     df.to_excel(
-        os.path.join(path_prediction, f"train_iter_{num_iter_train}", "time.xlsx"),
+        os.path.join(
+            path_prediction,
+            f"train_iter_{num_iter_train}",
+            f"time_{id_device.replace(':', '_')}.xlsx",
+        ),
         index=True,
     )
-    # ------------------------------------------------------------------------------
+    # --------------------------------------------------------------------------

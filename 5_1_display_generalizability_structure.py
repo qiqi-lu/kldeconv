@@ -21,9 +21,14 @@ import seaborn as sns
 from utils.plot import colorize, add_scale_bar
 
 plt.rcParams["svg.fonttype"] = "none"
+# ------------------------------------------------------------------------------
 # subgroup = "noise_level_9"
 subgroup = "noise_level_6"
 # subgroup = "noise_level_3"
+
+# ------------------------------------------------------------------------------
+model_info = ("kernelnet", "KLD", "fp_n1_r1_bp_n1_r1")
+# model_info = ("dfcan", "DFCAN", "n1_r1")
 # ------------------------------------------------------------------------------
 dict_settings = {
     "noise_level_9": {
@@ -49,12 +54,13 @@ dict_settings = {
             ("ER-6", "ER"),
             ("F-actin-9", "F-actin"),
         ),
-        # "num_iter": 2,
-        "num_iter": 5,
+        "num_iter": 2,
+        # "num_iter": 5,
     },
     "noise_level_6": {
         "id_sample_show_each_dataset": [0, 0, 0, 0],
         "id_sample_analysis": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
+        # "id_sample_analysis": [0, 1, 2, 3],
         # "id_sample_analysis": [],
         "rois": (
             # (y0,x0,y1,x1)
@@ -75,8 +81,8 @@ dict_settings = {
             ("ER-6", "ER"),
             ("F-actin-6", "F-actin"),
         ),
-        # "num_iter": 2,
-        "num_iter": 5,
+        "num_iter": 2,
+        # "num_iter": 5,
     },
     "noise_level_3": {
         "id_sample_show_each_dataset": [0, 0, 0, 0],
@@ -101,25 +107,25 @@ dict_settings = {
             ("ER-3", "ER"),
             ("F-actin-3", "F-actin"),
         ),
-        # "num_iter": 2,
-        "num_iter": 5,
+        "num_iter": 2,
+        # "num_iter": 5,
     },
 }
 
-settings = dict_settings[subgroup]
+# palette_train = ("#C1C7D5", "#92C4E9", "#8CCCCE", "#96C36E", "#EA9A9D")
+palette_train = ("#8E99AB", "#4D8FCB", "#42B4B5", "#57AA3E", "#D95D5B")
+# palette_train = "rocket"
 
 # ------------------------------------------------------------------------------
+settings = dict_settings[subgroup]
 id_sample_show_each_dataset = settings["id_sample_show_each_dataset"]
 datasets_id_test = [ds[0] for ds in settings["dataset_test"]]
-datasets_label_test = [ds[1] for ds in settings["dataset_test"]]
 datasets_id_train = [ds[0] for ds in settings["dataset_train"]]
+datasets_label_test = [ds[1] for ds in settings["dataset_test"]]
 datasets_label_train = [ds[1] for ds in settings["dataset_train"]]
 id_sample_analysis = settings["id_sample_analysis"]
 num_iter_train = settings["num_iter"]
 rois_pos = settings["rois"]
-
-model_info = ("kernelnet", "KLD", "fp_n1_r1_bp_n1_r1")
-# model_info = ("dfcan", "DFCAN", "n1_r1")
 
 # ------------------------------------------------------------------------------
 model_id, model_name, experiment = model_info
@@ -130,7 +136,8 @@ path_figure = os.path.join(
     "figures",
     "analysis_image",
     "generalization",
-    f"{subgroup}_iter_{num_iter_train}",
+    f"{subgroup}_iter_train_{num_iter_train}",
+    model_id,
 )
 os.makedirs(path_figure, exist_ok=True)
 
@@ -200,6 +207,7 @@ pbar.close()
 # print the shape of reults ----------------------------------------------------
 print("-" * 80)
 print("Shape of results:")
+# [num_dataset_test, num_dataset_train, num_sample, [raw, gt, pred], height, width]
 for i, ds_test in enumerate(datasets_id_test):
     print(f"{ds_test}:")
     for j, ds_train in enumerate(datasets_id_train):
@@ -211,23 +219,29 @@ normalizer = NormalizePercentile(p_low=0.03, p_high=0.995, ndim=2)
 dict_clip = {"a_min": 0.0, "a_max": 2.5}
 data_range = dict_clip["a_max"] - dict_clip["a_min"]
 
+
+def preprocess(img):
+    img = normalizer(img)
+    img = np.clip(img, dict_clip["a_min"], dict_clip["a_max"])
+    return img
+
+
 # ------------------------------------------------------------------------------
 # display the deconvoled images
 # ------------------------------------------------------------------------------
 print("[INFO] Display the deconvoled images ...")
 dict_fig = dict(dpi=300, constrained_layout=True)
 dict_img = dict(cmap="hot", vmin=0, vmax=data_range * 0.6)
-dict_text_lt = dict(color="white", fontsize=16, ha="left", va="top", x=0.05, y=0.95)
-dict_text_rt = dict(color="white", fontsize=16, ha="right", va="top", x=0.95, y=0.95)
-dict_text_lb = dict(color="white", fontsize=14, ha="left", va="bottom", x=0.05, y=0.05)
+dict_text = dict(color="white", fontsize=15)
+dict_text_lt = dict(ha="left", va="top", x=0.05, y=0.95, **dict_text)
+dict_text_rt = dict(ha="right", va="top", x=0.95, y=0.95, **dict_text)
+dict_text_lb = dict(ha="left", va="bottom", x=0.05, y=0.05, **dict_text)
 dict_colorize = dict(vmin=0, vmax=0.8, color=(0, 255, 0))
-dict_colorize_p = dict(vmin=0, vmax=0.8, color=(0, 255, 0))
-
-# dict_img = dict(cmap="hot", vmin=0, vmax=0.8)
-# dict_img = dict(cmap=colorcet.cm.fire, vmin=0, vmax=0.8)
+dict_colorize_p = dict(vmin=0, vmax=0.8, color=(0, 255, 0))  # patch
+dict_rect = dict(edgecolor="red", facecolor="none", linewidth=1)
 
 # ------------------------------------------------------------------------------
-title_columns = ("Raw",) + tuple(datasets_label_train) + ("GT",)
+title_columns = ["Raw"] + datasets_label_train + ["GT"]
 title_rows = datasets_label_test
 # ------------------------------------------------------------------------------
 nr, nc = num_dataset_test, num_dataset_train + 2
@@ -249,15 +263,9 @@ for i in range(nr):
             # display the deconvoled images
             img = results[i][j - 1][id_sample_show, 2]
         # show -----------------------------------------------------------------
-        # normalize
-        img = normalizer(img)
-        # clip
-        img = np.clip(img, **dict_clip)
-
+        img = preprocess(img)
         img_color = colorize(img, **dict_colorize)
-        img_color_p = colorize(img, **dict_colorize_p)
         ax.imshow(img_color)
-        # ax.imshow(img, **dict_img)
 
         # add scale bar --------------------------------------------------------
         pixel_size = pixel_size_list[i]
@@ -276,24 +284,13 @@ for i in range(nr):
         # show rois ------------------------------------------------------------
         # show the zoom in region at the bottom right corner of the image
         # crop roi
-        pos_roi = rois_pos[i]
-        y0, x0, y1, x1 = pos_roi
-
+        y0, x0, y1, x1 = rois_pos[i]
+        img_color_p = colorize(img, **dict_colorize_p)
         patch = img_color_p[y0:y1, x0:x1]
         # patch = img[y0:y1, x0:x1]
 
         # show the roi box in image
-        ax.add_patch(
-            plt.Rectangle(
-                (x0, y0),
-                x1 - x0,
-                y1 - y0,
-                linewidth=1,
-                edgecolor="magenta",
-                facecolor="none",
-            )
-        )
-        # place the roi image at the bottom right corner of the image
+        ax.add_patch(plt.Rectangle((x0, y0), x1 - x0, y1 - y0, **dict_rect))
         ax_patch = ax.inset_axes(
             [0.6, 0.0, 0.4, 0.4], transform=ax.transAxes, zorder=10
         )
@@ -316,21 +313,14 @@ for i in range(nr):
 
         # add metrics value ----------------------------------------------------
         if j != nc - 1:
-            img_gt = results[i][0][id_sample_show, 1]
-            if j == 0:
-                img_pred = results[i][0][id_sample_show, 0]
-            else:
-                img_pred = results[i][j - 1][id_sample_show, 2]
+            img_gt = results[i][0][id_sample_show, 1]  # gt
+            img_pred = img
+            img_gt = preprocess(img_gt)
+            img_pred = preprocess(img_pred)
 
-            # normalize
-            img_gt = normalizer(img_gt)
-            img_pred = normalizer(img_pred)
-            # clip
-            img_gt = np.clip(img_gt, **dict_clip)
-            img_pred = np.clip(img_pred, **dict_clip)
-
-            ssim = eva.MSSSIM(img_true=img_gt, img_test=img_pred, data_range=data_range)
-            psnr = eva.PSNR(img_true=img_gt, img_test=img_pred, data_range=data_range)
+            dict_tmp = dict(img_true=img_gt, img_test=img_pred)
+            ssim = eva.MSSSIM(**dict_tmp, data_range=data_range)
+            psnr = eva.PSNR(**dict_tmp, data_range=data_range)
             ax.text(
                 s=f"{psnr:.2f} | {ssim:.4f}", transform=ax.transAxes, **dict_text_lb
             )
@@ -343,14 +333,10 @@ for i in range(nr):
 
 
 # save the figure
-plt.savefig(
-    os.path.join(path_figure, f"generalizability_structures_{model_id}_image.png")
-)
-plt.savefig(
-    os.path.join(path_figure, f"generalizability_structures_{model_id}_image.svg")
-)
+plt.savefig(os.path.join(path_figure, f"gener_structures_image.png"))
+plt.savefig(os.path.join(path_figure, f"gener_structures_image.svg"))
 
-os._exit(0)
+# os._exit(0)
 # ------------------------------------------------------------------------------
 # calulate the metrics
 # ------------------------------------------------------------------------------
@@ -361,32 +347,32 @@ for i in range(num_dataset_test):
         metrics_sample = []
         for k in range(num_sample):
             # calulate the metrics
-            img_gt = results[i][0][k][1]
+            img_gt = results[i][0][k][1]  # gt
             if j == 0:
-                img_pred = results[i][0][k][0]
+                img_pred = results[i][0][k][0]  # raw
             else:
-                img_pred = results[i][j - 1][k][2]
-            # calculate the PSNR
-            img_pred = normalizer(img_pred)
-            img_gt = normalizer(img_gt)
-            img_pred = np.clip(img_pred, **dict_clip)
-            img_gt = np.clip(img_gt, **dict_clip)
-            psnr = eva.PSNR(img_true=img_gt, img_test=img_pred, data_range=data_range)
-            ssim = eva.MSSSIM(img_true=img_gt, img_test=img_pred, data_range=data_range)
-            zncc = eva.NCC(img_true=img_gt, img_test=img_pred)
+                img_pred = results[i][j - 1][k][2]  # deconvoled
+
+            img_pred = preprocess(img_pred)
+            img_gt = preprocess(img_gt)
+            # ------------------------------------------------------------------
+            dict_tmp = dict(img_true=img_gt, img_test=img_pred)
+            psnr = eva.PSNR(**dict_tmp, data_range=data_range)
+            ssim = eva.MSSSIM(**dict_tmp, data_range=data_range)
+            zncc = eva.NCC(**dict_tmp)
+            # ------------------------------------------------------------------
             metrics_sample.append((psnr, ssim, zncc))
         metrics_train.append(metrics_sample)
     metrics_test.append(metrics_train)
 metrics = np.array(metrics_test)
 print(f"[INFO] metrics: {metrics.shape}")
-
+# [num_dataset_test, num_dataset_train, num_sample, num_metric]
 # ------------------------------------------------------------------------------
 # display the metrics heatmap
 # ------------------------------------------------------------------------------
 print("[INFO] Display the metrics heatmap ...")
 
 # calulate the mean and std of the metrics
-# metrics_mean = metrics.mean(axis=2)
 metrics_mean = metrics.mean(axis=2)
 metrics_std = metrics.std(axis=2)
 
@@ -396,9 +382,9 @@ dict_fig = {"dpi": 300, "constrained_layout": True}
 nr, nc = 1, metrics.shape[-1]
 fig, axes = plt.subplots(nr, nc, figsize=(nc * 3, nr * 3), **dict_fig)
 
-x_ticks = ("Raw",) + tuple(datasets_label_train)
+x_ticks = ["Raw"] + datasets_label_train
 y_ticks = datasets_label_test
-metric_names = ("PSNR", "MS-SSIM", "ZNCC")
+metric_names = ["PSNR", "MS-SSIM", "ZNCC"]
 
 dict_range = {
     "PSNR": (20, 40),
@@ -435,82 +421,102 @@ for i_metric in range(len(metric_names)):
     )
     ax.set_title(metric_names[i_metric], fontsize=10)
 
-plt.savefig(
-    os.path.join(path_figure, f"generalizability_structures_{model_id}_heatmap.png")
-)
-plt.savefig(
-    os.path.join(path_figure, f"generalizability_structures_{model_id}_heatmap.svg")
-)
+plt.savefig(os.path.join(path_figure, f"gener_structures_heatmap.png"))
+plt.savefig(os.path.join(path_figure, f"gener_structures_heatmap.svg"))
 
 # ------------------------------------------------------------------------------
 # plot boxplot
 # ------------------------------------------------------------------------------
+# [num_dataset_test, num_dataset_train, num_sample, num_metric]
 print("[INFO] Plot boxplot...")
-# convert metrics matrix to dataframe
-df = pandas.DataFrame(
-    columns=["dataset_test", "dataset_train", "id_sample"] + list(metric_names)
-)
+labels = ["Raw"] + datasets_label_train
+fontsize = 12
 
-labels = ("Raw",) + tuple(datasets_label_train)
+# plot grouped boxplot ---------------------------------------------------------
+nr, nc = len(metric_names), num_dataset_test
+fig, axes = plt.subplots(nr, nc, figsize=(nc * 3, nr * 3), **dict_fig)
+
+dict_ticks = {
+    "PSNR": (
+        np.linspace(0, 50, 26),
+        np.linspace(0, 50, 26),
+        np.linspace(0, 50, 26),
+        np.linspace(0, 50, 26),
+    ),
+    "MS-SSIM": (
+        np.linspace(0.5, 1.0, 26),
+        np.linspace(0.5, 1.0, 11),
+        np.linspace(0.5, 1.0, 51),
+        np.linspace(0.5, 1.0, 26),
+    ),
+    "ZNCC": (
+        np.linspace(0.5, 1.0, 26),
+        np.linspace(0.5, 1.0, 11),
+        np.linspace(0.5, 1.0, 26),
+        np.linspace(0.5, 1.0, 26),
+    ),
+}
+
+# convert array to dataframe
+df_all = pandas.DataFrame(
+    columns=["dataset_test", "dataset_train", "id_sample", "metric", "value"]
+)
 for i_ds_test in range(num_dataset_test):
     for i_ds_train in range(num_dataset_train + 1):
         for i_sample in range(num_sample):
-            dataset_test = datasets_label_test[i_ds_test]
-            dataset_train = labels[i_ds_train]
-            id_sample = i_sample
-            psnr, ssim, zncc = metrics[i_ds_test, i_ds_train, i_sample]
-            df.loc[len(df)] = [dataset_test, dataset_train, id_sample, psnr, ssim, zncc]
+            for i_metric in range(len(metric_names)):
+                df_all.loc[len(df_all)] = [
+                    datasets_label_test[i_ds_test],
+                    labels[i_ds_train],
+                    i_sample,
+                    metric_names[i_metric],
+                    metrics[i_ds_test, i_ds_train, i_sample, i_metric],
+                ]
 
-# plot grouped boxplot ---------------------------------------------------------
-nr, nc = 1, len(metric_names)
-fac = len(datasets_label_test) / 3
-fig, axes = plt.subplots(nr, nc, figsize=(nc * 3 * fac, nr * 3), **dict_fig)
 
-dict_ticks = {
-    "PSNR": [20, 24, 28, 32, 36, 40],
-    "MS-SSIM": [0.75, 0.80, 0.85, 0.90, 0.95, 1.0],
-    "ZNCC": [0.6, 0.70, 0.80, 0.90, 1.0],
-}
-
-# palette = ("#C1C7D5", "#92C4E9", "#8CCCCE", "#96C36E", "#EA9A9D")
-palette = ("#8E99AB", "#4D8FCB", "#42B4B5", "#57AA3E", "#D95D5B")
-# palette = "rocket"
 for i_metric in range(len(metric_names)):
     metric_name = metric_names[i_metric]
-    ax = axes[i_metric]
+    for i_dataset_test in range(num_dataset_test):
+        ax = axes[i_metric, i_dataset_test]
+        df = df_all[
+            (df_all["dataset_test"] == datasets_label_test[i_dataset_test])
+            & (df_all["metric"] == metric_name)
+        ]
 
-    # set ticks
-    ax.yaxis.set_ticks(dict_ticks[metric_name])
-    ax.yaxis.set_ticklabels(dict_ticks[metric_name])
+        # set ticks
+        tt = np.round(dict_ticks[metric_name][i_dataset_test], decimals=2)
+        ax.yaxis.set_ticks(tt)
+        ax.yaxis.set_ticklabels(tt, fontsize=fontsize)
 
-    sns.boxplot(
-        x="dataset_test",
-        y=metric_name,
-        hue="dataset_train",
-        data=df,
-        ax=ax,
-        palette=palette,
-        gap=0.2,
-        fliersize=0.5,
-    )
-    # disable the legend
-    if i_metric != len(metric_names) - 1:
-        ax.legend().set_visible(False)
+        sns.boxplot(
+            data=df,
+            x="dataset_train",
+            y="value",
+            hue="dataset_train",
+            ax=ax,
+            palette=palette_train,
+            gap=0.2,
+            fliersize=0.5,
+            legend="brief",
+        )
+        # disable the legend
+        if i_metric == 0 and i_dataset_test == 0:
+            ax.legend(frameon=False, title=None, fontsize=12)
+        else:
+            ax.legend().set_visible(False)
 
-    ax.set_ylabel(metric_name)
-    ax.set_xlabel("")
-    ax.axvline(x=0.5, color="black", linestyle="--", linewidth=0.5)
-    ax.axvline(x=1.5, color="black", linestyle="--", linewidth=0.5)
-    ax.axvline(x=2.5, color="black", linestyle="--", linewidth=0.5)
-    ax.spines["top"].set_visible(False)
-    ax.spines["right"].set_visible(False)
+        if i_dataset_test == 0:
+            ax.set_ylabel(metric_name, fontsize=fontsize)
+        else:
+            ax.set_ylabel(None)
+        ax.set_xlabel("")
+        ax.spines["top"].set_visible(False)
+        ax.spines["right"].set_visible(False)
+        ax.set_xticks([])
+        ax.set_xticklabels([])
 
-    if metric_name in ["MS-SSIM", "ZNCC"]:
-        ax.set_ylim([None, 1.0])
+        if i_metric == 0:
+            ax.set_title(datasets_label_test[i_dataset_test], fontsize=fontsize)
 
-plt.savefig(
-    os.path.join(path_figure, f"generalizability_structures_{model_id}_boxplot.png")
-)
-plt.savefig(
-    os.path.join(path_figure, f"generalizability_structures_{model_id}_boxplot.svg")
-)
+plt.savefig(os.path.join(path_figure, f"gener_structures_boxplot.png"))
+plt.savefig(os.path.join(path_figure, f"gener_structures_boxplot.svg"))

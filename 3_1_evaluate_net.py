@@ -15,7 +15,9 @@ from utils.optimize import on_load_checkpoint
 # ------------------------------------------------------------------------------
 #                             Paramsters
 # ------------------------------------------------------------------------------
-id_device = "cuda:1"
+id_device = "cuda:0"
+# id_device = "cpu"
+# ------------------------------------------------------------------------------
 # model_name = "dfcan"
 model_name = "rln"
 
@@ -23,20 +25,20 @@ dataset_list = (
     # --------------------------------------------------------------------------
     # ("SimuMix3D-128-31-0-0-1", "SimuMix3D-128-31-0-0-1"),
     # ("SimuMix3D-128-31-05-1-01", "SimuMix3D-128-31-05-1-01"),
-    # ("SimuMix3D-512-31-05-1-01", "SimuMix3D-128-31-05-1-01"),
+    ("SimuMix3D-512-31-05-1-01", "SimuMix3D-128-31-05-1-01"),
     # ("SimuMix3D-1024-31-05-1-01", "SimuMix3D-128-31-05-1-01"),
-    # ------------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     # ("Microtubule2-3d-1024", "Microtubule2-3d-1024"),
     # ("Microtubule2-3d-1024", "Nuclear-pore-complex2-1024"),
     # ("Nuclear-pore-complex2-1024", "Nuclear-pore-complex2-1024"),
     # ("Nuclear-pore-complex2-1024", "Microtubule2-3d-1024"),
-    ("biotisr-3d-mt-1", "biotisr-3d-mt-1"),
-    ("biotisr-3d-mt-2", "biotisr-3d-mt-2"),
-    ("biotisr-3d-mito-1", "biotisr-3d-mito-1"),
-    ("biotisr-3d-mito-2", "biotisr-3d-mito-2"),
-    ("biotisr-3d-factin-1", "biotisr-3d-factin-1"),
-    ("biotisr-3d-factin-2", "biotisr-3d-factin-2"),
-    # ------------------------------------------------------------------------------
+    # ("biotisr-3d-mt-1", "biotisr-3d-mt-1"),
+    # ("biotisr-3d-mt-2", "biotisr-3d-mt-2"),
+    # ("biotisr-3d-mito-1", "biotisr-3d-mito-1"),
+    # ("biotisr-3d-mito-2", "biotisr-3d-mito-2"),
+    # ("biotisr-3d-factin-1", "biotisr-3d-factin-1"),
+    # ("biotisr-3d-factin-2", "biotisr-3d-factin-2"),
+    # --------------------------------------------------------------------------
     # ("F-actin-nonlinear-9", "F-actin-nonlinear-9"),
     # ("F-actin-nonlinear-9", "Microtubules2-9"),
     # ("F-actin-nonlinear-9", "CCPs-9"),
@@ -163,9 +165,17 @@ dataset_list = (
     # ("w2s-1-sim-ave", "w2s-1-sim-ave"),
     # ("w2s-2-sim-ave", "w2s-2-sim-ave"),
 )
+
+
+device = torch.device(id_device)
+print(f"[INFO] Device: {device}")
+# num_data, id_repeat = 80, 1
+num_data, id_repeat = 1, 1
+print(f"[INFO] Num data: {num_data}")
+print(f"[INFO] Id repeat: {id_repeat}")
+info_xlsx = pandas.read_excel("datasets_test.xlsx")
+
 for dataset_names in dataset_list:
-    # num_data, id_repeat = 80, 1
-    num_data, id_repeat = 1, 1
     dataset_name_test, dataset_name_train = dataset_names
 
     # id_sample = [7, 8, 9, 10, 11, 12, 13, 14, 15, 16]
@@ -176,11 +186,9 @@ for dataset_names in dataset_list:
     print("-" * 80)
     print(f"[INFO] Dataset test: {dataset_name_test}")
     print(f"[INFO] Dataset train: {dataset_name_train}")
-    print(f"[INFO] Num data: {num_data}")
-    print(f"[INFO] Id repeat: {id_repeat}")
     print("-" * 80)
 
-    # ------------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     path_prediction = os.path.join(
         "outputs",
         "predictions",
@@ -191,7 +199,6 @@ for dataset_names in dataset_list:
     )
     os.makedirs(path_prediction, exist_ok=True)
 
-    info_xlsx = pandas.read_excel("datasets_test.xlsx")
     info = info_xlsx[info_xlsx["id"] == dataset_name_test].iloc[0]
 
     params = dict(
@@ -212,8 +219,7 @@ for dataset_names in dataset_list:
         norm_pred=(0.03, 0.995),
     )
 
-    device = torch.device(id_device)
-
+    # --------------------------------------------------------------------------
     filenames = read_txt(params["path_lr_txt"])
     num_samples = len(filenames)
     if params["id_sample"] == []:
@@ -224,15 +230,14 @@ for dataset_names in dataset_list:
     print(f"[INFO] Dataset: {dataset_name_test}")
     print(f"[INFO] Training dataset: {dataset_name_train}")
     print(f"[INFO] Id sample test: {params['id_sample']}")
-    print(f"[INFO] Device: {device}")
     print("-" * 80)
     for key, value in params.items():
         print(f"[INFO] {key}: {value}")
     print("-" * 80)
 
-    # ------------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     #                             Load data
-    # ------------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     dataset_test = SRDataset(
         lr_root_path=params["path_lr"],
         hr_root_path=params["path_hr"],
@@ -243,9 +248,9 @@ for dataset_names in dataset_list:
         transform=None,
     )
 
-    # ------------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     #                             Load model
-    # ------------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     if params["ndim"] == 2:
         model = DFCAN(
             in_channels=params["in_channels"],
@@ -274,7 +279,7 @@ for dataset_names in dataset_list:
 
     model = model.to(device)
 
-    # load trained parameters ------------------------------------------------------
+    # load trained parameters --------------------------------------------------
     path_checkpoint = win2linux(
         checkpoints_list[dataset_name_train][model_name][f"n{num_data}_r{id_repeat}"]
     )
@@ -296,9 +301,9 @@ for dataset_names in dataset_list:
         json.dump(params, f, indent=4)
     print(f"[INFO] Parameters are saved to {path_params_json}")
 
-    # ------------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     #                                 Evaluate
-    # ------------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     print("-" * 80)
     print("[INFO] Start evaluating...")
     assert (
@@ -311,7 +316,7 @@ for dataset_names in dataset_list:
         ndim=params["ndim"],
     )
 
-    # ------------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     time_list = []
     pbar = tqdm.tqdm(total=len(params["id_sample"]), desc="Evaluating", ncols=80)
     for id in params["id_sample"]:
@@ -320,18 +325,21 @@ for dataset_names in dataset_list:
         x = normalizer(x).to(device)[None]
 
         with torch.no_grad():
-            torch.cuda.synchronize(device=device)
+            if "cuda" in id_device:
+                torch.cuda.synchronize(device=device)
             tic = time.time()
             y_pred = model(x)
-            torch.cuda.synchronize(device=device)
+            if "cuda" in id_device:
+                torch.cuda.synchronize(device=device)
             toc = time.time()
             used_time = toc - tic
             time_list.append(used_time)
             print(f"[INFO] Sample {id}: {used_time:.4f}s")
 
-        # save results -------------------------------------------------------------
+        # save results ---------------------------------------------------------
         path_sample = os.path.join(path_prediction, filenames[id].split(".")[0])
         os.makedirs(path_sample, exist_ok=True)
+
         x = x.cpu().detach().numpy()[0, 0]
         y_pred = y_pred.cpu().detach().numpy()[0, 0]
 
@@ -349,7 +357,10 @@ for dataset_names in dataset_list:
     pbar.close()
     print("-" * 80)
 
-    # save the itme used for prediction into excel
+    # save the itme used for prediction into excel -----------------------------
     df = pandas.DataFrame(columns=["time (s)"])
     df["time (s)"] = time_list
-    df.to_excel(os.path.join(path_prediction, "time.xlsx"), index=False)
+    df.to_excel(
+        os.path.join(path_prediction, f"time_{id_device.replace(':', '_')}.xlsx"),
+        index=False,
+    )

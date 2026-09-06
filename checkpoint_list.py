@@ -292,10 +292,6 @@ checkpoints_v1 = {
         },
     },
     # --------------------------------------------------------------------------
-    "SimuBeads3D-128-31-0-0-1": {},
-    "SimuBeads3D-128-31-05-1-1": {},
-    "SimuBeads3D-128-31-05-1-03": {},
-    "SimuBeads3D-128-31-05-1-01": {},
     "SimuMix3D-128-31-0-0-1": {
         "forward": {
             "n1_r1": "checkpoints/SimuMix3D-128-31-0-0-1/kernelnet/forward/kernet_fp_bs_1_lr_1_ker_31_gauss_0_poiss_0_sf_1_mse_over2_inter_normx_fft_ratio_1_ts_0_1_s100/epoch_20.pt",

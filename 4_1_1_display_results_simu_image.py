@@ -9,7 +9,7 @@ from utils.data import read_txt, win2linux, NormalizePercentile, linear_transfor
 from utils.plot import add_scale_bar, add_significant_star
 import skimage.io as io
 import numpy as np
-import os, pandas, torch
+import os, pandas, torch, tqdm
 from utils import evaluation as eva
 from skimage.measure import profile_line
 from scipy.stats import wilcoxon, pearsonr
@@ -18,27 +18,34 @@ from methods.deconvolution import Convolution
 plt.rcParams["svg.fonttype"] = "none"
 # ------------------------------------------------------------------------------
 num_samples_statistic = 20  # the number of sample used for statistics evaluation
-enable_normalization = True
+# num_samples_statistic = 10
+enable_normalization = True  # default
 # enable_normalization = False
 enable_image_metrics = False
-enable_image_metrics = True
+enable_image_metrics = True  # default
 enable_profile = False
-enable_profile = True
+enable_profile = True  # default
+
+enable_rsersp = True  # default
+enable_rsersp = False
 
 method_subgroup = "different_methods"
 # method_subgroup = "along_iter"
 # method_subgroup = "along_num_img_train"
 
 # ------------------------------------------------------------------------------
-#  dataset name | id_sample | slice (xy) | slice (xz) | line (xy) | line (xz)
+#  dataset name | id_sample | slice (xy) | slice (xz) | line (xy) | line (xz) | patch (x, y, size)
 # ------------------------------------------------------------------------------
 data_info = (
+    # "SimuMix3D-128-31-05-1-01",
+    "SimuMix3D-512-31-05-1-01",
     "SimuMix3D-128-31-05-1-01",
     0,
     64,  # id_slice_xy
     70,  # id_slice_xz
     ((38, 34), (56, 19)),
     ((86, 44), (86, 64)),
+    (165, 40, 80),  # 512
 )
 
 path_experiments = {
@@ -94,11 +101,13 @@ methods_info_dict = {
 methods_info = methods_info_dict[method_subgroup]
 (
     dataset_name_test,
+    dataset_name_train,
     id_sample,
     id_slice_xy,
     id_slice_zx,
     line_xy,
     line_xz,
+    patch_xys,
 ) = data_info
 
 eps = 0.000001
@@ -142,6 +151,9 @@ def preprocess(img):
     return img
 
 
+data_range = 2.5 if enable_normalization else None
+
+
 # ------------------------------------------------------------------------------
 # load results
 # ------------------------------------------------------------------------------
@@ -167,7 +179,7 @@ for i_meth in range(num_methods):
             path_predictions,
             dataset_name_test,
             name_meth,
-            dataset_name_test,
+            dataset_name_train,
             path_exp,
             filenames[id_sample].split(".")[0],
         )
@@ -179,7 +191,7 @@ for i_meth in range(num_methods):
             path_predictions,
             dataset_name_test,
             name_meth,
-            dataset_name_test,
+            dataset_name_train,
             "n1_r1",
             filenames[id_sample].split(".")[0],
             f"y_pred.tif",
@@ -210,13 +222,10 @@ print(f"[INFO] PSF (GT) shape : {PSF_gt.shape}")
 print(f"[INFO] PSF (GT) sum : {PSF_gt.sum():.2f}")
 conv3d = Convolution(torch.tensor(PSF_gt), padding_mode="reflect", domain="fft")
 
-# forward project images -------------------------------------------------------
-print(f"[INFO] forward project images...")
-imgs_all_fp = np.zeros_like(imgs_all)
-for i_meth in range(num_methods):
-    img = imgs_all[i_meth]
-    img_fp = conv3d(torch.tensor(img)).cpu().detach().numpy()
-    imgs_all_fp[i_meth] = img_fp
+
+def forward_project(img):
+    return conv3d(torch.tensor(img)).cpu().detach().numpy()
+
 
 # image normalization ----------------------------------------------------------
 # whether normalize the image before calculating the metrics
@@ -225,10 +234,8 @@ if enable_normalization:
     imgs_all_norm = np.zeros_like(imgs_all)
     for i in range(imgs_all.shape[0]):
         imgs_all_norm[i] = preprocess(imgs_all[i])
-    data_range = 2.5
 else:
     imgs_all_norm = imgs_all
-    data_range = None
 
 # ------------------------------------------------------------------------------
 # show the restored images for one sample
@@ -241,11 +248,12 @@ lxy_start, lxy_end = line_xy[0], line_xy[1]
 lzx_start, lzx_end = line_xz[0], line_xz[1]
 
 dict_fig = dict(dpi=300, constrained_layout=True)
-dict_text = dict(color="white", fontsize=18)
-dict_text_rt = dict(ha="right", va="top", x=0.95, y=0.95, **dict_text)
-dict_text_lb = dict(ha="left", va="bottom", x=0.05, y=0.05, **dict_text)
-dict_text_rb = dict(ha="right", va="bottom", x=0.95, y=0.05, **dict_text)
-dict_line = dict(color="deeppink", linewidth=1.5)
+dict_text = dict(color="white", fontsize=15)
+dict_text_rt = dict(ha="right", va="top", x=0.96, y=0.96, **dict_text)
+dict_text_lt = dict(ha="left", va="top", x=0.04, y=0.96, **dict_text)
+dict_text_lb = dict(ha="left", va="bottom", x=0.04, y=0.04, **dict_text)
+dict_text_rb = dict(ha="right", va="bottom", x=0.96, y=0.04, **dict_text)
+dict_line = dict(color="red", linewidth=1.5)
 dict_image = dict(cmap="gray", vmin=0, vmax=0.9)
 
 # ------------------------------------------------------------------------------
@@ -254,6 +262,7 @@ fig, axes = plt.subplots(nrows=nr, ncols=nc, figsize=(3 * nc, 3 * nr), **dict_fi
 [ax.set_axis_off() for ax in axes.ravel()]
 
 img_gt = imgs_all_norm[-1]
+pbar = tqdm.tqdm(total=num_methods, desc="[INFO] PLOT", ncols=80, leave=False)
 for i_meth in range(num_methods):
     ax = axes[:, i_meth]
     name_meth, name, iter, color = methods_info[i_meth]
@@ -264,11 +273,11 @@ for i_meth in range(num_methods):
     ax[1].imshow(img[:, id_slice_zx, :], **dict_image)
 
     # add text -----------------------------------------------------------------
-    ax[0].text(s=name, transform=ax[0].transAxes, **dict_text_rt)
+    ax[0].text(s=name, transform=ax[0].transAxes, **dict_text_lt)
 
     if i_meth == 0:
-        ax[0].text(s="xy", transform=ax[0].transAxes, **dict_text_lb)
-        ax[1].text(s="xz", transform=ax[1].transAxes, **dict_text_lb)
+        ax[0].text(s="xy", transform=ax[0].transAxes, **dict_text_rt)
+        ax[1].text(s="xz", transform=ax[1].transAxes, **dict_text_rt)
 
         if enable_profile:
             # add lines
@@ -282,19 +291,15 @@ for i_meth in range(num_methods):
     # add metrics --------------------------------------------------------------
     if enable_image_metrics:
         if i_meth != num_methods - 1:
-            psnr = eva.PSNR(img_true=img_gt, img_test=img, data_range=data_range)
-            # ssim = eva.SSIM(img_true=img_gt, img_test=img, data_range=data_range)
-            ssim = eva.MSSSIM(
-                img_true=img_gt, img_test=img, data_range=data_range, interp_sf=2
-            )
+            dict_met_tmp = dict(img_true=img_gt, img_test=img)
+            psnr = eva.PSNR(**dict_met_tmp, data_range=data_range)
+            # ssim = eva.SSIM(**dict_met_tmp, data_range=data_range)
+            ssim = eva.MSSSIM(**dict_met_tmp, data_range=data_range, interp_sf=2)
             ssim = ssim * 100
-            zncc = eva.NCC(img_true=img_gt, img_test=img)
+            zncc = eva.NCC(**dict_met_tmp)
 
             ax[0].text(
-                # s=f"{psnr:.2f} | {ssim:.2f} | {zncc:.2f}",
-                s=f"{psnr:.2f} | {zncc:.2f}",
-                transform=ax[0].transAxes,
-                **dict_text_rb,
+                s=f"{psnr:.2f} | {zncc:.2f}", transform=ax[0].transAxes, **dict_text_lb
             )
 
     # add scale bar
@@ -307,6 +312,32 @@ for i_meth in range(num_methods):
             "pos": (int(Ny * 0.05), int(Nx * (1 - 0.05))),
         }
         add_scale_bar(ax[0], image=img, **dict_scale_bar)
+
+    # add a patch at the right bottom corner
+    px, py, ps = patch_xys
+    patch = img[id_slice_xy, py : py + ps, px : px + ps]
+    # add box in the image
+    ax[0].add_patch(
+        plt.Rectangle((px, py), ps, ps, edgecolor="red", linewidth=1, facecolor="none")
+    )
+    ax_patch = ax[0].inset_axes(
+        [0.6, 0.0, 0.4, 0.4], transform=ax[0].transAxes, zorder=10
+    )
+    ax_patch.imshow(patch, **dict_image)
+    ax_patch.set_xticks([])
+    ax_patch.set_yticks([])
+    ax_patch.set_xticklabels([])
+    ax_patch.set_yticklabels([])
+    ax_patch.spines["top"].set_color("white")
+    ax_patch.spines["left"].set_color("white")
+    ax_patch.spines["top"].set_linewidth(1)
+    ax_patch.spines["left"].set_linewidth(1)
+    ax_patch.spines["right"].set_visible(False)
+    ax_patch.spines["bottom"].set_visible(False)
+
+    pbar.update(1)
+pbar.close()
+
 
 plt.savefig(os.path.join(path_figure, f"img_restored.png"))
 plt.savefig(os.path.join(path_figure, f"img_restored.svg"))
@@ -356,76 +387,83 @@ plt.savefig(os.path.join(path_figure, f"img_fft.svg"))
 
 # os._exit(0)
 # ------------------------------------------------------------------------------
-# show resolution-scale error
+# show resolution-scale error map
 # ------------------------------------------------------------------------------
 # here we use the real psf to convole the restored image to get the
 # resolution-scale error
-print("-" * 80)
-print("[INFO] plot resolution-scale error...")
-dict_image = dict(cmap="gray", vmin=0, vmax=25)
-dict_image_error = dict(cmap="plasma", vmin=0, vmax=12.5)
+if enable_rsersp:
+    print("-" * 80)
+    print("[INFO] plot resolution-scale error...")
+    dict_image = dict(cmap="gray", vmin=0, vmax=25)
+    dict_image_error = dict(cmap="plasma", vmin=0, vmax=12.5)
 
-nr, nc = 4, num_methods
-fig, axes = plt.subplots(nrows=nr, ncols=nc, figsize=(3 * nc, 3 * nr), **dict_fig)
-[ax.set_axis_off() for ax in axes.ravel()]
-for i_meth in range(num_methods - 1):
-    ax = axes[:, i_meth]
-    name_meth, name, iter, color = methods_info[i_meth]
-    img_ref = imgs_all[0]
-    if i_meth == 0:
-        ax[0].imshow(img_ref[id_slice_xy], **dict_image)
-        ax[2].imshow(img_ref[:, id_slice_zx, :], **dict_image)
-    else:
-        img_rescale = imgs_all_fp[i_meth]  # the image have be conv for resolution scale
-        if "rln" in name_meth:
-            img_rescale = linear_transform(img_rescale, img_ref)
-        img_err = np.abs(img_rescale - img_ref)
+    # --------------------------------------------------------------------------
+    nr, nc = 4, num_methods
+    fig, axes = plt.subplots(nrows=nr, ncols=nc, figsize=(3 * nc, 3 * nr), **dict_fig)
+    [ax.set_axis_off() for ax in axes.ravel()]
+    for i_meth in range(num_methods - 1):
+        ax = axes[:, i_meth]
+        name_meth, name, iter, color = methods_info[i_meth]
+        img_ref = forward_project(imgs_all[-1])
+        if i_meth == 0:
+            ax[0].imshow(img_ref[id_slice_xy], **dict_image)
+            ax[2].imshow(img_ref[:, id_slice_zx, :], **dict_image)
+        else:
+            # the image have be conv for resolution scale
+            img_rescale = forward_project(imgs_all[i_meth])
+            if "rln" in name_meth:
+                img_rescale = linear_transform(img_rescale, img_ref)
+            img_err = np.abs(img_rescale - img_ref)
 
-        # calculate RSE and RSP (resolution scaled Pearson correlation)
-        RSE = np.sqrt(np.mean(img_err**2))
-        RSP = pearsonr(img_ref.flatten(), img_rescale.flatten())[0]
+            # calculate RSE and RSP (resolution scaled Pearson correlation)
+            RSE = np.sqrt(np.mean(img_err**2))
+            RSP = pearsonr(img_ref.flatten(), img_rescale.flatten())[0]
 
-        ax[0].imshow(img_rescale[id_slice_xy], **dict_image)
-        ax[1].imshow(img_err[id_slice_xy], **dict_image_error)
-        ax[2].imshow(img_rescale[:, id_slice_zx, :], **dict_image)
-        ax[3].imshow(img_err[:, id_slice_zx, :], **dict_image_error)
+            ax[0].imshow(img_rescale[id_slice_xy], **dict_image)
+            ax[1].imshow(img_err[id_slice_xy], **dict_image_error)
+            ax[2].imshow(img_rescale[:, id_slice_zx, :], **dict_image)
+            ax[3].imshow(img_err[:, id_slice_zx, :], **dict_image_error)
 
-        # add metric value -----------------------------------------------------
-        ax[1].text(
-            s=f"RSE:{RSE:.3f}\nRSP:{RSP:.3f}", transform=ax[1].transAxes, **dict_text_rt
-        )
-    # add text -----------------------------------------------------------------
-    if i_meth == 0:
-        ax[0].text(s=name, transform=ax[0].transAxes, **dict_text_rt)
-        ax[0].text(s="xy", transform=ax[0].transAxes, **dict_text_lb)
-        ax[2].text(s="xz", transform=ax[2].transAxes, **dict_text_lb)
-    else:
-        ax[0].text(s=f"{name}\n(convolved)", transform=ax[0].transAxes, **dict_text_rt)
+            # add metric value -----------------------------------------------------
+            ax[1].text(
+                s=f"RSE:{RSE:.3f}\nRSP:{RSP:.3f}",
+                transform=ax[1].transAxes,
+                **dict_text_rt,
+            )
+        # add text -----------------------------------------------------------------
+        if i_meth == 0:
+            ax[0].text(s="REF", transform=ax[0].transAxes, **dict_text_rt)
+            ax[0].text(s="xy", transform=ax[0].transAxes, **dict_text_lb)
+            ax[2].text(s="xz", transform=ax[2].transAxes, **dict_text_lb)
+        else:
+            ax[0].text(
+                s=f"{name}\n(convolved)", transform=ax[0].transAxes, **dict_text_rt
+            )
 
-# add scale bar
-dict_scale_bar = {
-    "pixel_size": pixel_size,
-    "bar_length": 5,  # um
-    "bar_height": 0.01,
-    "bar_color": "white",
-    "pos": (int(Ny * 0.05), int(Nx * (1 - 0.05))),
-}
-add_scale_bar(axes[0, -2], image=img_ref, **dict_scale_bar)
+    # add scale bar
+    dict_scale_bar = {
+        "pixel_size": pixel_size,
+        "bar_length": 5,  # um
+        "bar_height": 0.01,
+        "bar_color": "white",
+        "pos": (int(Ny * 0.05), int(Nx * (1 - 0.05))),
+    }
+    add_scale_bar(axes[0, -2], image=img_ref, **dict_scale_bar)
 
-# show colorbar at the last column
-fig.colorbar(axes[0, -2].get_images()[0], cax=axes[0, -1], orientation="vertical")
-fig.colorbar(axes[1, -2].get_images()[0], cax=axes[1, -1], orientation="vertical")
-for ax in axes[:2, -1]:
-    ax.set_axis_on()
-    ax.set_yticks([0, 5, 10, 15, 20, 25])
-    ax.set_yticklabels([0, 5, 10, 15, 20, 25])
-    ax.tick_params(labelsize=16)
-    ax.set_aspect(0.2)
-axes[0, -1].set_ylim(dict_image["vmin"], dict_image["vmax"])
-axes[1, -1].set_ylim(dict_image_error["vmin"], dict_image_error["vmax"])
+    # show colorbar at the last column
+    fig.colorbar(axes[0, -2].get_images()[0], cax=axes[0, -1], orientation="vertical")
+    fig.colorbar(axes[1, -2].get_images()[0], cax=axes[1, -1], orientation="vertical")
+    for ax in axes[:2, -1]:
+        ax.set_axis_on()
+        ax.set_yticks([0, 5, 10, 15, 20, 25])
+        ax.set_yticklabels([0, 5, 10, 15, 20, 25])
+        ax.tick_params(labelsize=16)
+        ax.set_aspect(0.2)
+    axes[0, -1].set_ylim(dict_image["vmin"], dict_image["vmax"])
+    axes[1, -1].set_ylim(dict_image_error["vmin"], dict_image_error["vmax"])
 
-plt.savefig(os.path.join(path_figure, f"img_resolution_scale_error.png"))
-plt.savefig(os.path.join(path_figure, f"img_resolution_scale_error.svg"))
+    plt.savefig(os.path.join(path_figure, f"img_resolution_scale_error.png"))
+    plt.savefig(os.path.join(path_figure, f"img_resolution_scale_error.svg"))
 
 # os._exit(0)
 # ------------------------------------------------------------------------------
@@ -523,114 +561,95 @@ if enable_profile:
 # load all samples and calculate the statistics
 # ------------------------------------------------------------------------------
 print("-" * 80)
-print("[INFO] load all samples...")
-imgs_all_samples = []
-for i_meth in range(num_methods):
-    name_meth, name, iter, color = methods_info[i_meth]
-    print(f"[INFO] {name}")
+print("[INFO] load all samples and calculate metrics...")
+metrics_names = ["PSNR", "MS-SSIM", "ZNCC"]
+if enable_rsersp:
+    metrics_names += ["RSE", "RSP"]
+num_metrics = len(metrics_names)
+metrics_all_samples = np.zeros((num_methods - 1, num_samples_statistic, num_metrics))
+
+# ------------------------------------------------------------------------------
+pbar = tqdm.tqdm(total=num_samples_statistic, desc="loading samples", ncols=80)
+for i_sample in range(num_samples_statistic):
+    pbar.update(1)
+    filename = filenames[i_sample]
+
     imgs_meth = []
-    for i_sample in range(num_samples_statistic):
+    for i_meth in range(num_methods):
+        name_meth, name, iter, color = methods_info[i_meth]
+        path_root_meth = os.path.join(path_predictions, dataset_name_test, name_meth)
+
+        # load the result of each method for each sample -----------------------
         if name_meth == "raw":
-            path_sample = os.path.join(path_lr, filenames[i_sample])
+            path_sample = os.path.join(path_lr, filename)
             img = io.imread(path_sample).astype(np.float32)
             imgs_meth.append(img)
 
         elif name_meth == "gt":
-            path_sample = os.path.join(path_hr, filenames[i_sample])
+            path_sample = os.path.join(path_hr, filename)
             img = io.imread(path_sample).astype(np.float32) * ratio
             imgs_meth.append(img)
 
         elif name_meth in ["kernelnet", "kernelnet_ss"]:
             path_exp = win2linux(path_experiments[name])
             path_sample = os.path.join(
-                path_predictions,
-                dataset_name_test,
-                name_meth,
-                dataset_name_test,
-                path_exp,
-                filenames[i_sample].split(".")[0],
+                path_root_meth, dataset_name_train, path_exp, filename.split(".")[0]
             )
             y_pred_all = io.imread(os.path.join(path_sample, "y_pred_all.tif"))
             y_pred = y_pred_all[iter]
             imgs_meth.append(y_pred)
         elif name_meth in ["rln"]:
             path_sample = os.path.join(
-                path_predictions,
-                dataset_name_test,
-                name_meth,
-                dataset_name_test,
+                path_root_meth,
+                dataset_name_train,
                 "n1_r1",
-                filenames[i_sample].split(".")[0],
+                filename.split(".")[0],
                 f"y_pred.tif",
             )
             img = io.imread(path_sample).astype(np.float32)
             imgs_meth.append(img)
-        else:
+        else:  # conventional methods
             path_sample = os.path.join(
-                path_predictions,
-                dataset_name_test,
-                name_meth,
-                filenames[i_sample].split(".")[0],
-                f"deconv_iter_{iter}.tif",
+                path_root_meth, filename.split(".")[0], f"deconv_iter_{iter}.tif"
             )
             img = io.imread(path_sample).astype(np.float32)
             imgs_meth.append(img)
-    imgs_all_samples.append(imgs_meth)
-imgs_all_samples = np.array(imgs_all_samples)
-print("[INFO] results shape : ", imgs_all_samples.shape)
 
-# forward project images -------------------------------------------------------
-print("[INFO] forward project images (all samples) ...")
-imgs_all_samples_fp = np.zeros_like(imgs_all_samples)
-for i_meth in range(num_methods):
-    for i_sample in range(num_samples_statistic):
-        img = imgs_all_samples[i_meth, i_sample]
-        img_fp = conv3d(torch.tensor(img)).cpu().detach().numpy()
-        imgs_all_samples_fp[i_meth, i_sample] = img_fp
+    # calculate the metrics for each sample ------------------------------------
+    for i_meth in range(num_methods - 1):
+        img_gt_ori = imgs_meth[-1]
+        img_pred_ori = imgs_meth[i_meth]
 
-# image normalization ----------------------------------------------------------
-if enable_normalization:
-    imgs_all_samples_norm = np.zeros_like(imgs_all_samples)
-    for i in range(imgs_all_samples.shape[0]):
-        for j in range(imgs_all_samples.shape[1]):
-            imgs_all_samples_norm[i, j] = preprocess(imgs_all_samples[i, j])
-
-    data_range = 2.5
-else:
-    imgs_all_samples_norm = imgs_all_samples
-    data_range = None
-
-# calculate metrics ------------------------------------------------------------
-print("-" * 80)
-print("[INFO] calculate metrics (all samples)...")
-metrics_names = ["PSNR", "MS-SSIM", "ZNCC", "RSE", "RSP"]
-num_metrics = len(metrics_names)
-
-metrics_all_samples = np.zeros((num_methods - 1, num_samples_statistic, num_metrics))
-for i_meth in range(num_methods - 1):
-    for i_sample in range(num_samples_statistic):
         # used for calculate PSNR, SSIM, and ZNCC
-        img_gt = imgs_all_samples_norm[-1, i_sample]
-        img_pred = imgs_all_samples_norm[i_meth, i_sample]
+        if enable_normalization:
+            img_gt = preprocess(img_gt_ori)
+            img_pred = preprocess(img_pred_ori)
+        else:
+            img_gt = img_gt_ori
+            img_pred = img_pred_ori
 
-        # used for calculate RSE and RSP
-        img_ref = imgs_all_samples[0, i_sample]
-        img_pred_fp = imgs_all_samples_fp[i_meth, i_sample]
+        dict_met = dict(img_true=img_gt, img_test=img_pred)
+        psnr = eva.PSNR(**dict_met, data_range=data_range)
+        # ssim = eva.SSIM(dict_met, data_range=data_range)
+        ssim = eva.MSSSIM(**dict_met, data_range=data_range, interp_sf=2)
+        zncc = eva.NCC(**dict_met)
 
-        psnr = eva.PSNR(img_true=img_gt, img_test=img_pred, data_range=data_range)
-        # ssim = eva.SSIM(img_true=img_gt, img_test=img_pred, data_range=data_range)
-        ssim = eva.MSSSIM(
-            img_true=img_gt, img_test=img_pred, data_range=data_range, interp_sf=2
-        )
-        zncc = eva.NCC(img_true=img_gt, img_test=img_pred)
+        # ----------------------------------------------------------------------
+        if enable_rsersp:
+            # used for calculate RSE and RSP
+            img_ref = forward_project(img_gt_ori)
+            img_pred_fp = forward_project(img_pred_ori)
+            if "rln" in methods_info[i_meth][0]:
+                img_pred_fp = linear_transform(img_pred_fp, img_ref)
 
-        if "rln" in methods_info[i_meth][0]:
-            img_pred_fp = linear_transform(img_pred_fp, img_ref)
+            rse = np.sqrt(np.mean((img_ref - img_pred_fp) ** 2))
+            rsp = pearsonr(img_ref.flatten(), img_pred_fp.flatten())[0]
 
-        rse = np.sqrt(np.mean((img_ref - img_pred_fp) ** 2))
-        rsp = pearsonr(img_ref.flatten(), img_pred_fp.flatten())[0]
+            metrics_all_samples[i_meth, i_sample, :] = [psnr, ssim, zncc, rse, rsp]
+        else:
+            metrics_all_samples[i_meth, i_sample, :] = [psnr, ssim, zncc]
 
-        metrics_all_samples[i_meth, i_sample, :] = [psnr, ssim, zncc, rse, rsp]
+pbar.close()
 print("[INFO] metrics shape : ", metrics_all_samples.shape)
 
 # ------------------------------------------------------------------------------

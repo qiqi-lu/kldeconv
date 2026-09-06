@@ -31,22 +31,32 @@ data_info = (
     ("MT-3D", "biotisr-3d-mt-2", 0, 1, "fp_n1_r1_bp_n1_r1", 2),  # 61.2 nm
 )
 
+# ------------------------------------------------------------------------------
 method_id = "kernelnet"
 
 # load information of datasets from excel file
 datasets_info = pandas.read_excel("datasets_test.xlsx")
-
 path_prediction = os.path.join("outputs", "predictions")
-path_figure = os.path.join("outputs", "figures", "analysis_image")
-
-
+path_figure = os.path.join("outputs", "figures", "analysis_image", "multi_dataset")
+os.makedirs(path_figure, exist_ok=True)
 num_data = len(data_info)
 
 normalizer = NormalizePercentile(p_high=0.995, p_low=0.03, ndim=2)
-dict_fig = dict(dpi=300, constrained_layout=True)
 dict_clip = dict(a_min=0.0, a_max=2.5)
+
+
+def preprocess(img):
+    img = normalizer(img)
+    img = np.clip(img, **dict_clip)
+    return img
+
+
+# ------------------------------------------------------------------------------
+dict_fig = dict(dpi=300, constrained_layout=True)
 dict_colorize = dict(vmin=0, vmax=0.9, color=(0, 255, 0))
-dict_text = dict(color="white", fontsize=16, ha="left", va="top")
+dict_text = dict(color="white", fontsize=16)
+dict_text_lt = dict(ha="left", va="top", x=0.05, y=0.95, **dict_text)
+dict_text_rb = dict(ha="right", va="bottom", x=0.95, y=0.05, **dict_text)
 
 # ------------------------------------------------------------------------------
 # load and display images
@@ -58,8 +68,8 @@ fig, axes = plt.subplots(nr, nc, figsize=(nc * 3, nr * 3), **dict_fig)
 
 # images from different datasets have different shapes
 for i_data in range(num_data):
-    data_name, dataset_id, sample_id, slice_id, repeat_id, num_iter = data_info[i_data]
     ax_data = axes[:, i_data]
+    data_name, dataset_id, sample_id, slice_id, repeat_id, num_iter = data_info[i_data]
 
     # get information of the dataset
     info = datasets_info[datasets_info["id"] == dataset_id].iloc[0]
@@ -70,9 +80,7 @@ for i_data in range(num_data):
     ndim = int(info["ndim"])
     pixel_size = float(info["pixel_size"]) / 1000
 
-    # get filenames
-    filenames = read_txt(path_txt)
-    filename = filenames[sample_id]
+    filename = read_txt(path_txt)[sample_id]
 
     # path of prediction result
     path_pred = os.path.join(
@@ -86,15 +94,10 @@ for i_data in range(num_data):
         "y_pred_all.tif",
     )
 
-    assert os.path.exists(path_pred), "Prediction result does not exist."
+    assert os.path.exists(path_pred), f"[Error] Prediction result does not exist."
 
-    # load low-resolution image
     img_lr = io.imread(os.path.join(path_lr, filename))
-
-    # load high-resolution image
     img_hr = io.imread(os.path.join(path_hr, filename))
-
-    # load deconvovled image
     img_pred = io.imread(path_pred)
 
     # select slice
@@ -104,24 +107,17 @@ for i_data in range(num_data):
         if img_pred.shape[-1] in [3, 4]:
             img_pred = np.transpose(img_pred, axes=(-1, 0, 1))
         img_pred = img_pred[num_iter]
-
     elif ndim == 3:
         img_lr = img_lr[slice_id]
         img_hr = img_hr[slice_id]
         img_pred = img_pred[num_iter][slice_id]
-
     else:
         raise ValueError("Invalid dimension of image.")
 
     # normalize and clip
-    img_lr = normalizer(img_lr)
-    img_hr = normalizer(img_hr)
-    img_pred = normalizer(img_pred)
-
-    img_lr = np.clip(img_lr, **dict_clip)
-    img_hr = np.clip(img_hr, **dict_clip)
-    img_pred = np.clip(img_pred, **dict_clip)
-
+    img_lr = preprocess(img_lr)
+    img_hr = preprocess(img_hr)
+    img_pred = preprocess(img_pred)
     print("-" * 80)
     print(
         f"Data name: {data_name}, Dataset ID: {dataset_id}, Sample ID: {sample_id}, Slice ID: {slice_id}, Image shape: {img_lr.shape}"
@@ -173,15 +169,9 @@ for i_data in range(num_data):
     )
 
     # add text -----------------------------------------------------------------
-    ax_data[0].text(
-        int(img_shape[1] * tp), int(img_shape[0] * tp), f"{data_name}", **dict_text
-    )
-    # add pixel size at bottom-right
+    ax_data[0].text(s=f"{data_name}", transform=ax_data[0].transAxes, **dict_text_lt)
     ax_data[1].text(
-        int(img_shape[1] * tp),
-        int(img_shape[0] * tp),
-        f"{pixel_size*1000:.1f} nm",
-        **dict_text,
+        s=f"{pixel_size*1000:.1f} nm", transform=ax_data[1].transAxes, **dict_text_rb
     )
 
 plt.savefig(os.path.join(path_figure, "multi_samples.png"))

@@ -24,10 +24,10 @@ path_root = utils_data.win2linux(path_root)
 # dataset_name = "SimuMix3D_1024"
 dataset_name = "SimuMix3D_512"
 
-std_gauss, poisson, ratio = 0.5, 1, 0.1
+# std_gauss, poisson, ratio = 0.5, 1, 0.1
 # std_gauss, poisson, ratio = 0.5, 1, 0.3
 # std_gauss, poisson, ratio = 0.5, 1, 1
-# std_gauss, poisson, ratio = 0, 0, 1
+std_gauss, poisson, ratio = 0, 0, 1
 scale_factor = 1
 
 # ------------------------------------------------------------------------------
@@ -47,8 +47,10 @@ dataset_info = {
         "size": (31, 31, 31),
     },
     "SimuMix3D_128": {
-        "s_crop": 127,
-        "size": (127, 127, 127),
+        # "s_crop": 127,
+        # "size": (127, 127, 127),
+        "s_crop": 31,
+        "size": (31, 31, 31),
     },
     "SimuBeads3D_128": {
         "s_crop": 127,

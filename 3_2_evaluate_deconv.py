@@ -26,6 +26,7 @@ dataset_list = (
     # ("simu3d","SimuMix3D-128-31-05-1-03", "", ""),
     # ("simu3d","SimuMix3D-128-31-05-1-1", "", ""),
     # ("simu3d", "SimuMix3D-128-31-0-0-1", "", ""),
+    ("simu3d", "SimuMix3D-512-31-05-1-01", "", ""),
     # ------------------------------------------------------------------------------
     # ("real2d","F-actin-nonlinear-9", "F-actin-nonlinear-9", "fp_n1_r1_bp_n1_r1"),
     # ("real2d","Microtubules2-9", "Microtubules2-9", "fp_n1_r1_bp_n1_r1"),
@@ -87,12 +88,12 @@ dataset_list = (
     #     "Nuclear-pore-complex2-1024",
     #     "fp_n1_r1_bp_n1_r1",
     # ),
-    ("real3d", "biotisr-3d-mt-1", "biotisr-3d-mt-1", "fp_n1_r1_bp_n1_r1"),
-    ("real3d", "biotisr-3d-mt-2", "biotisr-3d-mt-2", "fp_n1_r1_bp_n1_r1"),
-    ("real3d", "biotisr-3d-mito-1", "biotisr-3d-mito-1", "fp_n1_r1_bp_n1_r1"),
-    ("real3d", "biotisr-3d-mito-2", "biotisr-3d-mito-2", "fp_n1_r1_bp_n1_r1"),
-    ("real3d", "biotisr-3d-factin-1", "biotisr-3d-factin-1", "fp_n1_r1_bp_n1_r1"),
-    ("real3d", "biotisr-3d-factin-2", "biotisr-3d-factin-2", "fp_n1_r1_bp_n1_r1"),
+    # ("real3d", "biotisr-3d-mt-1", "biotisr-3d-mt-1", "fp_n1_r1_bp_n1_r1"),
+    # ("real3d", "biotisr-3d-mt-2", "biotisr-3d-mt-2", "fp_n1_r1_bp_n1_r1"),
+    # ("real3d", "biotisr-3d-mito-1", "biotisr-3d-mito-1", "fp_n1_r1_bp_n1_r1"),
+    # ("real3d", "biotisr-3d-mito-2", "biotisr-3d-mito-2", "fp_n1_r1_bp_n1_r1"),
+    # ("real3d", "biotisr-3d-factin-1", "biotisr-3d-factin-1", "fp_n1_r1_bp_n1_r1"),
+    # ("real3d", "biotisr-3d-factin-2", "biotisr-3d-factin-2", "fp_n1_r1_bp_n1_r1"),
     # ------------------------------------------------------------------------------
     # ("real3d-live", "ZeroShotDeconvNet-mitosis-642", "", ""),
     # ("real3d-live", "ZeroShotDeconvNet-mitosis-560", "", ""),
@@ -103,6 +104,17 @@ bp_type = "traditional"
 # bp_type = "gaussian"
 # bp_type = "butterworth"
 # bp_type = "wiener-butterworth"
+
+# id_sample = [0, 1, 2, 3, 4, 5, 6]
+# id_sample = [7, 8, 9, 10]
+# id_sample = [6]
+# id_sample = [0, 346]
+# id_sample = [0, 346, 609, 700, 770, 901]
+# id_sample = [0, 346, 609, 700, 770, 901]
+# id_sample = list(range(1, 500, 10))
+# id_sample = range(0, 1000, 4)
+# id_sample = [0]
+id_sample = []
 
 # ------------------------------------------------------------------------------
 methods_info_dict = {
@@ -181,8 +193,8 @@ methods_info_dict = {
                 "init": "measured",
                 "padding_mode": "reflect",
                 # "num_iter": 2,
-                "num_iter": 3,
-                # "num_iter": 30,
+                # "num_iter": 3,
+                "num_iter": 30,
                 # "num_iter": 100,
             },
             "gaussian": {
@@ -253,17 +265,6 @@ info_df = pandas.read_excel("datasets_test.xlsx")
 
 for dataset_info in dataset_list:
     data_type, dataset_name_test, dataset_name_train, experiment = dataset_info
-
-    # id_sample = [0, 1, 2, 3, 4, 5, 6]
-    # id_sample = [7, 8, 9, 10]
-    # id_sample = [6]
-    # id_sample = [0, 346]
-    # id_sample = [0, 346, 609, 700, 770, 901]
-    # id_sample = [0, 346, 609, 700, 770, 901]
-    # id_sample = list(range(1, 500, 10))
-    # id_sample = range(0, 1000, 4)
-    # id_sample = [0]
-    id_sample = []
 
     path_prediction = os.path.join("outputs", "predictions", dataset_name_test)
 

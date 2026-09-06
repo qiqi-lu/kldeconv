@@ -8,6 +8,9 @@ import matplotlib.pyplot as plt
 from utils.data import win2linux
 
 plt.rcParams["svg.fonttype"] = "none"
+# device = "cuda_0"
+device = "cpu"
+
 # ------------------------------------------------------------------------------
 path_root = os.path.join("outputs", "predictions", "SimuMix3D-512-31-05-1-01")
 path_figure = os.path.join(
@@ -19,12 +22,12 @@ dict_methods_info = (
     # method name | path to time.xlsx | color
     (
         "RLN",
-        "rln/SimuMix3D-128-31-05-1-01/n1_r1/time.xlsx",
+        f"rln/SimuMix3D-128-31-05-1-01/n1_r1/time_{device}.xlsx",
         "#EC8860",
     ),
     (
         "KLD",
-        "kernelnet/SimuMix3D-128-31-05-1-01/fp_knonw_bp_n1_r1/train_iter_2/time.xlsx",
+        f"kernelnet/SimuMix3D-128-31-05-1-01/fp_knonw_bp_n1_r1/train_iter_2/time_{device}.xlsx",
         "#C23637",
     ),
 )
@@ -33,7 +36,6 @@ dict_methods_info = (
 num_methods = len(dict_methods_info)
 methods_name = [info[0] for info in dict_methods_info]
 methods_color = [info[2] for info in dict_methods_info]
-
 
 # ------------------------------------------------------------------------------
 # read data
@@ -64,7 +66,10 @@ data = df.values
 data_mean = data.mean(axis=0)
 data_std = data.std(axis=0)
 
-ticks = list(np.linspace(0, 2, 21))
+if "cuda" in device:
+    ticks = list(np.linspace(0, 2, 21))
+else:
+    ticks = list(np.linspace(0, 20, 11))
 ax.set_yticks(ticks)
 ax.set_yticklabels([f"{t:.2f}" for t in ticks])
 
@@ -78,6 +83,17 @@ ax.bar(
     **dict_bar,
 )
 
+improve = data_mean[0] / data_mean[1]
+# label at the top of RLN
+ax.text(
+    1,
+    data_mean[1] * 1.1,
+    f"$\\times{improve:.2f}$",
+    fontsize=12,
+    color="k",
+    ha="center",
+)
+
 # set
 ax.set_ylabel("Time (s)")
 ax.set_xticks([])
@@ -87,5 +103,5 @@ ax.spines["right"].set_visible(False)
 ax.legend(frameon=False, fontsize=12)
 ax.set_box_aspect(2)
 
-plt.savefig(os.path.join(path_figure, "time.png"))
-plt.savefig(os.path.join(path_figure, "time.svg"))
+plt.savefig(os.path.join(path_figure, f"time_{device}.png"))
+plt.savefig(os.path.join(path_figure, f"time_{device}.svg"))
