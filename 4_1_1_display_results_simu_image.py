@@ -16,21 +16,24 @@ from scipy.stats import wilcoxon, pearsonr
 from methods.deconvolution import Convolution
 
 plt.rcParams["svg.fonttype"] = "none"
+recalculate_metrics = True
+# recalculate_metrics = False
 # ------------------------------------------------------------------------------
 num_samples_statistic = 20  # the number of sample used for statistics evaluation
 # num_samples_statistic = 10
 enable_normalization = True  # default
 # enable_normalization = False
-enable_image_metrics = False
+# enable_image_metrics = False
 enable_image_metrics = True  # default
 enable_profile = False
-enable_profile = True  # default
+# enable_profile = True  # default
 
-enable_rsersp = True  # default
-enable_rsersp = False
+# enable_rsersp = True
+enable_rsersp = False  # default
 
-method_subgroup = "different_methods"
-# method_subgroup = "along_iter"
+# ------------------------------------------------------------------------------
+# method_subgroup = "different_methods"
+method_subgroup = "along_iter"
 # method_subgroup = "along_num_img_train"
 
 # ------------------------------------------------------------------------------
@@ -38,8 +41,13 @@ method_subgroup = "different_methods"
 # ------------------------------------------------------------------------------
 data_info = (
     # "SimuMix3D-128-31-05-1-01",
+    # "SimuMix3D-128-31-05-1-01",
+    # -------------------------
     "SimuMix3D-512-31-05-1-01",
     "SimuMix3D-128-31-05-1-01",
+    # -------------------------
+    # "SimuMix3D-512-31-0-0-1",
+    # "SimuMix3D-128-31-0-0-1",
     0,
     64,  # id_slice_xy
     70,  # id_slice_xz
@@ -294,7 +302,9 @@ for i_meth in range(num_methods):
             dict_met_tmp = dict(img_true=img_gt, img_test=img)
             psnr = eva.PSNR(**dict_met_tmp, data_range=data_range)
             # ssim = eva.SSIM(**dict_met_tmp, data_range=data_range)
-            ssim = eva.MSSSIM(**dict_met_tmp, data_range=data_range, interp_sf=2)
+            ssim = eva.MSSSIM(
+                **dict_met_tmp, data_range=data_range, interp_sf=2, device="cuda:0"
+            )
             ssim = ssim * 100
             zncc = eva.NCC(**dict_met_tmp)
 
@@ -560,6 +570,8 @@ if enable_profile:
 # ------------------------------------------------------------------------------
 # load all samples and calculate the statistics
 # ------------------------------------------------------------------------------
+path_save = os.path.join(path_figure_root, method_subgroup)
+os.makedirs(path_save, exist_ok=True)
 print("-" * 80)
 print("[INFO] load all samples and calculate metrics...")
 metrics_names = ["PSNR", "MS-SSIM", "ZNCC"]
@@ -568,88 +580,98 @@ if enable_rsersp:
 num_metrics = len(metrics_names)
 metrics_all_samples = np.zeros((num_methods - 1, num_samples_statistic, num_metrics))
 
-# ------------------------------------------------------------------------------
-pbar = tqdm.tqdm(total=num_samples_statistic, desc="loading samples", ncols=80)
-for i_sample in range(num_samples_statistic):
-    pbar.update(1)
-    filename = filenames[i_sample]
+if recalculate_metrics:
+    # ------------------------------------------------------------------------------
+    pbar = tqdm.tqdm(total=num_samples_statistic, desc="loading samples", ncols=80)
+    for i_sample in range(num_samples_statistic):
+        pbar.update(1)
+        filename = filenames[i_sample]
 
-    imgs_meth = []
-    for i_meth in range(num_methods):
-        name_meth, name, iter, color = methods_info[i_meth]
-        path_root_meth = os.path.join(path_predictions, dataset_name_test, name_meth)
-
-        # load the result of each method for each sample -----------------------
-        if name_meth == "raw":
-            path_sample = os.path.join(path_lr, filename)
-            img = io.imread(path_sample).astype(np.float32)
-            imgs_meth.append(img)
-
-        elif name_meth == "gt":
-            path_sample = os.path.join(path_hr, filename)
-            img = io.imread(path_sample).astype(np.float32) * ratio
-            imgs_meth.append(img)
-
-        elif name_meth in ["kernelnet", "kernelnet_ss"]:
-            path_exp = win2linux(path_experiments[name])
-            path_sample = os.path.join(
-                path_root_meth, dataset_name_train, path_exp, filename.split(".")[0]
+        imgs_meth = []
+        for i_meth in range(num_methods):
+            name_meth, name, iter, color = methods_info[i_meth]
+            path_root_meth = os.path.join(
+                path_predictions, dataset_name_test, name_meth
             )
-            y_pred_all = io.imread(os.path.join(path_sample, "y_pred_all.tif"))
-            y_pred = y_pred_all[iter]
-            imgs_meth.append(y_pred)
-        elif name_meth in ["rln"]:
-            path_sample = os.path.join(
-                path_root_meth,
-                dataset_name_train,
-                "n1_r1",
-                filename.split(".")[0],
-                f"y_pred.tif",
+
+            # load the result of each method for each sample -----------------------
+            if name_meth == "raw":
+                path_sample = os.path.join(path_lr, filename)
+                img = io.imread(path_sample).astype(np.float32)
+                imgs_meth.append(img)
+
+            elif name_meth == "gt":
+                path_sample = os.path.join(path_hr, filename)
+                img = io.imread(path_sample).astype(np.float32) * ratio
+                imgs_meth.append(img)
+
+            elif name_meth in ["kernelnet", "kernelnet_ss"]:
+                path_exp = win2linux(path_experiments[name])
+                path_sample = os.path.join(
+                    path_root_meth, dataset_name_train, path_exp, filename.split(".")[0]
+                )
+                y_pred_all = io.imread(os.path.join(path_sample, "y_pred_all.tif"))
+                y_pred = y_pred_all[iter]
+                imgs_meth.append(y_pred)
+            elif name_meth in ["rln"]:
+                path_sample = os.path.join(
+                    path_root_meth,
+                    dataset_name_train,
+                    "n1_r1",
+                    filename.split(".")[0],
+                    f"y_pred.tif",
+                )
+                img = io.imread(path_sample).astype(np.float32)
+                imgs_meth.append(img)
+            else:  # conventional methods
+                path_sample = os.path.join(
+                    path_root_meth, filename.split(".")[0], f"deconv_iter_{iter}.tif"
+                )
+                img = io.imread(path_sample).astype(np.float32)
+                imgs_meth.append(img)
+
+        # calculate the metrics for each sample ------------------------------------
+        for i_meth in range(num_methods - 1):
+            img_gt_ori = imgs_meth[-1]
+            img_pred_ori = imgs_meth[i_meth]
+
+            # used for calculate PSNR, SSIM, and ZNCC
+            if enable_normalization:
+                img_gt = preprocess(img_gt_ori)
+                img_pred = preprocess(img_pred_ori)
+            else:
+                img_gt = img_gt_ori
+                img_pred = img_pred_ori
+
+            dict_met = dict(img_true=img_gt, img_test=img_pred)
+            psnr = eva.PSNR(**dict_met, data_range=data_range)
+            # ssim = eva.SSIM(dict_met, data_range=data_range)
+            ssim = eva.MSSSIM(
+                **dict_met, data_range=data_range, interp_sf=2, device="cuda:0"
             )
-            img = io.imread(path_sample).astype(np.float32)
-            imgs_meth.append(img)
-        else:  # conventional methods
-            path_sample = os.path.join(
-                path_root_meth, filename.split(".")[0], f"deconv_iter_{iter}.tif"
-            )
-            img = io.imread(path_sample).astype(np.float32)
-            imgs_meth.append(img)
+            zncc = eva.NCC(**dict_met)
 
-    # calculate the metrics for each sample ------------------------------------
-    for i_meth in range(num_methods - 1):
-        img_gt_ori = imgs_meth[-1]
-        img_pred_ori = imgs_meth[i_meth]
+            # ----------------------------------------------------------------------
+            if enable_rsersp:
+                # used for calculate RSE and RSP
+                img_ref = forward_project(img_gt_ori)
+                img_pred_fp = forward_project(img_pred_ori)
+                if "rln" in methods_info[i_meth][0]:
+                    img_pred_fp = linear_transform(img_pred_fp, img_ref)
 
-        # used for calculate PSNR, SSIM, and ZNCC
-        if enable_normalization:
-            img_gt = preprocess(img_gt_ori)
-            img_pred = preprocess(img_pred_ori)
-        else:
-            img_gt = img_gt_ori
-            img_pred = img_pred_ori
+                rse = np.sqrt(np.mean((img_ref - img_pred_fp) ** 2))
+                rsp = pearsonr(img_ref.flatten(), img_pred_fp.flatten())[0]
 
-        dict_met = dict(img_true=img_gt, img_test=img_pred)
-        psnr = eva.PSNR(**dict_met, data_range=data_range)
-        # ssim = eva.SSIM(dict_met, data_range=data_range)
-        ssim = eva.MSSSIM(**dict_met, data_range=data_range, interp_sf=2)
-        zncc = eva.NCC(**dict_met)
+                metrics_all_samples[i_meth, i_sample, :] = [psnr, ssim, zncc, rse, rsp]
+            else:
+                metrics_all_samples[i_meth, i_sample, :] = [psnr, ssim, zncc]
 
-        # ----------------------------------------------------------------------
-        if enable_rsersp:
-            # used for calculate RSE and RSP
-            img_ref = forward_project(img_gt_ori)
-            img_pred_fp = forward_project(img_pred_ori)
-            if "rln" in methods_info[i_meth][0]:
-                img_pred_fp = linear_transform(img_pred_fp, img_ref)
-
-            rse = np.sqrt(np.mean((img_ref - img_pred_fp) ** 2))
-            rsp = pearsonr(img_ref.flatten(), img_pred_fp.flatten())[0]
-
-            metrics_all_samples[i_meth, i_sample, :] = [psnr, ssim, zncc, rse, rsp]
-        else:
-            metrics_all_samples[i_meth, i_sample, :] = [psnr, ssim, zncc]
-
-pbar.close()
+    pbar.close()
+    # save as npy data
+    np.save(os.path.join(path_save, "metrics_all_samples.npy"), metrics_all_samples)
+else:
+    print("[INFO] load metrics from file ...")
+    metrics_all_samples = np.load(os.path.join(path_save, "metrics_all_samples.npy"))
 print("[INFO] metrics shape : ", metrics_all_samples.shape)
 
 # ------------------------------------------------------------------------------
@@ -672,9 +694,9 @@ yticks_metrics_dict = {
         "RSP": list(np.linspace(0, 1, 101)),
     },
     "along_num_img_train": {
-        "PSNR": list(np.linspace(0, 40, 81)),
-        "MS-SSIM": list(np.linspace(0, 1, 101)),
-        "ZNCC": list(np.linspace(0, 1, 101)),
+        "PSNR": list(np.linspace(0, 40, 201)),
+        "MS-SSIM": list(np.linspace(0, 1, 501)),
+        "ZNCC": list(np.linspace(0, 1, 401)),
         "RSE": list(np.linspace(0, 10, 51)),
         "RSP": list(np.linspace(0, 1, 101)),
     },
@@ -729,9 +751,19 @@ for i_metric in range(num_metrics):
     data_mean = data.mean(axis=1)
     data_max, data_min = data.max(), data.min()
     data_range = data_max - data_min
+    y_lim = (data_min - data_range * 0.1, data_max + data_range * 0.1)
 
     # --------------------------------------------------------------------------
-    ax.bar(x_pos, data_mean, yerr=data_std, color=colors, label=labels, **dict_bar)
+    # ax.bar(x_pos, data_mean, yerr=data_std, color=colors, label=labels, **dict_bar)
+    ax.bar(
+        x_pos,
+        data_mean - y_lim[0],
+        yerr=data_std,
+        color=colors,
+        label=labels,
+        bottom=y_lim[0],
+        **dict_bar,
+    )
 
     # --------------------------------------------------------------------------
     if i_metric == 0 or metric_name in ["RSE", "RSP"]:
@@ -742,14 +774,17 @@ for i_metric in range(num_metrics):
 
     ticks = yticks_metrics[metric_name]
     ax.set_yticks(ticks)
-    if metric_name == "RSP":
+    if metric_name in ["RSE"]:
         ax.set_yticklabels([f"{x:.3f}" for x in ticks])
+    elif (
+        metric_name in ["MS-SSIM", "ZNCC"] and method_subgroup == "along_num_img_train"
+    ):
+        ax.set_yticklabels([f"{x:.4f}" for x in ticks])
     else:
         ax.set_yticklabels([f"{x:.2f}" for x in ticks])
 
     ax.set_ylabel(metric_name)
 
-    y_lim = (data_min - data_range * 0.1, data_max + data_range * 0.1)
     ax.set_ylim(y_lim)
     ax.spines["top"].set_visible(False)
     ax.spines["right"].set_visible(False)
@@ -765,8 +800,6 @@ for i_metric in range(num_metrics):
         star_y = data_mean[i_pos] + data_std[i_pos] + 0.02 * (y_lim[1] - y_lim[0])
         add_significant_star(ax, star_x, star_y, pv)
 
-path_save = os.path.join(path_figure_root, method_subgroup)
-os.makedirs(path_save, exist_ok=True)
 plt.savefig(os.path.join(path_save, "img_restored_metrics.png"))
 plt.savefig(os.path.join(path_save, "img_restored_metrics.svg"))
 

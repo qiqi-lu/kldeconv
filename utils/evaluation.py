@@ -3,7 +3,10 @@ from utils import data
 import numpy as np
 from pytorch_msssim import ms_ssim
 import torch, itertools, math
-from nanopyx.core.transform import ErrorMap
+try:
+    from nanopyx.core.transform import ErrorMap
+except ImportError:  # nanopyx is optional: ErrorMap is only used by SQUIRREL()
+    ErrorMap = None
 
 
 def SQUIRREL(img, img_ref):
@@ -428,7 +431,9 @@ def NRMSE(img_true, img_test):
 #     return msssim
 
 
-def MSSSIM(img_true, img_test, data_range=None, ndim=2, win_size=11, interp_sf=1):
+def MSSSIM(
+    img_true, img_test, data_range=None, ndim=2, win_size=11, interp_sf=1, device="cpu"
+):
     """
     Multi-scale structural similarity index.
 
@@ -479,6 +484,10 @@ def MSSSIM(img_true, img_test, data_range=None, ndim=2, win_size=11, interp_sf=1
     img_true = torch.from_numpy(img_true).float()
     img_test = torch.from_numpy(img_test).float()
 
+    if device is not None and "cuda" in str(device):
+        img_true = img_true.to(torch.device(device))
+        img_test = img_test.to(torch.device(device))
+
     if interp_sf > 1:
         # some image may be too small to use MS-SSIM.
         # interpolate the img with a scale factor `interp_sf` using nearest neighbor.
@@ -489,6 +498,7 @@ def MSSSIM(img_true, img_test, data_range=None, ndim=2, win_size=11, interp_sf=1
     dict_msssim = dict(data_range=data_range, win_size=win_size)
     if ndim == 2:
         msssim = ms_ssim(img_true, img_test, **dict_msssim)
+        msssim = float(msssim)
     if ndim == 3:
         n_slice = img_true.shape[2]
         # if n_slice < 11:
@@ -498,10 +508,10 @@ def MSSSIM(img_true, img_test, data_range=None, ndim=2, win_size=11, interp_sf=1
                 msssim_each_slice.append(
                     ms_ssim(img_true[:, :, i], img_test[:, :, i], **dict_msssim)
                 )
-            msssim = np.mean(msssim_each_slice)
+            msssim = float(torch.stack(msssim_each_slice).mean())
         else:
             msssim = ms_ssim(img_true, img_test, **dict_msssim)
-            msssim = float(msssim.numpy())
+            msssim = float(msssim)
     return msssim
 
 

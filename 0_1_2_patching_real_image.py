@@ -64,7 +64,9 @@ datasets_name = (
     # "ER-1",
     # --------------------------------------------------------------------------
     # "Microtubule2-3d-1024",
+    # "Microtubule2-3d-512",
     # "Nuclear-pore-complex2-1024",
+    "Nuclear-pore-complex2-512",
     # --------------------------------------------------------------------------
     # "biotisr-ccps-1",
     # "biotisr-ccps-2",
@@ -94,12 +96,12 @@ datasets_name = (
     # "w2s-1-wf-ave-400",
     # "w2s-2-sim-ave",
     # "w2s-2-wf-ave-400",
-    "biotisr-3d-factin-1",
-    "biotisr-3d-factin-2",
-    "biotisr-3d-mt-1",
-    "biotisr-3d-mt-2",
-    "biotisr-3d-mito-1",
-    "biotisr-3d-mito-2",
+    # "biotisr-3d-factin-1",
+    # "biotisr-3d-factin-2",
+    # "biotisr-3d-mt-1",
+    # "biotisr-3d-mt-2",
+    # "biotisr-3d-mito-1",
+    # "biotisr-3d-mito-2",
 )
 
 # the parameters for patching.
@@ -162,7 +164,9 @@ for ds in datasets_name:
         print(f'[INFO] Patched images are saved to "{path_save}"')
 
         pbar = tqdm.tqdm(total=num_sample, desc="[INFO] Patching", ncols=80)
-        for filename in filenames:
+        for i_file, filename in enumerate(filenames):
+            if i_file > 10:
+                break
             img = io.imread(os.path.join(path_img, filename)).astype(np.float32)
             img = np.clip(img, a_min=0.0, a_max=None)  # clip negative values
             img = normalizer(img)  # normalization

@@ -23,6 +23,7 @@ from scipy.stats import wilcoxon
 plt.rcParams["svg.fonttype"] = "none"
 # ------------------------------------------------------------------------------
 show_image, show_statistic = True, True
+# show_image, show_statistic = True, False
 # show_image, show_statistic =  False, True
 # num_samples_max = 3
 num_samples_max = 20
@@ -34,11 +35,11 @@ settings = {
         # ------------------------------------------------------------------
         # dataset_name | dataset_id | id sample | roi pos (y0,x0,y1,x1)
         # ------------------------------------------------------------------
-        # ('F-actin',"F-actin-nonlinear-9", 5, (200, 100, 250, 150)),
         ("CCP", "CCPs-9", 0, (200, 100, 250, 150)),
-        ("MT", "Microtubules2-9", 0, (100, 200, 200, 300)),
-        ("ER", "ER-6", 0, (100, 200, 200, 300)),
-        ("F-actin", "F-actin-9", 0, (100, 200, 200, 300)),
+        ("MT", "Microtubules2-9", 0, (40, 140, 140, 240)),
+        ("ER", "ER-6", 15, (100, 50, 200, 150)),
+        ("F-actin", "F-actin-9", 16, (110, 210, 210, 310)),
+        # ('F-actin',"F-actin-nonlinear-9", 5, (200, 100, 250, 150)),
         # ("CCP (BioTISR)-1", "biotisr-ccps-1", 0, (200, 100, 250, 150)),
         # ("CCP (BioTISR)-2", "biotisr-ccps-2", 0, (200, 100, 250, 150)),
         # ("CCP (BioTISR)-3", "biotisr-ccps-3", 0, (200, 100, 250, 150)),
@@ -80,7 +81,7 @@ settings = {
 }
 
 dict_ticks = {
-    # metrics name, yticks, ylim
+    # metrics name, yticks (min, max, step)
     "PSNR": ((20, 35, 5), (25, 37.5, 2.5), (25, 40, 2.5), (25, 37.5, 2.5)),
     "MS-SSIM": (
         (0.5, 1.0, 0.1),
@@ -351,90 +352,92 @@ if show_image:
 # ------------------------------------------------------------------------------
 # load all the results from different methods and datasets
 # ------------------------------------------------------------------------------
-results_all = []  # results of all the samples from all the datasets
-for i_dataset in range(num_datasets):
-    # load results
-    dataset_id = datasets_info[i_dataset][1]
-    path_result = os.path.join(path_prediction, dataset_id)
-
-    print("-" * 80)
-    print("[INFO] Load results from :", path_result)
-
-    info = info_df[info_df["id"] == dataset_id].iloc[0]
-    path_raw, path_gt = win2linux(info["path_lr"]), win2linux(info["path_hr"])
-    filenames = read_txt(win2linux(info["path_txt"]))
-
-    num_samples = min(num_samples_max, len(filenames))
-    # --------------------------------------------------------------------------
-    results = []
-    pbar = tqdm.tqdm(total=num_samples, desc="[INFO] Load results", ncols=80)
-
-    for i_sample in range(num_samples):
-        pbar.update(1)
-        results_ss = []  # to store results from different methods
-
-        # load raw and gt images
-        x = io.imread(os.path.join(path_raw, filenames[i_sample]))
-        y = io.imread(os.path.join(path_gt, filenames[i_sample]))
-        results_ss.append(x.astype(np.float32))
-
-        filename_wo_ext = filenames[i_sample].split(".")[0]
-        for i_meth in range(num_methods):
-            meth_name, meth_id, meth_filename, num_iter_train = methods_info[i_meth][:4]
-
-            # load restoed image from KLDeconv method --------------------------
-            if meth_name == "KLD":
-                path_tmp = os.path.join(
-                    path_result,
-                    meth_id,
-                    dataset_id,
-                    "fp_n1_r1_bp_n1_r1",
-                    f"train_iter_{num_iter_train}",
-                    filename_wo_ext,
-                    meth_filename,
-                )
-                y_pred = io.imread(path_tmp)
-
-                # the imread funciton will automaticly reshape the results
-                # when having 3 channels.
-                if y_pred.shape[-1] in [3, 4]:
-                    y_pred = np.transpose(y_pred, axes=(-1, 0, 1))
-
-                y_pred = y_pred[-1]
-
-            elif meth_name in ["DFCAN"]:
-                path_tmp = os.path.join(
-                    path_result,
-                    meth_id,
-                    dataset_id,
-                    "n1_r1",
-                    filename_wo_ext,
-                    meth_filename,
-                )
-                y_pred = io.imread(path_tmp)
-
-            else:
-                path_tmp = os.path.join(
-                    path_result, meth_id, filename_wo_ext, meth_filename
-                )
-                y_pred = io.imread(path_tmp)
-
-            results_ss.append(y_pred.astype(np.float32))
-        results_ss.append(y.astype(np.float32))
-        results.append(results_ss)
-    pbar.close()
-
-    # print number of samples
-    print(
-        f"[INFO] Dataset {dataset_id}: num of samples: {len(results)}, shape of image: {results[0][0].shape}"
-    )
-
-    results_all.append(results)
-
-# ------------------------------------------------------------------------------
-# statistics analysis on all the datasets
-# ------------------------------------------------------------------------------
 if show_statistic:
+    results_all = []  # results of all the samples from all the datasets
+    for i_dataset in range(num_datasets):
+        # load results
+        dataset_id = datasets_info[i_dataset][1]
+        path_result = os.path.join(path_prediction, dataset_id)
+
+        print("-" * 80)
+        print("[INFO] Load results from :", path_result)
+
+        info = info_df[info_df["id"] == dataset_id].iloc[0]
+        path_raw, path_gt = win2linux(info["path_lr"]), win2linux(info["path_hr"])
+        filenames = read_txt(win2linux(info["path_txt"]))
+
+        num_samples = min(num_samples_max, len(filenames))
+        # --------------------------------------------------------------------------
+        results = []
+        pbar = tqdm.tqdm(total=num_samples, desc="[INFO] Load results", ncols=80)
+
+        for i_sample in range(num_samples):
+            pbar.update(1)
+            results_ss = []  # to store results from different methods
+
+            # load raw and gt images
+            x = io.imread(os.path.join(path_raw, filenames[i_sample]))
+            y = io.imread(os.path.join(path_gt, filenames[i_sample]))
+            results_ss.append(x.astype(np.float32))
+
+            filename_wo_ext = filenames[i_sample].split(".")[0]
+            for i_meth in range(num_methods):
+                meth_name, meth_id, meth_filename, num_iter_train = methods_info[
+                    i_meth
+                ][:4]
+
+                # load restoed image from KLDeconv method --------------------------
+                if meth_name == "KLD":
+                    path_tmp = os.path.join(
+                        path_result,
+                        meth_id,
+                        dataset_id,
+                        "fp_n1_r1_bp_n1_r1",
+                        f"train_iter_{num_iter_train}",
+                        filename_wo_ext,
+                        meth_filename,
+                    )
+                    y_pred = io.imread(path_tmp)
+
+                    # the imread funciton will automaticly reshape the results
+                    # when having 3 channels.
+                    if y_pred.shape[-1] in [3, 4]:
+                        y_pred = np.transpose(y_pred, axes=(-1, 0, 1))
+
+                    y_pred = y_pred[-1]
+
+                elif meth_name in ["DFCAN"]:
+                    path_tmp = os.path.join(
+                        path_result,
+                        meth_id,
+                        dataset_id,
+                        "n1_r1",
+                        filename_wo_ext,
+                        meth_filename,
+                    )
+                    y_pred = io.imread(path_tmp)
+
+                else:
+                    path_tmp = os.path.join(
+                        path_result, meth_id, filename_wo_ext, meth_filename
+                    )
+                    y_pred = io.imread(path_tmp)
+
+                results_ss.append(y_pred.astype(np.float32))
+            results_ss.append(y.astype(np.float32))
+            results.append(results_ss)
+        pbar.close()
+
+        # print number of samples
+        print(
+            f"[INFO] Dataset {dataset_id}: num of samples: {len(results)}, shape of image: {results[0][0].shape}"
+        )
+
+        results_all.append(results)
+
+    # --------------------------------------------------------------------------
+    # statistics analysis on all the datasets
+    # --------------------------------------------------------------------------
     print("-" * 80)
     print("[INFO] Statistics analysis ...")
     # --------------------------------------------------------------------------
@@ -610,14 +613,20 @@ if show_statistic:
             for i_pair in range(len(test_pairs)):
                 i_meth = test_pairs[i_pair][0]
                 star_x = i_meth
-                star_y = ax.get_ylim()[1]
-                add_significant_star(
-                    ax=ax,
-                    x=star_x,
-                    y=star_y,
-                    p_value=pvalues_tmp[i_pair],
-                    fontsize=font_size,
-                )
+                # star_y = ax.get_ylim()[1]
+                # set the position higher than the max value
+                star_y = df[df["method"] == methods_names[i_meth]][
+                    "value"
+                ].max() + 0.025 * (tick_para[1] - tick_para[0])
+
+                if star_y > tick_para[0]:
+                    add_significant_star(
+                        ax=ax,
+                        x=star_x,
+                        y=star_y,
+                        p_value=pvalues_tmp[i_pair],
+                        fontsize=font_size,
+                    )
 
     plt.savefig(os.path.join(path_figure, f"image_restored_compare_metrics.png"))
     plt.savefig(os.path.join(path_figure, f"image_restored_compare_metrics.svg"))

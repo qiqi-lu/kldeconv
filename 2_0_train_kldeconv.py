@@ -56,7 +56,7 @@ datasets_id = (
     # "SimuMix3D-128-31-05-1-01",
     # "SimuMix3D-128-31-05-1-01-31x31",
     # ----------------------------------------------------------------------
-    # "SimuMix3D-256-31-0-0-1",
+    "SimuMix3D-256-31-0-0-1",
     # "SimuMix3D-256-31-05-1-1",
     # "SimuMix3D-256-31-05-1-03",
     # "SimuMix3D-256-31-05-1-01",
@@ -65,7 +65,9 @@ datasets_id = (
     # "SimuMix3D-382-101-05-1-1-642",
     # ----------------------------------------------------------------------
     # "Microtubule2-3d-1024",
+    # "Microtubule2-3d-512",
     # "Nuclear-pore-complex2-1024",
+    # "Nuclear-pore-complex2-512",
     # ----------------------------------------------------------------------
     # "SirDNA-1024",
     # ----------------------------------------------------------------------
@@ -74,7 +76,7 @@ datasets_id = (
     # "biotisr-3d-mt-1",
     # "biotisr-3d-mt-2",
     # "biotisr-3d-mito-1",
-    "biotisr-3d-mito-2",
+    # "biotisr-3d-mito-2",
     # ----------------------------------------------------------------------
     # "ZeroShotDeconvNet-642",
     # "ZeroShotDeconvNet-560",
@@ -111,6 +113,17 @@ datasets_id = (
 )
 
 
+def median_filter_x(x, device):
+    x_sum = x.sum()
+    x = cupy.asarray(x)
+    tmp_x = cupy.zeros_like(x)
+    for i in range(x.shape[0]):
+        tmp_x[i, 0] = median_filter(x[i, 0], size=3)
+    x = torch.as_tensor(tmp_x, device=device)
+    x = x * (x_sum / x.sum())
+    return x
+
+
 # ------------------------------------------------------------------------------
 for dataset_id in datasets_id:
     params = {
@@ -122,8 +135,7 @@ for dataset_id in datasets_id:
         "in_channels": 1,
         "data_clip_eva": (0, 2.5),
         # --------------------------------------------------------------------------
-        "FP_type": "pre-trained",  # real 2d or 3d data
-        # "FP_type": "known",  # simulated data
+        "FP_type": None,
         "BP_type": None,
         "conv_mode": "fft",
         "padding_mode": "reflect",
@@ -131,30 +143,37 @@ for dataset_id in datasets_id:
         "interpolation": True,
         "kernel_norm_fp": False,  # default
         # "kernel_norm_fp": True,
-        "kernel_norm_bp": True,
+        "kernel_norm_bp": True,  # default
+        # "kernel_norm_bp": False,
         "over_sampling": 2,
         # --------------------------------------------------------------------------
         "experiment": "n1_r1",
-        "sample_range": (0, 1),
+        "sample_range": (0, 1),  # default
+        # "sample_range": (1, 2),
+        # "sample_range": (2, 3),
+        # "sample_range": (3, 4),
         # "sample_range": (0, 2),
         # "sample_range": (0, 3),
         # "sample_range": (0, 4),
         # "sample_range": (0, 5),
-        # "loss_function": "mse",
-        "loss_function": "mae",
+        # "sample_range": (0, 10),
+        "loss_function": "mse",  # default for real data
+        # "loss_function": "mae",
+        # "loss_function": "cbn",  # charbonnier loss
         "use_lr_schedule": True,
         "scheduler_cus": {
             "lr": 0.00001,
-            "every": 2000,  # 300
+            # "every": 2000,  # 300
+            "every": 5000,  # 300
             "rate": 0.5,
             "min": 0.00000001,
         },
         "warm_up": 0,
         "eva_during_train": False,
-        # --------------------------------------------------------------------------
+        # ----------------------------------------------------------------------
         "validation_enable": True,
         "sample_range_val": (10, 20),
-        # --------------------------------------------------------------------------
+        # ----------------------------------------------------------------------
         "path_info": "datasets_train.xlsx",
         "normalization_eva": (0.03, 0.995),
         "path_checkpoint_save": "checkpoints",
@@ -165,6 +184,8 @@ for dataset_id in datasets_id:
         # "saved_checkpoint": "checkpoints/SimuMix3D-128-31-05-1-01/kernelnet/backward/kernet_bs_1_lr_1e-06_iter_1_ker_31_mse_over2_inter_fp_normx_bp_norm_fft_ts_0_5_v3_median_in/epoch_2000_10000.pt",
         # "saved_checkpoint": "checkpoints/CCPs-9/kernelnet/backward/kernet_bs_1_lr_0.0001_iter_1_ker_31_mse_over2_inter_fp_normx_bp_norm_fft_ts_0_1_v3/epoch_9999_9999.pt",
         # "saved_checkpoint": "checkpoints/Microtubule2-3d-1024/kernelnet/backward/kernet_bs_1_lr_1e-05_iter_1_ker_31_mse_over2_inter_fp_normx_bp_norm_fft_ts_0_1_v3_median_in/epoch_9999_9999.pt",
+        # "saved_checkpoint": "checkpoints/SimuMix3D-128-31-0-0-1/kernelnet/backward/kernet_bs_1_lr_1e-06_iter_1_ker_(31, 31, 31)_mse_over2_inter_fp_normx_bp_norm_fft_ts_0_1_v3/epoch_9999_9999.pt",
+        # "saved_checkpoint": "checkpoints/SimuMix3D-256-31-0-0-1/kernelnet/backward/kernet_bs_1_lr_1e-06_iter_2_ker_(31, 31, 31)_mse_over2_inter_fp_normx_bp_norm_fft_ts_0_1_v4/epoch_9999_9999.pt",
         "saved_checkpoint": None,
     }
 
@@ -176,17 +197,28 @@ for dataset_id in datasets_id:
     df_info = pandas.read_excel(win2linux(params["path_info"]))
     info = df_info[df_info["id"] == dataset_id].iloc[0]
 
+    # --------------------------------------------------------------------------
+    data_type = info["data type"]
+    print(f"[INFO] Data type: {data_type}")
+    if data_type in ["real-2d", "real-3d"]:
+        params["FP_type"] = "pre-trained"  # real 2d or 3d data
+    elif data_type in ["simu-3d"]:
+        params["FP_type"] = "known"  # simulated data
+    else:
+        raise ValueError(f"[ERROR] Unknown data type: {data_type}")
+
     enable_median_filter = int(info["median_filter"])
     print(f"[INFO] Enable median filter: {enable_median_filter}")
     enable_dark = int(info["dark"])
     print(f"[INFO] Enable dark: {enable_dark}")
 
+    # --------------------------------------------------------------------------
     path_fp = None
     if model_part == "backward" and params["FP_type"] == "pre-trained":
         try:
             path_fp = checkpoints_list[dataset_id]["forward"][params["experiment"]]
         except:
-            print("[WARNNING] No pre-trained forward model available.")
+            print("[ERROR] No pre-trained forward model available.")
 
     params.update(
         {
@@ -213,11 +245,11 @@ for dataset_id in datasets_id:
     ker_size_fp = params["kernel_size_fp"]
     ker_size_bp = params["kernel_size_bp"]
 
-    # ------------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     if model_name == "kernet_fp":
         norm_tag = "norm" if params["kernel_norm_fp"] else "normx"
 
-        suffix = f"_ker_{ker_size_fp}_{params['loss_function']}_over{params['over_sampling']}_inter_{norm_tag}_{params['conv_mode']}_ts_{params['sample_range'][0]}_{params['sample_range'][1]}_s100_v3"
+        suffix = f"_ker_{ker_size_fp}_{params['loss_function']}_over{params['over_sampling']}_inter_{norm_tag}_{params['conv_mode']}_ts_{params['sample_range'][0]}_{params['sample_range'][1]}_s100_v4"
         if enable_median_filter:
             suffix += "_median_in"
         if enable_dark:
@@ -225,39 +257,55 @@ for dataset_id in datasets_id:
         params.update(
             {
                 "multi_out": False,
+                "weighted_loss": False,
                 "self_supervised": False,
-                "optimizer_type": "adam",  # real data
-                # "optimizer_type": "lbfgs",
+                "optimizer_type": None,
                 "save_every_iter": 100,
                 "plot_every_iter": 2,
                 "val_every_iter": 100,
                 "print_every_iter": 1000,
             }
         )
-        # start_learning_rate = 1  # simumix
-        # start_learning_rate = 0.1
-        start_learning_rate = 0.01  # 3d real
-        # start_learning_rate = 0.001  # 2d real
-        # start_learning_rate = 0.0001
-        # start_learning_rate = 0.00001
+
+        params["scheduler_cus"]["every"] = 250
+
+        if data_type == "simu-3d":
+            params["optimizer_type"] = "lbfgs"
+            start_learning_rate = 1  # simumix
+            # start_learning_rate = 0.1
+        elif data_type == "real-3d":
+            params["optimizer_type"] = "adam"  # default
+            start_learning_rate = 0.01  # 3d real
+            # start_learning_rate = 0.1  # 3d real
+            # params["optimizer_type"] = "lbfgs"
+            # start_learning_rate = 1.0
+
+        elif data_type == "real-2d":
+            params["optimizer_type"] = "adam"
+            start_learning_rate = 0.001  # 2d real
+            # start_learning_rate = 0.0001
+            # start_learning_rate = 0.00001
+
         epochs = params["num_iter_fp"]
     # ------------------------------------------------------------------------------
     elif model_name == "kernet":
         params.update(
             {
                 # "num_iter": 1,
-                # "num_iter": 2,  # default
+                "num_iter": 2,  # default
                 # "num_iter": 3,
                 # "num_iter": 4,
-                "num_iter": 5,
+                # "num_iter": 5,
                 # "num_iter": 6,
                 # "num_iter": 7,
                 # "num_iter": 10,
                 # "num_iter": 11,
                 "lam": 0.0,  # lambda for prior
-                # "multi_out": False,
-                "multi_out": True,
-                "shared_bp": True,
+                "multi_out": False,  # default
+                # "multi_out": True,
+                "weighted_loss": True,
+                # "weighted_loss": False,  # default
+                "shared_bp": True,  # default
                 # "shared_bp": False,
                 "self_supervised": False,
                 # 'self_supervised': True,
@@ -272,8 +320,10 @@ for dataset_id in datasets_id:
         ss_marker = "_ss" if params["self_supervised"] else ""
         norm_tag = "fp_norm" if params["kernel_norm_fp"] else "fp_normx"
         norm_tag += "_bp_norm" if params["kernel_norm_bp"] else "_bp_normx"
-        suffix = f"_iter_{params['num_iter']}_ker_{ker_size_bp}_{params['loss_function']}_over{params['over_sampling']}_inter_{norm_tag}_{params['conv_mode']}_ts_{params['sample_range'][0]}_{params['sample_range'][1]}{ss_marker}_v3"
+        suffix = f"_iter_{params['num_iter']}_ker_{ker_size_bp}_{params['loss_function']}_over{params['over_sampling']}_inter_{norm_tag}_{params['conv_mode']}_ts_{params['sample_range'][0]}_{params['sample_range'][1]}{ss_marker}_v4"
 
+        if params["weighted_loss"] and params["multi_out"]:
+            suffix += "_w"
         if params["multi_out"]:
             suffix += "_multiout"
         if params["saved_checkpoint"] is not None:
@@ -284,28 +334,35 @@ for dataset_id in datasets_id:
             suffix += "_dark"
         if not params["shared_bp"]:
             suffix += "_noshared_bp"
-        # start_learning_rate = 0.001
-        # start_learning_rate = 0.0001  # 2D real
-        start_learning_rate = 0.00001  # 3D real
-        # start_learning_rate = 0.000001  # simumix
-        # start_learning_rate = 0.000002  # simumix
-        # start_learning_rate = 0.000005  # simumix
+
+        if data_type == "real-3d":
+            # start_learning_rate = 0.00001  # default
+            # start_learning_rate = 0.000001
+            start_learning_rate = 0.0001
+        elif data_type == "real-2d":
+            # start_learning_rate = 0.001
+            start_learning_rate = 0.0001  # default
+        elif data_type == "simu-3d":
+            start_learning_rate = 0.000001  # default
+            # start_learning_rate = 0.00001
+            # start_learning_rate = 0.000002
+            # start_learning_rate = 0.000005
         epochs = params["num_iter_bp"]
     else:
         raise ValueError(f"[ERROR] Unknown model name: {model_name}")
 
     params["scheduler_cus"]["lr"] = start_learning_rate
 
-    # ------------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     # print params dict
     print("-" * 80)
     for key, value in params.items():
         print(f"[INFO] {key}: {value}")
     print("-" * 80)
 
-    # ------------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     #                                   Dataset
-    # ------------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     print("INFO] Load data...")
     dict_data = dict(
         hr_root_path=params["hr_root_path"],
@@ -321,22 +378,22 @@ for dataset_id in datasets_id:
     dict_dataloader = dict(
         batch_size=params["batch_size"], num_workers=params["num_workers"]
     )
-    # Training data ----------------------------------------------------------------
+    # Training data ------------------------------------------------------------
     training_data = SRDataset(id_range=params["sample_range"], **dict_data)
     train_dataloader = DataLoader(
         dataset=training_data, shuffle=True, **dict_dataloader
     )
 
-    # Validation data --------------------------------------------------------------
+    # Validation data ----------------------------------------------------------
     if params["validation_enable"]:
         validation_data = SRDataset(id_range=params["sample_range_val"], **dict_data)
         valid_dataloader = DataLoader(
             dataset=validation_data, shuffle=False, **dict_dataloader
         )
 
-    # ------------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     #                                   Model
-    # ------------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     dict_model = dict(
         dim=params["ndim"],
         in_channels=params["in_channels"],
@@ -505,16 +562,41 @@ for dataset_id in datasets_id:
     with open(path_params_json, "w") as f:
         json.dump(params, f, indent=4)
 
-    # ------------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     #                                   Training
-    # ------------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     # loass function
     if params["loss_function"] == "mse":
-        loss_main = torch.nn.MSELoss()
+        loss_main_in = torch.nn.MSELoss()
     elif params["loss_function"] == "mae":
-        loss_main = torch.nn.L1Loss()
+        loss_main_in = torch.nn.L1Loss()
+    elif params["loss_function"] == "cbn":
 
-    # optimizer --------------------------------------------------------------------
+        def loss_main_in(y_pred, y):
+            return torch.mean(torch.sqrt((y_pred - y) ** 2 + 1e-10))
+
+    if params["weighted_loss"] and params["multi_out"]:
+        # weighted multi-out loss ----------------------------------------------
+        num_iter = params["num_iter"]
+        weight = list(reversed([0.5**i for i in range(num_iter)]))
+        weight = torch.tensor(weight, device=device)
+        weight = weight[:, None, None, None, None, None]
+
+        def loss_main(y_pred, y):
+            if params["multi_out"]:
+                loss = loss_main_in(y_pred * weight, y * weight)
+            else:
+                loss = loss_main_in(y_pred, y)
+            return loss
+
+        # ----------------------------------------------------------------------
+    else:
+
+        def loss_main(y_pred, y):
+            loss = loss_main_in(y_pred, y)
+            return loss
+
+    # optimizer ----------------------------------------------------------------
     if params["optimizer_type"] == "adam":
         optimizer = torch.optim.Adam(model.parameters(), lr=start_learning_rate)
     elif params["optimizer_type"] == "lbfgs":
@@ -527,7 +609,7 @@ for dataset_id in datasets_id:
             f"[ERROR] Unsupported optimizer type: {params['optimizer_type']}"
         )
 
-    # ------------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     num_batches = len(train_dataloader)
     num_batches_val = (
         len(valid_dataloader) if params["validation_enable"] == True else 0
@@ -561,13 +643,11 @@ for dataset_id in datasets_id:
     if enable_median_filter:
         print("[INFO] Enable median filter...")
         # median filter to remove noise in x
-        x_sum = x.sum()
-        x = cupy.asarray(x)
-        tmp_x = cupy.zeros_like(x)
-        for i in range(x.shape[0]):
-            tmp_x[i, 0] = median_filter(x[i, 0], size=3)
-        x = torch.as_tensor(tmp_x, device=device)
-        x = x * (x_sum / x.sum())
+        x = median_filter_x(x, device)
+
+    if training_data_size > 5:
+        samples_x = x
+        samples_y = y
 
     print(f"[INFO] Num of baches: {num_batches}")
     print(f"[INFO] Epoch: {epochs} | Batch size: {params['batch_size']}")
@@ -597,8 +677,8 @@ for dataset_id in datasets_id:
             pbar.update(1)
 
             # load data
-            # x, y = sample['lr'].to(device), sample['hr'].to(device)
-            # y = y * ratio
+            if training_data_size > 5:
+                x, y = samples_x[i_batch][None], samples_y[i_batch][None]
 
             # set input and target
             if model_name == "kernet_fp":

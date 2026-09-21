@@ -23,31 +23,61 @@ from scipy.stats import wilcoxon
 plt.rcParams["svg.fonttype"] = "none"
 # ------------------------------------------------------------------------------
 show_image, show_statistic = True, True
+# show_image, show_statistic = True, False
 # num_samples_max = 3
-num_samples_max = 10
+# num_samples_max = 10
+num_samples_max = 20
 show_patch = True
 
 # ------------------------------------------------------------------------------
 settings = {
     "datasets": (
-        # ------------------------------------------------------------------
-        # dataset name | dataset id | sample id | slice id | roi pos | xz plane (y,x0,x1)
+        # dataset name | dataset id | dataset id train | sample id | slice id | roi pos | xz plane (y,x0,x1)
+        # ----------------------------------------------------------------------
+        (
+            "MT",
+            "Microtubule2-3d-1024",
+            "Microtubule2-3d-512",
+            3,
+            3,
+            (122, 360, 322, 560),
+            (512, 100, 200),
+        ),
+        (
+            "NPC",
+            "Nuclear-pore-complex2-1024",
+            "Nuclear-pore-complex2-512",
+            0,
+            1,
+            (200, 200, 300, 300),
+            (512, 100, 200),
+        ),
+        # ----------------------------------------------------------------------
         # (
-        #     "MT",
-        #     "Microtubule2-3d-1024",
-        #     0,
+        #     "MT (BioTISR)-2",
+        #     "biotisr-3d-mt-2",
+        #     2,
         #     1,
-        #     (122, 360, 322, 560),
-        #     (512, 100, 200),
+        #     (122, 360, 272, 510),
+        #     (200, 100, 200),
         # ),
         # (
-        #     "NPC",
-        #     "Nuclear-pore-complex2-1024",
+        #     "mito (BioTISR)-2",
+        #     "biotisr-3d-mito-2",
         #     0,
         #     1,
-        #     (200, 200, 300, 300),
-        #     (512, 100, 200),
+        #     (122, 360, 272, 510),
+        #     (120, 200, 300),
         # ),
+        # (
+        #     "F-actin (BioTISR)-2",
+        #     "biotisr-3d-factin-2",
+        #     0,
+        #     1,
+        #     (122, 360, 272, 510),
+        #     (128, 100, 200),
+        # ),
+        # ----------------------------------------------------------------------
         # (
         #     "MT (BioTISR)-1",
         #     "biotisr-3d-mt-1",
@@ -56,14 +86,6 @@ settings = {
         #     (122, 360, 272, 510),
         #     (128, 100, 200),
         # ),
-        (
-            "MT (BioTISR)-2",
-            "biotisr-3d-mt-2",
-            2,
-            1,
-            (122, 360, 272, 510),
-            (200, 100, 200),
-        ),
         # (
         #     "mito (BioTISR)-1",
         #     "biotisr-3d-mito-1",
@@ -72,14 +94,6 @@ settings = {
         #     (122, 360, 272, 510),
         #     (120, 200, 300),
         # ),
-        (
-            "mito (BioTISR)-2",
-            "biotisr-3d-mito-2",
-            0,
-            1,
-            (122, 360, 272, 510),
-            (120, 200, 300),
-        ),
         # (
         #     "F-actin (BioTISR)-1",
         #     "biotisr-3d-factin-1",
@@ -88,28 +102,24 @@ settings = {
         #     (122, 360, 272, 510),
         #     (128, 100, 200),
         # ),
-        (
-            "F-actin (BioTISR)-2",
-            "biotisr-3d-factin-2",
-            0,
-            1,
-            (122, 360, 272, 510),
-            (128, 100, 200),
-        ),
     ),
     "methods": (
         ("DeconvBlind", "deconvblind", "deconv.tif", 2, "#42B4B5"),
         ("RLN", "rln", "y_pred.tif", 2, "#B78E72"),
         ("RLD@20", "traditional", "deconv_iter_20.tif", 2, "#4D8FCB"),
-        # ("KLD", "kernelnet", "y_pred_all.tif", 2, "#D95D5B"),
-        ("KLD", "kernelnet", "y_pred_all.tif", 5, "#D95D5B"),
+        ("KLD", "kernelnet", "y_pred_all.tif", 2, "#D95D5B"),
+        # ("KLD", "kernelnet", "y_pred_all.tif", 5, "#D95D5B"),
     ),
 }
 
 dict_ticks = {
-    "PSNR": ((17, 25, 2.5), (17, 27.5, 2.5), (17, 27.5, 2.5)),
-    "MS-SSIM": ((0.6, 0.85, 0.1), (0.65, 0.9, 0.1), (0.65, 0.9, 0.1)),
-    "ZNCC": ((0.35, 0.7, 0.1), (0.4, 0.8, 0.1), (0.4, 0.8, 0.1)),
+    "PSNR": ((21, 28, 2), (21, 28, 2)),
+    "MS-SSIM": ((0.65, 0.9, 0.1), (0.7, 0.9, 0.1)),
+    "ZNCC": ((0.5, 0.85, 0.1), (0.5, 0.85, 0.1)),
+    # --------------------------------------------------------------------------
+    # "PSNR": ((15, 25, 2.5), (17, 27.5, 2.5), (13, 27.5, 2.5)),
+    # "MS-SSIM": ((0.5, 0.85, 0.1), (0.65, 0.9, 0.1), (0.55, 0.9, 0.1)),
+    # "ZNCC": ((0.2, 0.7, 0.1), (0.4, 0.8, 0.1), (0.2, 0.8, 0.1)),
 }
 
 
@@ -162,7 +172,7 @@ print(f"[INFO] methods titles: {methods_names}")
 results_one = []  # store results for each dataset, one sample
 for i_dataset in range(num_datasets):
     # load results
-    _, dataset_id, id_sample_show, _, _, _ = datasets_info[i_dataset]
+    _, dataset_id, dataset_id_train, id_sample_show, _, _, _ = datasets_info[i_dataset]
     path_result = os.path.join(path_prediction, dataset_id)
 
     print("-" * 80)
@@ -187,7 +197,7 @@ for i_dataset in range(num_datasets):
             path_tmp = os.path.join(
                 path_result,
                 meth_id,
-                dataset_id,
+                dataset_id_train,
                 "fp_n1_r1_bp_n1_r1",
                 f"train_iter_{num_iter_train}",
                 filename_wo_ext,
@@ -200,10 +210,16 @@ for i_dataset in range(num_datasets):
             path_tmp = os.path.join(
                 path_result,
                 meth_id,
-                dataset_id,
+                dataset_id_train,
                 "n1_r1",
                 filename_wo_ext,
                 meth_filename,
+            )
+            y_pred = io.imread(path_tmp)
+
+        elif meth_id in ["traditional"]:
+            path_tmp = os.path.join(
+                path_result, meth_id, dataset_id_train, filename_wo_ext, meth_filename
             )
             y_pred = io.imread(path_tmp)
 
@@ -245,6 +261,7 @@ if show_image:
         (
             dataset_name,
             dataset_id,
+            dataset_id_train,
             id_sample,
             id_slice_xy_ori,
             pos_roi,
@@ -395,90 +412,100 @@ if show_image:
     fig_res.savefig(os.path.join(path_figure, f"image_restored_compare_res.png"))
     fig_res.savefig(os.path.join(path_figure, f"image_restored_compare_res.svg"))
 
-os._exit(0)
-
-# ------------------------------------------------------------------------------
-# load all the results from different methods and datasets
-# ------------------------------------------------------------------------------
-results_all = []
-for i_dataset in range(num_datasets):
-    # load results
-    dataset_id = datasets_info[i_dataset][1]
-    path_result = os.path.join(path_prediction, dataset_id)
-
-    print("-" * 80)
-    print("[INFO] Load results from :", path_result)
-
-    info = info_df[info_df["id"] == dataset_id].iloc[0]
-    path_raw, path_gt = win2linux(info["path_lr"]), win2linux(info["path_hr"])
-    filenames = read_txt(win2linux(info["path_txt"]))
-
-    num_samples = min(num_samples_max, len(filenames))
-    # --------------------------------------------------------------------------
-    results = []
-    pbar = tqdm.tqdm(total=num_samples, desc="[INFO] Load results", ncols=80)
-    for i_sample in range(num_samples):
-        pbar.update(1)
-        results_ss = []
-        # load raw and gt images
-        x = io.imread(os.path.join(path_raw, filenames[i_sample]))
-        y = io.imread(os.path.join(path_gt, filenames[i_sample]))
-        results_ss.append(x.astype(np.float32))
-
-        filename_wo_ext = filenames[i_sample].split(".")[0]
-        for i_meth in range(num_methods):
-            meth_name, meth_id, meth_filename, num_iter_train = methods_info[i_meth][:4]
-
-            # load restoed image from KLDeconv method --------------------------
-            if meth_name == "KLD":
-                path_tmp = os.path.join(
-                    path_result,
-                    meth_id,
-                    dataset_id,
-                    "fp_n1_r1_bp_n1_r1",
-                    f"train_iter_{num_iter_train}",
-                    filename_wo_ext,
-                    meth_filename,
-                )
-                y_pred = io.imread(os.path.join(path_tmp))
-                y_pred = y_pred[-1]
-
-            elif meth_name in ["RLN"]:
-                path_tmp = os.path.join(
-                    path_result,
-                    meth_id,
-                    dataset_id,
-                    "n1_r1",
-                    filename_wo_ext,
-                    meth_filename,
-                )
-                y_pred = io.imread(path_tmp)
-
-            else:
-                path_tmp = os.path.join(
-                    path_result, meth_id, filename_wo_ext, meth_filename
-                )
-                y_pred = io.imread(path_tmp)
-
-            results_ss.append(y_pred.astype(np.float32))
-        results_ss.append(y.astype(np.float32))
-        results.append(results_ss)
-    pbar.close()
-    results_all.append(results)
-    # different datasets may have different number of samples, so do not used
-    # numpy.array to store the results_all
-
-
-print("-" * 80)
-print(f"[INFO] Num of datasets: {len(results_all)}")
-for res in results_all:
-    print(f"[INFO] num of samples: {len(res)}, shape of image: {res[0][0].shape}")
-print("-" * 80)
+# os._exit(0)
 
 # ------------------------------------------------------------------------------
 # statistics analysis
 # ------------------------------------------------------------------------------
 if show_statistic:
+    # --------------------------------------------------------------------------
+    # load all the results from different methods and datasets
+    # --------------------------------------------------------------------------
+    results_all = []
+    for i_dataset in range(num_datasets):
+        # load results
+        dataset_id = datasets_info[i_dataset][1]
+        dataset_id_train = datasets_info[i_dataset][2]
+        path_result = os.path.join(path_prediction, dataset_id)
+
+        print("-" * 80)
+        print("[INFO] Load results from :", path_result)
+
+        info = info_df[info_df["id"] == dataset_id].iloc[0]
+        path_raw, path_gt = win2linux(info["path_lr"]), win2linux(info["path_hr"])
+        filenames = read_txt(win2linux(info["path_txt"]))
+
+        num_samples = min(num_samples_max, len(filenames))
+        # --------------------------------------------------------------------------
+        results = []
+        pbar = tqdm.tqdm(total=num_samples, desc="[INFO] Load results", ncols=80)
+        for i_sample in range(num_samples):
+            pbar.update(1)
+            results_ss = []
+            # load raw and gt images
+            x = io.imread(os.path.join(path_raw, filenames[i_sample]))
+            y = io.imread(os.path.join(path_gt, filenames[i_sample]))
+            results_ss.append(x.astype(np.float32))
+
+            filename_wo_ext = filenames[i_sample].split(".")[0]
+            for i_meth in range(num_methods):
+                meth_name, meth_id, meth_filename, num_iter_train = methods_info[
+                    i_meth
+                ][:4]
+
+                # load restoed image from KLDeconv method ----------------------
+                if meth_name == "KLD":
+                    path_tmp = os.path.join(
+                        path_result,
+                        meth_id,
+                        dataset_id_train,
+                        "fp_n1_r1_bp_n1_r1",
+                        f"train_iter_{num_iter_train}",
+                        filename_wo_ext,
+                        meth_filename,
+                    )
+                    y_pred = io.imread(os.path.join(path_tmp))
+                    y_pred = y_pred[-1]
+
+                elif meth_name in ["RLN"]:
+                    path_tmp = os.path.join(
+                        path_result,
+                        meth_id,
+                        dataset_id_train,
+                        "n1_r1",
+                        filename_wo_ext,
+                        meth_filename,
+                    )
+                    y_pred = io.imread(path_tmp)
+                elif meth_id in ["traditional"]:
+                    path_tmp = os.path.join(
+                        path_result,
+                        meth_id,
+                        dataset_id_train,
+                        filename_wo_ext,
+                        meth_filename,
+                    )
+                    y_pred = io.imread(path_tmp)
+                else:
+                    path_tmp = os.path.join(
+                        path_result, meth_id, filename_wo_ext, meth_filename
+                    )
+                    y_pred = io.imread(path_tmp)
+
+                results_ss.append(y_pred.astype(np.float32))
+            results_ss.append(y.astype(np.float32))
+            results.append(results_ss)
+        pbar.close()
+        results_all.append(results)
+        # different datasets may have different number of samples, so do not used
+        # numpy.array to store the results_all
+
+    print("-" * 80)
+    print(f"[INFO] Num of datasets: {len(results_all)}")
+    for res in results_all:
+        print(f"[INFO] num of samples: {len(res)}, shape of image: {res[0][0].shape}")
+    print("-" * 80)
+
     print("-" * 80)
     print("[INFO] Statistics analysis ...")
     # --------------------------------------------------------------------------
@@ -653,14 +680,19 @@ if show_statistic:
                 i_meth = test_pairs[i_pair][0]
 
                 star_x = i_meth
-                star_y = ax.get_ylim()[1]
-                add_significant_star(
-                    ax=ax,
-                    x=star_x,
-                    y=star_y,
-                    p_value=pvalues_tmp[i_pair],
-                    fontsize=font_size,
-                )
+                # star_y = ax.get_ylim()[1]
+                star_y = df[df["method"] == methods_names[i_meth]][
+                    "value"
+                ].values.max() + 0.025 * (tick_para[1] - tick_para[0])
+
+                if star_y > tick_para[0]:
+                    add_significant_star(
+                        ax=ax,
+                        x=star_x,
+                        y=star_y,
+                        p_value=pvalues_tmp[i_pair],
+                        fontsize=font_size,
+                    )
 
     fig.savefig(os.path.join(path_figure, f"image_restored_compare_metrics.png"))
     fig.savefig(os.path.join(path_figure, f"image_restored_compare_metrics.svg"))

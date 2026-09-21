@@ -18,20 +18,25 @@ from utils.optimize import on_load_checkpoint
 id_device = "cuda:0"
 # id_device = "cpu"
 # ------------------------------------------------------------------------------
-# model_name = "dfcan"
-model_name = "rln"
+model_name = "dfcan"
+# model_name = "rln"
 
 dataset_list = (
+    # dataset test | dataset train
     # --------------------------------------------------------------------------
     # ("SimuMix3D-128-31-0-0-1", "SimuMix3D-128-31-0-0-1"),
     # ("SimuMix3D-128-31-05-1-01", "SimuMix3D-128-31-05-1-01"),
-    ("SimuMix3D-512-31-05-1-01", "SimuMix3D-128-31-05-1-01"),
+    # ("SimuMix3D-512-31-05-1-01", "SimuMix3D-128-31-05-1-01"),
+    # ("SimuMix3D-512-31-0-0-1", "SimuMix3D-128-31-0-0-1"),
     # ("SimuMix3D-1024-31-05-1-01", "SimuMix3D-128-31-05-1-01"),
     # --------------------------------------------------------------------------
     # ("Microtubule2-3d-1024", "Microtubule2-3d-1024"),
+    # ("Microtubule2-3d-1024", "Microtubule2-3d-512"),
     # ("Microtubule2-3d-1024", "Nuclear-pore-complex2-1024"),
     # ("Nuclear-pore-complex2-1024", "Nuclear-pore-complex2-1024"),
     # ("Nuclear-pore-complex2-1024", "Microtubule2-3d-1024"),
+    # ("Nuclear-pore-complex2-1024", "Nuclear-pore-complex2-512"),
+    # --------------------------------------------------------------------------
     # ("biotisr-3d-mt-1", "biotisr-3d-mt-1"),
     # ("biotisr-3d-mt-2", "biotisr-3d-mt-2"),
     # ("biotisr-3d-mito-1", "biotisr-3d-mito-1"),
@@ -90,7 +95,7 @@ dataset_list = (
     # ("ER-6", "Microtubules2-9"),
     # ("ER-6", "F-actin-nonlinear-9"),
     # ("ER-6", "CCPs-9"),
-    # ("ER-6", "ER-6"),
+    ("ER-6", "ER-6"),
     # ("ER-6", "F-actin-9"),
     # ("ER-1", "ER-1"),
     # ("ER-1", "F-actin-nonlinear-1"),

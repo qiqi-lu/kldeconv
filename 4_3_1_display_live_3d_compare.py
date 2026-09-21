@@ -22,14 +22,14 @@ results_info = {
         "methods": (
             ("Traditional@30", "traditional", "deconv.tif", (0.0, 99.5)),
             ("Gaussian@30", "gaussian", "deconv.tif", (0.0, 99.5)),
-            ("Butterworth@3", "butterworth", "deconv.tif", (0.0, 99.5)),
+            ("Butterworth@30", "butterworth", "deconv.tif", (0.0, 99.5)),
             ("WB@2", "wiener_butterworth", "deconv.tif", (0.0, 99.5)),
-            (
-                "KLD-SS@2",
-                "kernelnet_ss\ZeroShotDeconvNet-mitosis-642\\n1_r1",
-                "y_pred_all.tif",
-                (0.0, 99.5),
-            ),
+            # (
+            #     "KLD-SS@2",
+            #     "kernelnet_ss\ZeroShotDeconvNet-mitosis-642\\n1_r1",
+            #     "y_pred_all.tif",
+            #     (0.0, 99.5),
+            # ),
             (
                 "KLD@2",
                 "kernelnet\SimuMix3D-382-101-05-1-1-642\\n1_r1",
@@ -45,12 +45,12 @@ results_info = {
             ("Gaussian@30", "gaussian", "deconv.tif", (0.0, 99.5)),
             ("Butterworth@30", "butterworth", "deconv.tif", (0.0, 99.5)),
             ("WB@2", "wiener_butterworth", "deconv.tif", (0.0, 99.5)),
-            (
-                "KLD-ss@2",
-                "kernelnet_ss\ZeroShotDeconvNet-mitosis-560\\n1_r1",
-                "y_pred_all.tif",
-                (0.0, 99.5),
-            ),
+            # (
+            #     "KLD-ss@2",
+            #     "kernelnet_ss\ZeroShotDeconvNet-mitosis-560\\n1_r1",
+            #     "y_pred_all.tif",
+            #     (0.0, 99.5),
+            # ),
             (
                 "KLD@2",
                 "kernelnet\SimuMix3D-382-101-05-1-1-560\\n1_r1",

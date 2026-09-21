@@ -25,12 +25,14 @@ path_kernel_learned = (
     ),
     (
         "KLD (NF)",
-        "SimuMix3D-128-31-0-0-1/kernelnet/SimuMix3D-128-31-0-0-1/fp_knonw_bp_n80_r_1/kernel/kernel_bp.tif",
+        "SimuMix3D-128-31-0-0-1/kernelnet/SimuMix3D-128-31-0-0-1/fp_knonw_bp_n80_r_1/kernel/kernel_bp.tif",  # default
+        # "SimuMix3D-256-31-0-0-1/kernelnet/SimuMix3D-256-31-0-0-1/fp_n1_r1_bp_n1_r1/kernel_iter_2/kernel_bp.tif",
         "#D04848",
     ),
     (
-        "KLD (NF)",
-        "SimuMix3D-128-31-05-1-03/kernelnet/SimuMix3D-128-31-05-1-03/fp_knonw_bp_n3_r1/kernel/kernel_bp.tif",
+        "KLD (N)",
+        "SimuMix3D-128-31-05-1-03/kernelnet/SimuMix3D-128-31-05-1-03/fp_knonw_bp_n3_r1/kernel/kernel_bp.tif",  # default
+        # "SimuMix3D-128-31-05-1-03/kernelnet/SimuMix3D-128-31-05-1-03/fp_knonw_bp_n1_r1/kernel/kernel_bp.tif",
         "#F3B95F",
     ),
 )

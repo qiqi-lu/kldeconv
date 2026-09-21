@@ -17,7 +17,6 @@ from utils.data import win2linux, SRDataset, NormalizePercentile
 from utils.optimize import on_load_checkpoint, StepLR_iter
 import utils.evaluation as utils_eva
 
-
 # ------------------------------------------------------------------------------
 # parameters
 # ------------------------------------------------------------------------------
@@ -68,29 +67,29 @@ datasets_id = (
     # "ER-2",
     # "ER-1",
     # ----------------------------------------------------------------------
-    "biotisr-ccps-1",
-    "biotisr-ccps-2",
-    "biotisr-ccps-3",
-    "biotisr-factin-1",
-    "biotisr-factin-2",
-    "biotisr-factin-3",
-    "biotisr-factin-nonlinear-1",
-    "biotisr-factin-nonlinear-2",
-    "biotisr-factin-nonlinear-3",
-    "biotisr-lysosomes-1",
-    "biotisr-lysosomes-2",
-    "biotisr-lysosomes-3",
-    "biotisr-mt-1",
-    "biotisr-mt-2",
-    "biotisr-mt-3",
-    "biotisr-mito-1",
-    "biotisr-mito-2",
-    "biotisr-mito-3",
-    "deepbacs-ecoli-ave2",
-    "deepbacs-saureus-ave2",
-    "w2s-0-sim-ave",
-    "w2s-1-sim-ave",
-    "w2s-2-sim-ave",
+    # "biotisr-ccps-1",
+    # "biotisr-ccps-2",
+    # "biotisr-ccps-3",
+    # "biotisr-factin-1",
+    # "biotisr-factin-2",
+    # "biotisr-factin-3",
+    # "biotisr-factin-nonlinear-1",
+    # "biotisr-factin-nonlinear-2",
+    # "biotisr-factin-nonlinear-3",
+    # "biotisr-lysosomes-1",
+    # "biotisr-lysosomes-2",
+    # "biotisr-lysosomes-3",
+    # "biotisr-mt-1",
+    # "biotisr-mt-2",
+    # "biotisr-mt-3",
+    # "biotisr-mito-1",
+    # "biotisr-mito-2",
+    # "biotisr-mito-3",
+    # "deepbacs-ecoli-ave2",
+    # "deepbacs-saureus-ave2",
+    # "w2s-0-sim-ave",
+    # "w2s-1-sim-ave",
+    # "w2s-2-sim-ave",
     # --------------------------------------------------------------------------
     # "SimuMix3D-128-31-0-0-1",
     # "SimuMix3D-128-31-05-1-1",
@@ -98,7 +97,10 @@ datasets_id = (
     # "SimuMix3D-128-31-05-1-01",
     # --------------------------------------------------------------------------
     # "Microtubule2-3d-1024",
+    "Microtubule2-3d-512",
     # "Nuclear-pore-complex2-1024",
+    # "Nuclear-pore-complex2-512",
+    # --------------------------------------------------------------------------
     # "biotisr-3d-factin-1",
     # "biotisr-3d-factin-2",
     # "biotisr-3d-mt-1",
@@ -116,26 +118,15 @@ params = {
     "enable_amp": False,
     "enable_gradscaler": False,
     # model parameters ---------------------------------------------------------
-    "model_name": "dfcan",
-    # "model_name": "rln",
+    # "model_name": "dfcan",
+    "model_name": "rln",
     # loss function ------------------------------------------------------------
     # "loss": "mse",
     "loss": "mae",
     # learning rate ------------------------------------------------------------
-    # 2D real ------------------------------------------------------------------
-    # "lr": 0.001,  # default
     "lr": 0.0001,
     "batch_size": 4,  # 2D
     "num_iter_train": 30000,
-    # 3D real ------------------------------------------------------------------
-    # "lr": 0.01, # default
-    # "lr": 0.001,
-    # "batch_size": 4,  # 3D
-    # "num_iter_train": 30000,
-    # 3D simu ------------------------------------------------------------------
-    # "lr": 0.01,
-    # "batch_size": 1,  # 3D
-    # "num_epochs": 380,
     # --------------------------------------------------------------------------
     "warm_up": 0,
     "lr_decay_every_iter": 10000,
@@ -158,7 +149,7 @@ params = {
     "normalization_eva": (0.03, 0.995),
     "data_clip_eva": (0.0, 2.5),
     # checkpoints --------------------------------------------------------------
-    "suffix": "_v3",
+    "suffix": "_v4",
     "path_checkpoints": "checkpoints",
     # --------------------------------------------------------------------------
     "saved_checkpoint": None,
@@ -179,6 +170,47 @@ print(f"[INFO] Number of datasets: {len(datasets_id)}")
 
 # ------------------------------------------------------------------------------
 for dataset_id in datasets_id:
+    data_frame = pandas.read_excel(params["path_dataset_excel"])
+    info = data_frame[data_frame["id"] == dataset_id].iloc[0]
+    data_type = info["data type"]
+
+    if data_type in ["real-2d", "real-3d"]:  # real data
+        path_dataset_lr = win2linux(info["path_lr_net"]) + "_patch"
+        path_dataset_hr = win2linux(info["path_hr"]) + "_patch"
+        path_index_file = win2linux(info["path_txt"]).replace(
+            ".txt",
+            f"_patch_{params['sample_range'][0]}_{params['sample_range'][1]}.txt",
+        )
+        # 2D real --------------------------------------------------------------
+        if data_type == "real-2d":
+            params["lr"] = 0.001  # default
+            # params["lr"] = 0.0001
+            params["batch_size"] = 4  # 2D
+            params["num_iter_train"] = 30000
+        # 3D real --------------------------------------------------------------
+        if data_type == "real-3d":
+            params["lr"] = 0.1
+            # params["lr"] = 0.01  # default
+            # params["lr"] = 0.001
+            params["batch_size"] = 4  # 3D
+            params["num_iter_train"] = 30000
+    elif data_type in ["simu-3d"]:  # simulated data
+        path_dataset_lr = win2linux(info["path_lr_net"]) + "_norm"
+        path_dataset_hr = win2linux(info["path_hr"]) + "_norm"
+        path_index_file = win2linux(info["path_txt"]).replace(
+            ".txt", f"_{params['sample_range'][0]}_{params['sample_range'][1]}.txt"
+        )
+        if data_type == "simu-3d":
+            params["lr"] = 0.01
+            params["batch_size"] = 1  # 3D
+            params["num_epochs"] = 380
+    else:
+        raise ValueError(f"[ERROR] Data type {data_type} is not supported.")
+
+    # ratio = info["ratio"]
+    ratio = 1.0
+
+    # --------------------------------------------------------------------------
     path_save_model = os.path.join(
         params["path_checkpoints"],
         dataset_id,
@@ -200,25 +232,6 @@ for dataset_id in datasets_id:
     # --------------------------------------------------------------------------
     #                                 load dataset
     # --------------------------------------------------------------------------
-    data_frame = pandas.read_excel(params["path_dataset_excel"])
-    info = data_frame[data_frame["id"] == dataset_id].iloc[0]
-
-    if "Simu" not in dataset_id:  # real data
-        path_dataset_lr = win2linux(info["path_lr_net"]) + "_patch"
-        path_dataset_hr = win2linux(info["path_hr"]) + "_patch"
-        path_index_file = win2linux(info["path_txt"]).replace(
-            ".txt",
-            f"_patch_{params['sample_range'][0]}_{params['sample_range'][1]}.txt",
-        )
-    else:  # simulated data
-        path_dataset_lr = win2linux(info["path_lr_net"]) + "_norm"
-        path_dataset_hr = win2linux(info["path_hr"]) + "_norm"
-        path_index_file = win2linux(info["path_txt"]).replace(
-            ".txt", f"_{params['sample_range'][0]}_{params['sample_range'][1]}.txt"
-        )
-
-    # ratio = info["ratio"]
-    ratio = 1.0
 
     # check if the path exists
     for path in [path_dataset_lr, path_dataset_hr, path_index_file]:

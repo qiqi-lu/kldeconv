@@ -1,6 +1,8 @@
 clear all;close all;clc;
 % path_img = "E:\qiqilu\Project\2023 cytoSR\code\methods\background_removal\Dark-sectioning-main\MATLAB_Code\input\Mousekidney_561nm_1.49NA_65nm.tif"
-path_img = "E:\qiqilu\datasets_2\BioTISR\transformed\Mitochondria-3D\WF_noise_level_1_remove_last_t0_rescale_100.0_bkgsub_100.0\Cell_001_0.tif"
+% path_img = "E:\qiqilu\datasets_2\BioTISR\transformed\Mitochondria-3D\WF_noise_level_1_remove_last_t0_rescale_100.0_bkgsub_100.0\Cell_001_0.tif";
+path_img = "E:\qiqilu\datasets_2\BioTISR\transformed\Microtubules-3D\WF_noise_level_2_remove_last_t0_rescale_100.0_bkgsub_100.0\Cell_001_0.tif";
+% path_img = "E:\qiqilu\datasets_2\BioTISR\transformed\F-actin-3D\WF_noise_level_2_remove_last_t0_rescale_100.0_bkgsub_100.0\Cell_001_0.tif";
 image0 = double(imstackread(path_img));
 ewl = 509;
 NA= 1.41;
@@ -22,7 +24,9 @@ subplot(1,2,2)
 imshow(squeeze(image1(:,:,id_slice)), Colormap=hot);
 
 %% process whole dataset
-path_dataset = "E:\qiqilu\datasets_2\BioTISR\transformed\Mitochondria-3D\";
+% path_dataset = "E:\qiqilu\datasets_2\BioTISR\transformed\Mitochondria-3D\";
+% path_dataset = "E:\qiqilu\datasets_2\BioTISR\transformed\Microtubules-3D\";
+path_dataset = "E:\qiqilu\datasets_2\BioTISR\transformed\F-actin-3D\";
 % path_folder = path_dataset+"WF_noise_level_2_remove_last_t0_rescale_100.0_bkgsub_100.0";
 path_folder = path_dataset+"WF_noise_level_1_remove_last_t0_rescale_100.0_bkgsub_100.0";
 path_save = path_folder+'_dark';
@@ -46,7 +50,7 @@ end
 num_file = size(filenames,1);
 % num_file = 2;
 disp('Start Dark algorithm ...')
-for i_img = 1: num_file
+for i_img = 45: num_file
     filename = filenames(i_img);
     disp(filename)
     path_file = path_folder+"\"+filename;

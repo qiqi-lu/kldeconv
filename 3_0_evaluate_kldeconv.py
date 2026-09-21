@@ -21,25 +21,34 @@ enable_prediction = True
 # ------------------------------------------------------------------------------
 #                             Parameter setting
 # ------------------------------------------------------------------------------
-id_device = "cpu"
-# id_device = "cuda:0"
+# id_device = "cpu"
+id_device = "cuda:0"
 # ------------------------------------------------------------------------------
 # output_inter = True  # output intermediate results
 output_inter = False  # not to output intermediate results
+# only_kernel = True
+only_kernel = False
 
-FP_type, BP_type = "known", "learned"  # simulation data
-# FP_type, BP_type = "pre-trained", "learned"  # 2D and 3D real data
-# FP_type, BP_type = 'known', 'known'
-# FP_type, BP_type = 'pre-trained', 'known'
+# --------------------------------------------------------------------------
+# id_sample_global = [0, 346, 609, 700, 770, 901]
+# id_sample_global = [0, 1, 2, 3, 4, 5]
+# id_sample_global = range(0, 1000, 4)
+# id_sample_global = [0, 1, 2, 3, 4, 5, 6]
+# id_sample_global = [7, 8, 9, 10, 11, 12, 13, 14, 15, 16]
+# id_sample_global = [0, 1, 2, 3, 4, 5, 6]
+id_sample_global = [0]
+# id_sample_global = []  # use all the samples
+# id_sample_global = None # will only save the kernels
 
 # ------------------------------------------------------------------------------
 num_data_fp, id_repeat_fp = 1, 1
 # ------------------------------------------------------------------------------
-num_data_bp, id_repeat_bp = 1, 1
+# num_data_bp, id_repeat_bp = 1, 1
 # num_data_bp, id_repeat_bp = 2, 1
 # num_data_bp, id_repeat_bp = 3, 1
 # num_data_bp, id_repeat_bp = 4, 1
 # num_data_bp, id_repeat_bp = 5, 1
+num_data_bp, id_repeat_bp = 80, 1
 
 # ------------------------------------------------------------------------------
 # num_iter_train = 1
@@ -48,8 +57,8 @@ num_iter_train = 2
 # num_iter_train = 4
 # num_iter_train = 5
 
-# num_iter_test = 2
-num_iter_test = num_iter_train
+num_iter_test = 100
+# num_iter_test = num_iter_train
 
 # ------------------------------------------------------------------------------
 #                  test dataset | train dataset
@@ -57,13 +66,24 @@ num_iter_test = num_iter_train
 dataset_names_list = (
     # ("SimuMix3D-128-31-0-0-1", "SimuMix3D-128-31-0-0-1"),
     # ("SimuMix3D-128-31-05-1-01", "SimuMix3D-128-31-05-1-01"),
-    ("SimuMix3D-512-31-05-1-01", "SimuMix3D-128-31-05-1-01"),
+    # --------------------------------------------------------------------------
+    # ("SimuMix3D-512-31-05-1-01", "SimuMix3D-128-31-05-1-01"),
+    ("SimuMix3D-512-31-0-0-1", "SimuMix3D-128-31-0-0-1"),
+    # --------------------------------------------------------------------------
     # ("SimuMix3D-1024-31-05-1-01", "SimuMix3D-128-31-05-1-01"),
+    # --------------------------------------------------------------------------
     # ("SimuMix3D-128-31-05-1-03", "SimuMix3D-128-31-05-1-03"),
     # ("SimuMix3D-128-31-05-1-1", "SimuMix3D-128-31-05-1-1"),
     # --------------------------------------------------------------------------
+    # ("SimuMix3D-256-31-0-0-1", "SimuMix3D-256-31-0-0-1"),
+    # ("SimuMix3D-256-31-05-0-1", "SimuMix3D-256-31-05-0-1"),
+    # ("SimuMix3D-256-31-05-1-03", "SimuMix3D-256-31-05-1-03"),
+    # ("SimuMix3D-256-31-05-1-01", "SimuMix3D-256-31-05-1-01"),
+    # --------------------------------------------------------------------------
     # ("Microtubule2-3d-1024", "Microtubule2-3d-1024"),
+    # ("Microtubule2-3d-1024", "Microtubule2-3d-512"),
     # ("Nuclear-pore-complex2-1024", "Nuclear-pore-complex2-1024"),
+    # ("Nuclear-pore-complex2-1024", "Nuclear-pore-complex2-512"),
     # --------------------------------------------------------------------------
     # ("SirDNA-1024", "SirDNA-1024"),
     # ("SirDNA-1024-train", "SirDNA-1024"),
@@ -164,23 +184,35 @@ print_time_each_sample = True
 
 
 for dataset_names in dataset_names_list:
+    id_sample = id_sample_global
     dataset_name_test, dataset_name_train = dataset_names
     # dataset_name_train, dataset_name_test = dataset_names
-
     print("-" * 80)
     print(f"[INFO] Dataset (test): {dataset_name_test}")
     print(f"[INFO] Dataset (train): {dataset_name_train}")
 
-    # id_sample = [0, 346, 609, 700, 770, 901]
-    # id_sample = [0, 1, 2, 3, 4, 5]
-    # id_sample = range(0, 1000, 4)
-    # id_sample = [0, 1, 2, 3, 4, 5, 6]
-    # id_sample = [7, 8, 9, 10, 11, 12, 13, 14, 15, 16]
-    # id_sample = [0, 1, 2, 3, 4, 5, 6]
-    # id_sample = [0]
-    id_sample = []  # use all the samples
-    # id_sample = None # will only save the kernels
+    # --------------------------------------------------------------------------
+    info = info_xlsx[info_xlsx["id"] == dataset_name_test].iloc[0]
+    enable_median_filter = int(info["median_filter"])
+    enable_dark = int(info["dark"])
+    data_type = info["data type"]
 
+    print(f"[INFO] Enable median filter: {enable_median_filter}")
+    print(f"[INFO] Enable dark: {enable_dark}")
+    print(f"[INFO] Data type: {data_type}")
+
+    if data_type in ["real-2d", "real-3d"]:
+        FP_type, BP_type = "pre-trained", "learned"  # 2D and 3D real data
+    elif data_type in ["simu-3d"]:
+        FP_type, BP_type = "known", "learned"  # simulation data
+    else:
+        raise ValueError(f"[ERROR] Invalid data type: {data_type}")
+
+    if only_kernel:
+        FP_type, BP_type = "pre-trained", "learned"
+
+    # FP_type, BP_type = 'known', 'known'
+    # FP_type, BP_type = 'pre-trained', 'known'
     # --------------------------------------------------------------------------
     # create the folder for saving the predictions
     path_prediction = os.path.join(
@@ -202,12 +234,6 @@ for dataset_names in dataset_names_list:
     os.makedirs(path_prediction, exist_ok=True)
 
     # --------------------------------------------------------------------------
-    info = info_xlsx[info_xlsx["id"] == dataset_name_test].iloc[0]
-    enable_median_filter = int(info["median_filter"])
-    enable_dark = int(info["dark"])
-
-    print(f"[INFO] Enable median filter: {enable_median_filter}")
-    print(f"[INFO] Enable dark: {enable_dark}")
 
     params_dict = dict(
         kernel_size_fp=text2tuple(info["ks_fp"]),
@@ -388,6 +414,7 @@ for dataset_names in dataset_names_list:
         interpolation=params_dict["interpolation"],
         shared_bp=params_dict["shared_bp"],
         conv_mode=params_dict["conv_mode"],
+        move_inter_to_cpu=True,
     ).to(device)
 
     # --------------------------------------------------------------------------
@@ -444,6 +471,9 @@ for dataset_names in dataset_names_list:
     save_kernel("kernel_fp.tif", ker_FP)
     save_kernel(f"kernel_bp{suffix_net}.tif", ker_BP)
 
+    if only_kernel:
+        # exit if only kernel is saved
+        break
     # --------------------------------------------------------------------------
     #                                   Prediction
     # --------------------------------------------------------------------------
@@ -482,6 +512,8 @@ for dataset_names in dataset_names_list:
     # --------------------------------------------------------------------------
     pbar = tqdm.tqdm(total=len(id_sample), desc="[INFO] Prediction", ncols=80)
     time_list = []
+    model.eval()
+    torch.set_grad_enabled(False)
     for i in id_sample:
         if i >= dataset_test.__len__():
             print(f"[ERROR] Sample {i} is out of range, exit.")
@@ -536,14 +568,25 @@ for dataset_names in dataset_names_list:
 
         if print_time_each_sample:
             print(f"[INFO] Sample {i}: {used_time:.4f} s")
-        y_pred_all = y_pred_all.cpu().detach().numpy()[:, 0, 0]
+
+        # y_pred_all = y_pred_all.cpu().detach().numpy()[:, 0, 0]
+        y_pred_all = y_pred_all[:, 0, 0]
         y, x = t2n(y), t2n(x)
         pbar.update(1)
 
         # Save results ---------------------------------------------------------
-        path_sample = os.path.join(
-            path_prediction, f"train_iter_{num_iter_train}", filenames[i].split(".")[0]
-        )
+        if num_iter_train == num_iter_test:
+            path_sample = os.path.join(
+                path_prediction,
+                f"train_iter_{num_iter_train}",
+                filenames[i].split(".")[0],
+            )
+        else:
+            path_sample = os.path.join(
+                path_prediction,
+                f"train_iter_{num_iter_train}_test_iter_{num_iter_test}",
+                filenames[i].split(".")[0],
+            )
         os.makedirs(path_sample, exist_ok=True)
 
         save_image = lambda fname, arr: io.imsave(
@@ -570,12 +613,22 @@ for dataset_names in dataset_names_list:
     # save the time used for prediction into excel -----------------------------
     df = pandas.DataFrame(columns=["time (s)"])
     df["time (s)"] = time_list
-    df.to_excel(
-        os.path.join(
-            path_prediction,
-            f"train_iter_{num_iter_train}",
-            f"time_{id_device.replace(':', '_')}.xlsx",
-        ),
-        index=True,
-    )
+    if num_iter_train == num_iter_test:
+        df.to_excel(
+            os.path.join(
+                path_prediction,
+                f"train_iter_{num_iter_train}",
+                f"time_{id_device.replace(':', '_')}.xlsx",
+            ),
+            index=True,
+        )
+    else:
+        df.to_excel(
+            os.path.join(
+                path_prediction,
+                f"train_iter_{num_iter_train}_test_iter_{num_iter_test}",
+                f"time_{id_device.replace(':', '_')}.xlsx",
+            ),
+            index=True,
+        )
     # --------------------------------------------------------------------------

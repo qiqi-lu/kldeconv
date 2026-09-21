@@ -3,7 +3,6 @@ import methods.back_projector as back_projector
 import tqdm, torch
 from fft_conv_pytorch import fft_conv
 
-
 # ------------------------------------------------------------------------------
 # def align_size(img, size, pad_value=0):
 #     """
@@ -389,7 +388,14 @@ class Deconvolution(object):
     def measure(self, stack):
         self.metrics_value.append(self.metrics(stack))
 
-    def deconv(self, stack, num_iter: int = 2, domain="fft", verbose: bool = True):
+    def deconv(
+        self,
+        stack,
+        num_iter: int = 2,
+        domain="fft",
+        verbose: bool = True,
+        out_all: bool = False,
+    ):
         """
         Deconvolution function.
 
@@ -399,6 +405,8 @@ class Deconvolution(object):
         - `domain` : convolution domain, `direct` or `fft`.
             - `direct` : direct convolution.
             - `fft` : FFT convolution. `FT(x) * FT(PSF) = FT(x * PSF)`.
+        - `verbose` : verbose flag.
+        - `out_all` : whether output all deconvolved images across iterations.
 
         ### Returns:
         - `stack_estimate` : deconvolved image, numpy array.
@@ -451,6 +459,8 @@ class Deconvolution(object):
         conv_bp = Convolution(PSF2, **dict_conv).to(self.device)
 
         # iterations
+        if out_all:
+            all_stack_est = []
         pbar = tqdm.tqdm(desc="DECONV", total=num_iter, ncols=50, disable=not verbose)
         for i in range(num_iter):
             # ------------------------------------------------------------------
@@ -469,13 +479,26 @@ class Deconvolution(object):
                 self.measure(stack_estimate)
 
             pbar.update(1)
+
+            # collect all deconvolved images across iterations if out_all is True
+            if out_all:
+                if self.device_id == "cpu":
+                    all_stack_est.append(stack_estimate.numpy())
+                elif "cuda" in self.device_id:
+                    all_stack_est.append(stack_estimate.cpu().numpy())
+
         pbar.close()
 
         if self.device_id == "cpu":
             stack_estimate = stack_estimate.numpy()
         elif "cuda" in self.device_id:
             stack_estimate = stack_estimate.cpu().numpy()
-        return stack_estimate
+
+        if out_all:
+            all_stack_est = np.stack(all_stack_est, axis=0)
+            return stack_estimate, all_stack_est
+        else:
+            return stack_estimate
 
     def get_metrics(self):
         return np.stack(self.metrics_value)

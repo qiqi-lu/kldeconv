@@ -1,5 +1,6 @@
 import torch, time
 import torch.nn as nn
+import numpy as np
 
 # from fft_conv_pytorch import fft_conv
 
@@ -587,6 +588,7 @@ class KernelNet(nn.Module):
         return_inter: bool = False,
         multi_out: bool = False,
         self_supervised: bool = False,
+        move_inter_to_cpu: bool = False,
     ):
         super().__init__()
 
@@ -610,6 +612,7 @@ class KernelNet(nn.Module):
         self.self_supervised = self_supervised
         self.return_inter = return_inter
         self.multi_out = multi_out
+        self.move_inter_to_cpu = move_inter_to_cpu
 
         # ----------------------------------------------------------------------
         # Forward Projector
@@ -706,13 +709,15 @@ class KernelNet(nn.Module):
         xk = self.constraint(xk)
 
         if self.return_inter:
-            xk_inter.append(x)  # original input
+            if self.move_inter_to_cpu == True:
+                xk_inter.append(x.cpu().detach().numpy())
+            else:
+                xk_inter.append(x)  # original input
 
         # ----------------------------------------------------------------------
         for i in range(self.num_iter):
             fp = self.FP(xk)
             dv = x / (fp + self.eps)
-
             dv = torch.clamp(dv, min=0.0, max=3.0)
 
             if self.shared_bp == True:
@@ -729,7 +734,10 @@ class KernelNet(nn.Module):
             # ----------------------------------------------------------------------
 
             if self.return_inter == True:
-                xk_inter.append(xk)
+                if self.move_inter_to_cpu == True:
+                    xk_inter.append(xk.cpu().detach().numpy())
+                else:
+                    xk_inter.append(xk)
 
             if self.multi_out == True:
                 if self.self_supervised == True:
@@ -738,7 +746,10 @@ class KernelNet(nn.Module):
                     xk_mulit_out.append(xk)
 
         if self.return_inter == True:
-            return torch.stack(xk_inter, dim=0)
+            if self.move_inter_to_cpu == True:
+                return np.stack(xk_inter, axis=0)
+            else:
+                return torch.stack(xk_inter, dim=0)
         else:
             if self.multi_out == True:
                 return torch.stack(xk_mulit_out, dim=0)
@@ -773,14 +784,14 @@ if __name__ == "__main__":
 
     # ---------------------------------------------------------------------------
     # 3D
-    x = torch.ones(size=(1, 1, 128, 128, 128))
+    x = torch.ones(size=(1, 1, 128, 512, 512))
     model = KernelNet(
         dim=3,
         in_channels=1,
         scale_factor=1,
-        num_iter=2,
-        kernel_size_fp=[25, 25, 25],
-        kernel_size_bp=[31, 25, 25],
+        num_iter=100,
+        kernel_size_fp=[31, 31, 31],
+        kernel_size_bp=[31, 31, 31],
         std_init=[4.0, 2.0, 2.0],
         init="delta",
         lam=0.0,
