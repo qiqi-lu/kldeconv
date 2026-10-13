@@ -179,13 +179,34 @@ class DFCAN(nn.Module):
 
 
 if __name__ == "__main__":
+    import time
+    import numpy as np
+
     in_channels = 1
-    input_size = (2, in_channels, 128, 128)
+    input_size = (1, in_channels, 128, 128)
     x = torch.ones(size=input_size)
     bs, ch, h, w = x.shape
     model = DFCAN(
         in_channels=in_channels, scale_factor=1, num_features=64, num_groups=4
     )
-    o = model(x)
-    torchinfo.summary(model=model, input_size=input_size)
+    # o = model(x)
+    # torchinfo.summary(model=model, input_size=input_size)
+    # print(o.shape)
+
+    device = torch.device("cuda:0")
+    model = model.to(device)
+    x = x.to(device)
+
+    # --------------------------------------------------------------------------
+    times = []
+    for i in range(10):
+        st = time.time()
+        o = model(x)
+        tt = time.time() - st
+        print(tt)
+        times.append(tt)
+    print("mean time:", np.mean(times[1:]))
     print(o.shape)
+
+    # print the number of learnable parameters
+    print("number of learnable parameters:", sum(p.numel() for p in model.parameters()))

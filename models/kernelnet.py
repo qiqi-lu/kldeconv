@@ -1,13 +1,15 @@
 import torch, time
 import torch.nn as nn
 import numpy as np
+import sys
 
 # from fft_conv_pytorch import fft_conv
 
-from methods.deconvolution import fftn_conv_real as fft_conv
-import sys
+# sys.path.append("E:\\Project\\2023 cytoSR")
+sys.path.append("/mnt/e/qiqilu/Project/2023 cytoSR/code")
 
-sys.path.append("E:\\Project\\2023 cytoSR")
+from methods.deconvolution import fftn_conv_real as fft_conv
+
 from utils import data as utils_data
 
 
@@ -774,26 +776,18 @@ class KernelNet(nn.Module):
 if __name__ == "__main__":
     # 2D
     # x = torch.ones(size=(1, 1, 128, 128))
-    # model = KernelNet(dim=2, in_channels=1, scale_factor=1, num_iter=2,\
-    #     kernel_size_fp =[25, 25], kernel_size_bp =[25, 25],\
-    #     std_init=[2.0, 2.0],\
-    #     init='gauss', lam=0.0, padding_mode='reflect', multi_out=False,\
-    #     return_inter=False, interpolation=True, over_sampling=2,\
-    #     kernel_norm=True,\
-    #     shared_bp=True, conv_mode='fft')
-
-    # ---------------------------------------------------------------------------
-    # 3D
-    x = torch.ones(size=(1, 1, 128, 512, 512))
+    # x = torch.ones(size=(1, 1, 256, 256))
+    # x = torch.ones(size=(1, 1, 512, 512))
+    x = torch.ones(size=(1, 1, 1024, 1024))
     model = KernelNet(
-        dim=3,
+        dim=2,
         in_channels=1,
         scale_factor=1,
-        num_iter=100,
-        kernel_size_fp=[31, 31, 31],
-        kernel_size_bp=[31, 31, 31],
-        std_init=[4.0, 2.0, 2.0],
-        init="delta",
+        num_iter=2,
+        kernel_size_fp=[31, 31],
+        kernel_size_bp=[31, 31],
+        std_init=[2.0, 2.0],
+        init="gauss",
         lam=0.0,
         padding_mode="reflect",
         multi_out=False,
@@ -805,8 +799,45 @@ if __name__ == "__main__":
         conv_mode="fft",
     )
 
+    device = torch.device("cuda:0")
+    # device = torch.device("cpu")
+
+    x = x.to(device)
+    model.to(device)
+
     # ---------------------------------------------------------------------------
-    st = time.time()
-    o = model(x)
-    print(time.time() - st)
+    # 3D
+    # x = torch.ones(size=(1, 1, 128, 512, 512))
+    # model = KernelNet(
+    #     dim=3,
+    #     in_channels=1,
+    #     scale_factor=1,
+    #     num_iter=100,
+    #     kernel_size_fp=[31, 31, 31],
+    #     kernel_size_bp=[31, 31, 31],
+    #     std_init=[4.0, 2.0, 2.0],
+    #     init="delta",
+    #     lam=0.0,
+    #     padding_mode="reflect",
+    #     multi_out=False,
+    #     return_inter=False,
+    #     interpolation=True,
+    #     over_sampling=2,
+    #     kernel_norm=True,
+    #     shared_bp=True,
+    #     conv_mode="fft",
+    # )
+
+    # ---------------------------------------------------------------------------
+    times = []
+    for i in range(10):
+        st = time.time()
+        o = model(x)
+        tt = time.time() - st
+        print(tt)
+        times.append(tt)
+    print("mean time:", np.mean(times[1:]))
     print(o.shape)
+
+    # print the number of learnable parameters
+    print("number of learnable parameters:", sum(p.numel() for p in model.parameters()))
